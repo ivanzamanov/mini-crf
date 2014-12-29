@@ -1,6 +1,6 @@
 
 CC = g++
-CFLAGS = -Wall -g -I.
+CFLAGS = -std=c++11 -Wall -g -I.
 OBJ_DIR = bin
 OBJ = crf.o
 
