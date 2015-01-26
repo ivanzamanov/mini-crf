@@ -6,35 +6,11 @@
 #include<iostream>
 #include<fstream>
 
-class MFCCMatrix {
+#include"matrix.hpp"
+
+class MFCCMatrix : public Matrix {
 public:
-  MFCCMatrix(int rows, int cols): r(rows), c(cols) {
-    data = new double[r * c];
-  }
-
-  ~MFCCMatrix() {
-    delete data;
-  }
-
-  double& operator()(int row, int col) {
-    if(row >= rows() || row < 0 || col < 0 || col >= cols()) {
-      throw "Invalid element requested";
-    }
-    return data[row * c + col];
-  }
-
-  int rows() const {
-    return r;
-  }
-
-  int cols() const {
-    return c;
-  }
-
-  int r;
-  int c;
-  double* data;
-
+  MFCCMatrix(int rows, int cols): Matrix(rows, cols) { }
   double xmin, xmax, dx, x1, ymin, ymax, dy, y1;
 };
 
@@ -96,12 +72,12 @@ MFCCMatrix* readMFCCMatrix(std::string filename) {
   m.dy = dy;
   m.y1 = y1;
 
-  std::cout << result;
+  // std::cout << result;
 
-  std::getline(input, buf); // something like z [] []
+  // std::getline(input, buf); // something like z [] []
   for(int i = 0; i < m.rows(); i++) {
     std::getline(input, buf); // meaningless line
-    std::cout << buf << std::endl;
+    // std::cout << buf << std::endl;
     for(int j = 0; j < m.cols(); j++) {
       double val = nextMatrixValue(input, buf);
       m(i, j) = val;
