@@ -29,7 +29,7 @@ class StateFunction {
 
 template<class Key, class Value>
 struct Pair {
-  Pair(const Key& key, const Value& value):key(key),value(value) { }
+  Pair(const Key& key, const Value& value): key(key), value(value) { }
   const Key key;
   const Value value;
 };
@@ -58,6 +58,7 @@ class CoefSequence : Sequence<double&> {
 public:
   CoefSequence(int size): size(size) {
     data = new double[size];
+    std::fill(data, data + size, 0);
   };
   CoefSequence(const CoefSequence& other): size(other.size) {
     data = new double[size];
@@ -68,6 +69,7 @@ public:
     size = other.size;
     data = new double[size];
     memcpy(data, other.data, size * sizeof(double));
+    return *this;
   };
   ~CoefSequence() {
     delete data;

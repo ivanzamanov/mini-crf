@@ -3,20 +3,35 @@
 
 #include"crf.hpp"
 
-void trainNaive(CRandomField& crf, Corpus& corpus) {
+class GDCompute {
+public:
+  virtual void calculate(CRandomField& crf, Corpus& corpus,
+                         CoefSequence& lambda, CoefSequence& mu) = 0;
+};
 
+class NaiveGDCompute : public GDCompute {
+  void calculate(CRandomField& crf, Corpus& corpus,
+                 CoefSequence& lambda, CoefSequence& mu) {
+
+  }
+};
+
+bool errorObjectiveReached(CRandomField& crf, Corpus& corpus) {
+  return false;
 }
 
-void trainIIS(CRandomField& crf, Corpus& corpus) {
-  // Edge feature updates
-  for (int k = 0; k < crf.lambda.length(); k++) {
-    
+void trainGradientDescent(CRandomField& crf, Corpus& corpus) {
+  CoefSequence lambda(crf.lambda.length());
+  CoefSequence mu(crf.mu.length());
+  GDCompute* gradient = new NaiveGDCompute();
+
+  while(!errorObjectiveReached(crf, corpus)) {
+    gradient->calculate(crf, corpus,
+                       lambda, mu);
   }
 
-  // Vertex feature updates
-  for (int k = 0; k < crf.mu.length(); k++) {
-    
-  }
+  crf.lambda = lambda;
+  crf.mu = mu;
 }
 
 #endif
