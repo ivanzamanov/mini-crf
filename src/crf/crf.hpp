@@ -8,23 +8,56 @@
 template<class _Item>
 class Sequence {
 public:
-  _Item get(int);
-  _Item operator[](int pos) {
+  Sequence(int size): size(size) {
+    data = new _Item[size];
+    std::fill(data, data + size, 0);
+  };
+  Sequence(const Sequence<_Item>& other): size(other.size) {
+    data = new _Item[size];
+    memcpy(data, other.data, size * sizeof(_Item));
+  };
+  const Sequence<_Item>& operator=(const Sequence<_Item>& other) {
+    delete data;
+    size = other.size;
+    data = new _Item[size];
+    memcpy(data, other.data, size * sizeof(_Item));
+    return *this;
+  };
+  ~Sequence() {
+    delete data;
+  };
+
+  _Item& operator[](int pos) {
     return get(pos);
   };
-  int length();
+
+  _Item& get(int pos) {
+    if(pos < 0 || pos >= size)
+      return data[0]; // TODO: fix
+
+    return data[pos];
+  };
+  int length() const {
+    return size;
+  };
+private:
+  int size;
+  _Item* data;
 };
+
+typedef int Label;
+typedef int Input;
 
 // Represents a feature function on an edge in the graph
 // i.e. f(y, y', i, x) (in the case of a linear crf)
 class TransitionFunction {
-  virtual double operator()(int prevLabel, int label, int, const Sequence<int>& input);
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&);
 };
 
 // Represents a feature function on a vertex in the graph
 // i.e. g(y, i, x)
 class StateFunction {
-  virtual double operator()(int label, int position, const Sequence<int>& input);
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&);
 };
 
 template<class Key, class Value>
@@ -49,45 +82,12 @@ public:
   };
 
 private:
-  std::vector<Sequence<int> > inputs;
-  std::vector<Sequence<int> > labels;
+  std::vector<Sequence<Input> > inputs;
+  std::vector<Sequence<Label> > labels;
 };
 
 // Will be used as the coefficient sequences
-class CoefSequence : Sequence<double&> {
-public:
-  CoefSequence(int size): size(size) {
-    data = new double[size];
-    std::fill(data, data + size, 0);
-  };
-  CoefSequence(const CoefSequence& other): size(other.size) {
-    data = new double[size];
-    memcpy(data, other.data, size * sizeof(double));
-  };
-  const CoefSequence& operator=(const CoefSequence& other) {
-    delete data;
-    size = other.size;
-    data = new double[size];
-    memcpy(data, other.data, size * sizeof(double));
-    return *this;
-  };
-  ~CoefSequence() {
-    delete data;
-  };
-
-  double& get(int pos) {
-    if(pos < 0 || pos >= size)
-      return data[0]; // TODO: fix
-
-    return data[pos];
-  };
-  int length() {
-    return size;
-  };
-private:
-  int size;
-  double* data;
-};
+typedef Sequence<double> CoefSequence;
 
 class CRandomField {
 public:
