@@ -1,12 +1,7 @@
 #include"crf/crf.hpp"
 #include"crf/training.hpp"
 
-struct LabelAlphabet {
-  template<class Filter>
-  void iterate_sequences(const Sequence<Input>& input, Filter& filter) {
-
-  }
-};
+#include"speech_synthesis.hpp"
 
 typedef CRandomField<LabelAlphabet> CRF;
 
@@ -25,6 +20,6 @@ int main() {
   Corpus corpus;
   corpus.add(input, labels);
 
-  trainGradientDescent<CRF, NaiveGDCompute>(crf, corpus);
+  trainGradientDescent<CRF>(crf, corpus);
   return 0;
 }

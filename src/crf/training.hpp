@@ -17,11 +17,6 @@ struct SumAccumulator {
 };
 
 template<class CRF>
-class GDCompute {
-  
-};
-
-template<class CRF>
 class NaiveGDCompute {
 public:
   GradientValues calculate(CRF& crf, Corpus& corpus,
@@ -72,6 +67,11 @@ public:
 template<class CRF>
 bool errorObjectiveReached(CRF& crf, Corpus& corpus) {
   return false;
+}
+
+template<class CRF>
+void trainGradientDescent(CRF& crf, Corpus& corpus) {
+  trainGradientDescent<CRF, NaiveGDCompute>(crf, corpus);
 }
 
 template<class CRF, template <typename> class GDCompute>

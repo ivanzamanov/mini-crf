@@ -4,7 +4,7 @@ CFLAGS = -std=c++11 -Wall -g -I.
 OBJ_DIR = bin
 OBJ = crf.o
 CMD = $(CC) $(CFLAGS)
-MAIN_DEPS = $(wildcard *.hpp)
+MAIN_DEPS = $(wildcard */*.hpp */*.cpp)
 
 main: $(MAIN_DEPS)
 	$(CMD) main.cpp -o main
