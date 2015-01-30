@@ -10,7 +10,6 @@ class Sequence {
 public:
   Sequence(int size): size(size) {
     data = new _Item[size];
-    std::fill(data, data + size, 0);
   };
   Sequence(const Sequence<_Item>& other): size(other.size) {
     data = new _Item[size];
@@ -45,21 +44,6 @@ private:
   _Item* data;
 };
 
-typedef int Label;
-typedef int Input;
-
-// Represents a feature function on an edge in the graph
-// i.e. f(y, y', i, x) (in the case of a linear crf)
-class TransitionFunction {
-  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&);
-};
-
-// Represents a feature function on a vertex in the graph
-// i.e. g(y, i, x)
-class StateFunction {
-  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&);
-};
-
 template<class Key, class Value>
 struct Pair {
   Pair(const Key& key, const Value& value): key(key), value(value) { }
@@ -67,13 +51,17 @@ struct Pair {
   const Value value;
 };
 
+
+typedef int Label;
+typedef int Input;
+
 class Corpus {
 public:
-  const Sequence<int>& label(int i) {
+  const Sequence<Label>& label(int i) {
     return labels[i];
   };
 
-  const Sequence<int>& input(int i) {
+  const Sequence<Input>& input(int i) {
     return inputs[i];
   };
 
@@ -81,14 +69,44 @@ public:
     return inputs.size();
   };
 
+  void add(Sequence<Input>& input, Sequence<Input>& labels) {
+    this->inputs.push_back(input);
+    this->labels.push_back(labels);
+  };
+
 private:
   std::vector<Sequence<Input> > inputs;
   std::vector<Sequence<Label> > labels;
 };
 
+// Represents a feature function on an edge in the graph
+// i.e. f(y, y', i, x) (in the case of a linear crf)
+class TransitionFunction {
+public:
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) {
+    return 0;
+  };
+  virtual ~TransitionFunction () {
+
+  }
+};
+
+// Represents a feature function on a vertex in the graph
+// i.e. g(y, i, x)
+class StateFunction {
+public:
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) {
+    return 0;
+  };
+  virtual ~StateFunction () {
+
+  }
+};
+
 // Will be used as the coefficient sequences
 typedef Sequence<double> CoefSequence;
 
+template<class LabelAlphabet>
 class CRandomField {
 public:
   CRandomField(Sequence<StateFunction> sf, Sequence<TransitionFunction> tf):
@@ -105,6 +123,8 @@ public:
   Sequence<TransitionFunction> f;
   // Edge feature coefficients
   CoefSequence lambda;
+
+  LabelAlphabet label_alphabet;
 };
 
 #endif

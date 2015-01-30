@@ -12,9 +12,19 @@ struct GradientValues {
   ValueSequence mu_values;
 };
 
+struct SumAccumulator {
+  double result;
+};
+
+template<class CRF>
 class GDCompute {
+  
+};
+
+template<class CRF>
+class NaiveGDCompute {
 public:
-  GradientValues calculate(CRandomField& crf, Corpus& corpus,
+  GradientValues calculate(CRF& crf, Corpus& corpus,
                            CoefSequence& lambda, CoefSequence& mu) {
     GradientValues result(lambda.length(), mu.length());
 
@@ -29,51 +39,49 @@ public:
     return result;
   };
 
-  virtual double computeLambdaGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
-                                       CRandomField& crf, Corpus& corpus) = 0;
-
-  virtual double computeMuGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
-                                   CRandomField& crf, Corpus& corpus) = 0;
-};
-
-class NaiveGDCompute : public GDCompute {
-  virtual double computeLambdaGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
-                                       CRandomField& crf, Corpus& corpus) {
+  double computeLambdaGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
+                               CRF& crf, Corpus& corpus) {
     double result = 0;
+
     for(int c = 0; c < corpus.length(); c++) {
       const Sequence<Label>& y = corpus.label(c);
       const Sequence<Input>& x = corpus.input(c);
-
       double A = 0;
+
       for(int j = 0; j < y.length(); j++) {
         A += lambda[pos] * crf.f[pos](y, pos, x);
       }
 
       double B = 0;
       // iterate over all label vectors,
-      
+      SumAccumulator filter;
+      crf.label_alphabet.iterate_sequences(x, filter);
       result += A - B;
     }
+
     return result;
   };
 
-  virtual double computeMuGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
-                                   CRandomField& crf, Corpus& corpus) {
-
+  double computeMuGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
+                           CRF& crf, Corpus& corpus) {
+    return 0;
   };
+
 };
 
-bool errorObjectiveReached(CRandomField& crf, Corpus& corpus) {
+template<class CRF>
+bool errorObjectiveReached(CRF& crf, Corpus& corpus) {
   return false;
 }
 
-void trainGradientDescent(CRandomField& crf, Corpus& corpus) {
+template<class CRF, template <typename> class GDCompute>
+void trainGradientDescent(CRF& crf, Corpus& corpus) {
   CoefSequence lambda(crf.lambda.length());
   CoefSequence mu(crf.mu.length());
-  GDCompute* gradient = new NaiveGDCompute();
+  GDCompute<CRF> gradient;
 
-  while(!errorObjectiveReached(crf, corpus)) {
-    GradientValues values = gradient->calculate(crf, corpus, lambda, mu);
+  while(!errorObjectiveReached<CRF>(crf, corpus)) {
+    GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
     // Update lambdas...
   }
 
