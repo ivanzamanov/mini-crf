@@ -23,7 +23,14 @@ public:
     return *this;
   };
   ~Sequence() {
-    delete data;
+    delete[] data;
+  };
+
+  const _Item& operator[](int pos) const {
+    if(pos < 0 || pos >= size)
+      return data[0]; // TODO: fix
+
+    return data[pos];
   };
 
   _Item& operator[](int pos) {

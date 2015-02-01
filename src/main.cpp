@@ -1,9 +1,20 @@
+#include<iostream>
+
 #include"crf/crf.hpp"
 #include"crf/training.hpp"
 
 #include"speech_synthesis.hpp"
 
 typedef CRandomField<LabelAlphabet> CRF;
+
+struct TestFilter {
+  void operator()(const Sequence<int>& labels) {
+    for(int i = 0; i < labels.length(); i++) {
+      std::cout << labels[i] << ' ';
+    }
+    std::cout << std::endl;
+  }
+};
 
 int main() {
   Sequence<StateFunction> state_functions(1);
@@ -19,6 +30,14 @@ int main() {
   }
   Corpus corpus;
   corpus.add(input, labels);
+
+  Sequence<int> inpt(5);
+  for(int i = 0; i < inpt.length(); i++) {
+    inpt[i] = i * 2;
+  }
+  LabelAlphabet alphabet;
+  TestFilter test_filter;
+  alphabet.iterate_sequences(inpt, test_filter);
 
   trainGradientDescent<CRF>(crf, corpus);
   return 0;

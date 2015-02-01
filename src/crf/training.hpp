@@ -14,6 +14,9 @@ struct GradientValues {
 
 struct SumAccumulator {
   double result;
+  double operator()(const Sequence<Label> labels) {
+    return 0;
+  }
 };
 
 template<class CRF>
@@ -80,10 +83,11 @@ void trainGradientDescent(CRF& crf, Corpus& corpus) {
   CoefSequence mu(crf.mu.length());
   GDCompute<CRF> gradient;
 
-  while(!errorObjectiveReached<CRF>(crf, corpus)) {
-    GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
-    // Update lambdas...
-  }
+  gradient.calculate(crf, corpus, lambda, mu);
+  // while(!errorObjectiveReached<CRF>(crf, corpus)) {
+  //   GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
+  //   // Update lambdas...
+  // }
 
   crf.lambda = lambda;
   crf.mu = mu;
