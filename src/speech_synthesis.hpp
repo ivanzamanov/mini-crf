@@ -58,7 +58,13 @@ public:
   }
 };
 
-LabelAlphabet* build_alphabet() {
+LabelAlphabet* build_alphabet(std::istream& list_input) {
+  char buffer[2048];
+  while(!list_input.eof()) {
+    list_input >> buffer; // wav file
+    std::cout << buffer << " ";
+    list_input >> buffer; // grid
+  }
   LabelAlphabet* result = new LabelAlphabet();
   return result;
 }

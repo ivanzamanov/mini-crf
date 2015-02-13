@@ -13,7 +13,8 @@ endform
 
 writeInfoLine: "Parameters:"
 appendInfoLine: "Sound file: ", soundPath$
-appendInfoLine: "Output file:", outputFile$
+appendInfoLine: "TextGrid file: ", textGridPath$
+appendInfoLine: "Output file: ", outputFile$
 appendInfoLine: "Time step: ", timeStep
 appendInfoLine: "MFCC count: ", mfccCount
 appendInfoLine: "MFCC window length: ", mfccWindowLength
