@@ -1,22 +1,27 @@
 #include<iostream>
+#include<fstream>
 
 #include"crf/crf.hpp"
 #include"crf/training.hpp"
-
 #include"speech_synthesis.hpp"
 
 typedef CRandomField<LabelAlphabet> CRF;
 
 struct TestFilter {
   void operator()(const Sequence<int>& labels) {
-    for(int i = 0; i < labels.length(); i++) {
-      std::cout << labels[i] << ' ';
-    }
-    std::cout << std::endl;
+    // for(int i = 0; i < labels.length(); i++) {
+    //   std::cout << labels[i] << ' ';
+    // }
+    // std::cout << std::endl;
   }
 };
 
+const char* const test_file = "/home/ivo/praat-tmp/output.txt";
 int main() {
+  int size;
+  std::ifstream stream(test_file);
+  parse_file(stream, size);
+  std::cout << "Size: " << size << std::endl;
   Sequence<StateFunction> state_functions(1);
   Sequence<TransitionFunction> transition_functions(1);
 

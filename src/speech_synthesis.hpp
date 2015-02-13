@@ -4,8 +4,7 @@
 #include<vector>
 
 #include"crf/crf.hpp"
-#include"praat/mfcc.hpp"
-#include"praat/textgrid.hpp"
+#include"praat/parser.hpp"
 
 class LabelAlphabet {
 public:
@@ -58,5 +57,10 @@ public:
     }
   }
 };
+
+LabelAlphabet* build_alphabet() {
+  LabelAlphabet* result = new LabelAlphabet();
+  return result;
+}
 
 #endif

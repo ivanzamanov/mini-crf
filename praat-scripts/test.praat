@@ -20,11 +20,16 @@ appendInfoLine: "MFCC window length: ", mfccWindowLength
 appendInfoLine: ""
 
 deleteFile: outputFile$
+appendFileLine: outputFile$, "[Config]"
+appendFileLine: outputFile$, "timeStep=", timeStep
+appendFileLine: outputFile$, "mfccWindow=", mfccWindowLength
+appendFileLine: outputFile$, "mfcc=", mfccCount
 
 textGridObj = Read from file... 'textGridPath$'
 Rename... TextGrid
 
 intervalCount = Get number of intervals... 1
+appendFileLine: outputFile$, "intervals=", intervalCount
 
 soundObj = Read from file... 'soundPath$'
 selectObject: soundObj
@@ -47,7 +52,9 @@ for i to intervalCount
     startPoint = Get start point... 1 i
     endPoint = Get end point... 1 i
     timePoint = startPoint
-    appendFile: outputFile$, "Label= ", intervalLabel$, " "
+    appendFileLine: outputFile$, "[Entry]"
+    appendFileLine: outputFile$, "label=", intervalLabel$
+    appendFileLine: outputFile$, "duration=", (endPoint - timePoint)
     pointsCount = 0
     while timePoint < endPoint
         pointsCount += 1
@@ -55,6 +62,7 @@ for i to intervalCount
     endwhile
     selectObject: mfccObj
     timePoint = startPoint
+    appendFileLine: outputFile$, "frames=", pointsCount
     while timePoint < endPoint
         frame = Get frame number from time... timePoint
         frame = floor(frame)
@@ -68,9 +76,8 @@ for i to intervalCount
 
         for j to mfccCount
             value = Get value in frame... frame j
-            appendFile: outputFile$, value, " "
+            appendFileLine: outputFile$, j, "=", value
         endfor
-        appendFileLine: outputFile$, ""
         timePoint = timePoint + timeStep
     endwhile
 endfor
