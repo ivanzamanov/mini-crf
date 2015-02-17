@@ -1,14 +1,12 @@
-
-CORPUS_PATH="/home/ivo/SpeechSynthesis/corpus"
+#!/bin/bash
+CORPUS_PATH="/home/ivo/SpeechSynthesis/corpus-small"
 OUTPUT_PATH="/home/ivo/corpus-features"
 
 PRAAT=praat
 EXTRACTOR_SCRIPT="`dirname $0`/extractor.sh"
 
-mkdir -p OUTPUT_PATH
-if [ -f "$OUTPUT" ]; then
-    rm $OUTPUT
-fi
+mkdir -p $OUTPUT_PATH
+FILES_LIST=$OUTPUT_PATH/files-list
 
 WAVS=0
 GRIDS=0
@@ -20,7 +18,9 @@ do
     GRID=`dirname $WAV`/$GRID_NAME.TextGrid
     if [ -f $GRID ]; then
         echo "Extracting from $WAV"
-        $EXTRACTOR_SCRIPT "$WAV" "$GRID" $OUTPUT_PATH/"$GRID_NAME.Features"
+				OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
+				echo $OUTPUT >> $FILES_LIST
+        $EXTRACTOR_SCRIPT "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
     fi
 done
