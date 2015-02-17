@@ -1,28 +1,21 @@
 #ifndef __SPEECH_SYNTHESIS_H__
 #define __SPEECH_SYNTHESIS_H__
 
-#include<vector>
+#include<fstream>
 
 #include"crf/crf.hpp"
 #include"praat/parser.hpp"
 
-class LabelAlphabet {
-public:
-  LabelAlphabet(): classes(10) {
-    for(int i=0; i < 10; i++) {
-      for(int j = 0; j < 5; j++) {
-        classes[i].push_back(i * 10 + j);
-      }
-    }
-  }
-
-private:
+struct LabelAlphabet {
   typedef std::vector<Label> LabelClass;
-  std::vector<LabelClass> classes;
   typedef std::vector<LabelClass::const_iterator> Iterators;
 
-public:
-  int toInt(const Label& label) {
+  Array<PhonemeInstance> phonemes;
+  Array<std::string> files;
+  Array<int> file_indices;
+  Array<LabelClass> classes;
+
+  int toInt(const Input& label) {
     return label;
   }
 
@@ -30,11 +23,13 @@ public:
   void iterate_sequences(const Sequence<Input>& input, Filter& filter) {
     std::vector<LabelClass::const_iterator> iters(input.length());
     std::vector<int> class_indices(input.length());
+
     for(int i = 0; i < input.length(); i++) {
       int index = toInt(input[i]);
       iters[i] = classes[index].begin();
       class_indices[i] = index;
     }
+
     Sequence<Label> labels(input.length());
     permute(iters, class_indices, 0, labels, filter);
   }
@@ -58,14 +53,54 @@ public:
   }
 };
 
-LabelAlphabet* build_alphabet(std::istream& list_input) {
-  char buffer[2048];
-  while(!list_input.eof()) {
-    list_input >> buffer; // wav file
-    std::cout << buffer << " ";
-    list_input >> buffer; // grid
+Array<LabelAlphabet::LabelClass> build_classes(std::vector<PhonemeInstance> phonemes) {
+  Array<LabelAlphabet::LabelClass> result;
+  const int length = 256;
+  result.data = new LabelAlphabet::LabelClass[length];
+  result.length = length;
+  auto it = phonemes.begin();
+  int i = 0;
+
+  while(it != phonemes.end()) {
+    PhonemeInstance& phon = *it;
+    result[phon.label].push_back(i);
+    i++;
+    ++it;
   }
+
+  return result;
+}
+
+LabelAlphabet* build_alphabet(std::istream& list_input) {
+  std::cout << "Building label alphabet" << '\n';
+  std::string buffer;
+  std::vector<PhonemeInstance> phonemes;
+  // phonemes[i] came from file files_map[file_indices[i]]
+  std::vector<int> file_indices;
+  std::vector<std::string> files_map;
+
+  while(!list_input.eof()) {
+    list_input >> buffer; // file
+    // std::cout << buffer << ' ';
+    std::ifstream stream(buffer.c_str());
+    int size;
+    PhonemeInstance* phonemes_from_file = parse_file(stream, size);
+    files_map.push_back(buffer);
+
+    for(int i = 0; i < size; i++) {
+      phonemes.push_back(phonemes_from_file[i]);
+      file_indices.push_back(files_map.size() - 1);
+    }
+
+    // std::cout << size << '\n';
+  }
+
   LabelAlphabet* result = new LabelAlphabet();
+  result->phonemes = to_array(phonemes);
+  result->files = to_array(files_map);
+  result->file_indices = to_array(file_indices);
+  result->classes = build_classes(phonemes);
+  std::cout << "End building alphabet" << '\n';
   return result;
 }
 

@@ -55,7 +55,8 @@ for i to intervalCount
     timePoint = startPoint
     appendFileLine: outputFile$, "[Entry]"
     appendFileLine: outputFile$, "label=", intervalLabel$
-    appendFileLine: outputFile$, "duration=", (endPoint - timePoint)
+    appendFileLine: outputFile$, "start=", timePoint
+    appendFileLine: outputFile$, "end=", endPoint
     pointsCount = 0
     while timePoint < endPoint
         pointsCount += 1
@@ -75,6 +76,10 @@ for i to intervalCount
            frame = maxMFCCFrameCount
         endif
 
+        selectObject: pitch
+        value = Get value at time: timePoint, "Hertz", "Linear"
+        appendFileLine: outputFile$, "pitch=", value
+        selectObject: mfccObj
         for j to mfccCount
             value = Get value in frame... frame j
             appendFileLine: outputFile$, j, "=", value
