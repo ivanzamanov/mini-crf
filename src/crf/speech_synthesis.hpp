@@ -3,8 +3,8 @@
 
 #include<fstream>
 
-#include"crf/crf.hpp"
-#include"praat/parser.hpp"
+#include"crf.hpp"
+#include"../praat/parser.hpp"
 
 struct LabelAlphabet {
   typedef std::vector<Label> LabelClass;
@@ -17,6 +17,10 @@ struct LabelAlphabet {
 
   int toInt(const Input& label) {
     return label;
+  }
+
+  PhonemeInstance& fromInt(int i) {
+    return phonemes[i];
   }
 
   template<class Filter>
@@ -71,7 +75,10 @@ Array<LabelAlphabet::LabelClass> build_classes(std::vector<PhonemeInstance> phon
   return result;
 }
 
-LabelAlphabet* build_alphabet(std::istream& list_input) {
+void build_data(std::istream& list_input,
+                LabelAlphabet* alphabet,
+                Corpus* corpus) {
+
   std::cout << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
@@ -79,29 +86,33 @@ LabelAlphabet* build_alphabet(std::istream& list_input) {
   std::vector<int> file_indices;
   std::vector<std::string> files_map;
 
-  while(!list_input.eof()) {
-    list_input >> buffer; // file
-    // std::cout << buffer << ' ';
+  while(list_input >> buffer) {
+    std::cout << buffer << ' ';
     std::ifstream stream(buffer.c_str());
     int size;
     PhonemeInstance* phonemes_from_file = parse_file(stream, size);
     files_map.push_back(buffer);
 
+    Sequence<Input> inputs(size);
+    Sequence<Label> labels(size);
+
     for(int i = 0; i < size; i++) {
       phonemes.push_back(phonemes_from_file[i]);
-      file_indices.push_back(files_map.size() - 1);
+      int phoneme_index = files_map.size() - 1;
+      file_indices.push_back(phoneme_index);
+      inputs[i] = phoneme_index;
+      labels[i] = phoneme_index;
     }
 
-    // std::cout << size << '\n';
+    corpus->add(inputs, labels);
+    std::cout << size << '\n';
   }
 
-  LabelAlphabet* result = new LabelAlphabet();
-  result->phonemes = to_array(phonemes);
-  result->files = to_array(files_map);
-  result->file_indices = to_array(file_indices);
-  result->classes = build_classes(phonemes);
+  alphabet->phonemes = to_array(phonemes);
+  alphabet->files = to_array(files_map);
+  alphabet->file_indices = to_array(file_indices);
+  alphabet->classes = build_classes(phonemes);
   std::cout << "End building alphabet" << '\n';
-  return result;
 }
 
 #endif

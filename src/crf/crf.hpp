@@ -88,24 +88,26 @@ private:
 
 // Represents a feature function on an edge in the graph
 // i.e. f(y, y', i, x) (in the case of a linear crf)
-class TransitionFunction {
+template<class LabelAlphabet>
+class _TransitionFunction {
 public:
-  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) {
-    return 0;
-  };
-  virtual ~TransitionFunction () {
+  LabelAlphabet* alphabet;
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) { return 0; };
+  virtual ~_TransitionFunction () {
 
   }
 };
 
 // Represents a feature function on a vertex in the graph
 // i.e. g(y, i, x)
-class StateFunction {
+template<class LabelAlphabet>
+class _StateFunction {
 public:
+  LabelAlphabet* alphabet;
   virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) {
     return 0;
   };
-  virtual ~StateFunction () {
+  virtual ~_StateFunction () {
 
   }
 };
@@ -116,8 +118,19 @@ typedef Sequence<double> CoefSequence;
 template<class LabelAlphabet>
 class CRandomField {
 public:
+  typedef _StateFunction<LabelAlphabet> StateFunction;
+  typedef _TransitionFunction<LabelAlphabet> TransitionFunction;
+
   CRandomField(Sequence<StateFunction> sf, Sequence<TransitionFunction> tf):
-    g(sf), mu(sf.length()), f(tf), lambda(tf.length()) { };
+    g(sf), mu(sf.length()), f(tf), lambda(tf.length()) {
+    for(int i = 0; i < f.length(); i++) {
+      f[i].alphabet = &label_alphabet;
+    }
+
+    for(int i = 0; i < f.length(); i++) {
+      g[i].alphabet = &label_alphabet;
+    }
+  };
 
   ~CRandomField() { };
 

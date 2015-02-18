@@ -13,7 +13,7 @@ struct GradientValues {
 };
 
 struct SumAccumulator {
-  double result;
+  double result = 0;
   double operator()(const Sequence<Label> labels) {
     return 0;
   }
@@ -50,11 +50,10 @@ public:
         A += lambda[pos] * crf.f[pos](y, pos, x);
       }
 
-      double B = 0;
-      // iterate over all label vectors,
+      // iterate over all label vectors
       SumAccumulator filter;
       crf.label_alphabet.iterate_sequences(x, filter);
-      result += A - B;
+      result += A - filter.result;
     }
 
     return result;
