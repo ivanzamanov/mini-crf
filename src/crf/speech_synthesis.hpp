@@ -15,16 +15,16 @@ struct LabelAlphabet {
   Array<int> file_indices;
   Array<LabelClass> classes;
 
-  int toInt(const Input& label) {
+  int toInt(const Input& label) const {
     return label;
   }
 
-  PhonemeInstance& fromInt(int i) {
+  const PhonemeInstance& fromInt(int i) const {
     return phonemes[i];
   }
 
   template<class Filter>
-  void iterate_sequences(const Sequence<Input>& input, Filter& filter) {
+  void iterate_sequences(const Sequence<Input>& input, Filter& filter) const {
     std::vector<LabelClass::const_iterator> iters(input.length());
     std::vector<int> class_indices(input.length());
 
@@ -39,7 +39,7 @@ struct LabelAlphabet {
   }
 
   template<class Filter>
-  void permute(Iterators& iters, std::vector<int>& class_indices, unsigned index, Sequence<Label>& labels, Filter& filter) {
+  void permute(Iterators& iters, std::vector<int>& class_indices, unsigned index, Sequence<Label>& labels, Filter& filter) const {
     if(index == iters.size() - 1) {
       while(iters[index] != classes[class_indices[index]].end()) {
         labels[index] = *iters[index];
@@ -87,7 +87,7 @@ void build_data(std::istream& list_input,
   std::vector<std::string> files_map;
 
   while(list_input >> buffer) {
-    std::cout << buffer << ' ';
+    // std::cout << buffer << ' ';
     std::ifstream stream(buffer.c_str());
     int size;
     PhonemeInstance* phonemes_from_file = parse_file(stream, size);
@@ -105,7 +105,7 @@ void build_data(std::istream& list_input,
     }
 
     corpus->add(inputs, labels);
-    std::cout << size << '\n';
+    // std::cout << size << '\n';
   }
 
   alphabet->phonemes = to_array(phonemes);

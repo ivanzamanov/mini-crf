@@ -1,6 +1,7 @@
 #ifndef __CRF_H__
 #define __CRF_H__
 
+#include<cmath>
 #include<vector>
 #include<cstring>
 
@@ -92,7 +93,7 @@ template<class LabelAlphabet>
 class _TransitionFunction {
 public:
   LabelAlphabet* alphabet;
-  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) { return 0; };
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) const { return 0; };
   virtual ~_TransitionFunction () {
 
   }
@@ -104,7 +105,7 @@ template<class LabelAlphabet>
 class _StateFunction {
 public:
   LabelAlphabet* alphabet;
-  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) {
+  virtual double operator()(const Sequence<Label>, int, const Sequence<Input>&) const {
     return 0;
   };
   virtual ~_StateFunction () {
@@ -134,6 +135,10 @@ public:
 
   ~CRandomField() { };
 
+  double probability_of(const Sequence<Label>& y, const Sequence<Input> x) const {
+    return crf_probability_of(y, x, *this, lambda, mu);
+  }
+
   // Vertex features
   Sequence<StateFunction> g;
   // Vertex feature coefficients
@@ -146,5 +151,46 @@ public:
 
   LabelAlphabet label_alphabet;
 };
+
+template<class CRF>
+struct AllSumAccumulator {
+  AllSumAccumulator(const CRF& crf,
+                    const Sequence<Input>& inputs,
+                    const CoefSequence& mu,
+                    const CoefSequence& lambda):
+    crf(crf), x(inputs), lambda(lambda), mu(mu) { }
+
+  const CRF& crf;
+  const Sequence<Input>& x;
+  const CoefSequence& lambda;
+  const CoefSequence& mu;
+  double result = 0;
+
+  void operator()(const Sequence<Label>& y) {
+    double sum = 0;
+    for(int i = 1; i < y.length(); i++) {
+      for(int j = 0; j < crf.f.length(); j++) {
+        sum += lambda[i] * crf.f[j](y, i, x);
+      }
+      for(int j = 0; j < crf.g.length(); j++) {
+        sum += mu[i] * crf.g[j](y, i, x);
+      }
+    }
+    result += std::exp(sum);
+  }
+};
+
+template<class CRF>
+double crf_probability_of(const Sequence<Label>& y, const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
+  double numer = 0;
+  for(int i = 1; i < y.length(); i++)
+    numer += lambda[i - 1] * crf.f[i - 1](y, i, x);
+
+  AllSumAccumulator<CRF> filter(crf, x, lambda, mu);
+  // TODO: make proper iterator...
+  crf.label_alphabet.iterate_sequences(x, filter);
+
+  return numer - std::log(filter.result);
+}
 
 #endif
