@@ -14,6 +14,13 @@ class TransitionFunction : public CRF::TransitionFunction {
     Evaluate eval;
     return eval(prev, next);
   }
+
+  virtual double operator()(const Label l1, const Label l2, int pos, const Sequence<Input>& inputs) const {
+    const PhonemeInstance& prev = alphabet->fromInt(l1);
+    const PhonemeInstance& next = alphabet->fromInt(l2);
+    Evaluate eval;
+    return eval(prev, next);
+  }
 };
 
 struct Duration {

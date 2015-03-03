@@ -66,11 +66,13 @@ public:
     for(int i = 0; i < lambda.length(); i++) {
       result.lambda_values[i] = computeLambdaGradient(i, lambda, mu, crf, corpus);
     }
+    std::cout << '\n';
 
     std::cout << "Mu gradient" << std::endl;
     for(int i = 0; i < mu.length(); i++) {
       result.mu_values[i] = computeMuGradient(i, lambda, mu, crf, corpus);
     }
+    std::cout << '\n';
 
     return result;
   };
