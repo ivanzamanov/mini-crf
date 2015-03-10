@@ -93,38 +93,40 @@ typedef Sequence<double> CoefSequence;
 template<class LabelAlphabet>
 class CRandomField {
 public:
-  class StateFunction {
+  class BaseFunction {
   public:
     LabelAlphabet* alphabet;
+    virtual ~BaseFunction() { };
+  };
+  
+  class StateFunction : public BaseFunction {
+  public:
     virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
       return 0;
     }
     virtual double operator()(const Label, int, const Sequence<Input>&) const {
       return 0;
     };
-    virtual ~StateFunction() { };
   };
 
-  class TransitionFunction {
+  class TransitionFunction : public BaseFunction {
   public:
-    LabelAlphabet* alphabet;
     virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
       return 0;
     }
     virtual double operator()(const Label, const Label, const int, const Sequence<Input>&) const {
       return 0;
     };
-    virtual ~TransitionFunction() { };
   };
 
-  CRandomField(Sequence<StateFunction> sf, Sequence<TransitionFunction> tf):
+  CRandomField(Sequence<StateFunction*> sf, Sequence<TransitionFunction*> tf):
     g(sf), mu(sf.length()), f(tf), lambda(tf.length()) {
     for(int i = 0; i < f.length(); i++) {
-      f[i].alphabet = &label_alphabet;
+      f[i]->alphabet = &label_alphabet;
     }
 
-    for(int i = 0; i < f.length(); i++) {
-      g[i].alphabet = &label_alphabet;
+    for(int i = 0; i < g.length(); i++) {
+      g[i]->alphabet = &label_alphabet;
     }
   };
 
@@ -135,12 +137,12 @@ public:
   }
 
   // Vertex features
-  Sequence<StateFunction> g;
+  Sequence<StateFunction*> g;
   // Vertex feature coefficients
   CoefSequence mu;
 
   // Edge features
-  Sequence<TransitionFunction> f;
+  Sequence<TransitionFunction*> f;
   // Edge feature coefficients
   CoefSequence lambda;
 
@@ -160,6 +162,7 @@ struct AllSumAccumulator {
   const CoefSequence& lambda;
   const CoefSequence& mu;
   double result = 0;
+  int count = 0;
 
   void operator()(const Sequence<Label>& y) {
     double sum = 0;
@@ -206,7 +209,7 @@ template<class CRF>
 double state_value(CRF& crf, const CoefSequence& mu, const Sequence<Input>& x, int label, int pos) {
   double result = 0;
   for(int i = 0; i < crf.g.length(); i++)
-    result += mu[i] * crf.g[i](label, pos, x);
+    result += mu[i] * (*crf.g[i])(label, pos, x);
   return result;
 }
 
@@ -217,9 +220,9 @@ double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequen
 
   double result = 0;
   for (int i = 0; i < lambda.length(); i++) {
-    const typename CRF_T::TransitionFunction &func = crf.f[i];
+    const typename CRF_T::TransitionFunction* func = crf.f[i];
     double coef = lambda[i];
-    result += coef * func(label1, label2, pos, x);
+    result += coef * (*func)(label1, label2, pos, x);
   }
   result += state_value(crf, mu, x, label2, pos);
   return result;
@@ -228,27 +231,39 @@ double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequen
 template<class CRF>
 double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
   int alphabet_len = crf.label_alphabet.phonemes.length;
-  int autom_size = alphabet_len * x.length() + 2;
+  int autom_size = alphabet_len * x.length() + 1;
   double* table = new double[autom_size];
   // Transitions q,i,y -> f
   int index = autom_size - 1;
   table[index] = 1;
-  index--;
-
-  for(int k = 0; k < x.length(); k++)
+  
+  // transitions to final state
+  for(int k = 0; k < alphabet_len; k++) {
+    table[index] = 1;
+    index--;
+  }
+  
+  // backwards, for every position in the input sequence...
+  for(int k = x.length() - 2; k >= 0; k--)
+    // for every possible label...
     for(int i = 0; i < alphabet_len; i++, index--) {
-      int child = child_index(k, alphabet_len);
+      int child = child_index(k + 1, alphabet_len);
       table[index] = 0;
-      for(int j = 0; j < alphabet_len; j++)
-        table[index] += transition_value(crf, lambda, mu, x, i, j, k) * table[child + j];
+      for(int j = 0; j < alphabet_len; j++) {
+        double increment = transition_value(crf, lambda, mu, x, i, j, k) * table[child + j];
+        std::cout << "table[" << index << "] += " << increment << std::endl;
+        table[index] += increment;
+      }
     }
 
+  int child = child_index(0, alphabet_len);
   table[index] = 0;
-  for(int j = 0; j < alphabet_len; j++)
-    table[index] += state_value(crf, mu, x, j, 1);
-  index--;
-  // assert index == 0
-
+  for(int j = 0; j < alphabet_len; j++) {
+    double increment = state_value(crf, mu, x, j, 0) * table[child + j];
+    std::cout << "table[" << index << "] += " << increment << std::endl;
+    table[index] += increment;
+  }
+  
   double denom = table[0];
   delete table;
   return denom;

@@ -84,6 +84,7 @@ public:
     for(int c = 0; c < corpus.length(); c++) {
       (std::cout << ".").flush();
       const Sequence<Label>& y = corpus.label(c);
+
       const Sequence<Input>& x = corpus.input(c);
       double A = 0;
 

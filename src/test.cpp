@@ -14,13 +14,13 @@ struct TestAlphabet {
   bool allowedTransition(int l1, int l2) const {
     return true;
   }
-  
+
   Array<int> phonemes;
 };
 
-typedef CRandomField<TestAlphabet> CRF;
+typedef CRandomField<TestAlphabet> TestCRF;
 
-class TestTransFunc : public CRF::TransitionFunction {
+class TestTransFunc : public TestCRF::TransitionFunction {
 public:
   virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
     return 1;
@@ -30,24 +30,36 @@ public:
   };
 };
 
-Sequence<CRF::StateFunction> state_functions() {
-  Sequence<CRF::StateFunction> result(0);
+class TestStateFunc : public TestCRF::StateFunction {
+public:
+  virtual double operator()(const Sequence<Label>& labelSeq, int pos, const Sequence<Input>& seq) const {
+    return pos == 0;
+  }
+  virtual double operator()(const Label l, int pos, const Sequence<Input>& seq) const {
+    return pos == 0;
+  };
+};
+
+Sequence<TestCRF::StateFunction*> state_functions() {
+  Sequence<TestCRF::StateFunction*> result(1);
+  result[0] = new TestStateFunc();
   return result;
 }
 
-Sequence<CRF::TransitionFunction> transition_functions() {
-  Sequence<CRF::TransitionFunction> result(1);
-  result[0] = TestTransFunc();
+Sequence<TestCRF::TransitionFunction*> transition_functions() {
+  Sequence<TestCRF::TransitionFunction*> result(1);
+  result[0] = new TestTransFunc();
   return result;
 }
 
 int main() {
-  CRF crf(state_functions(), transition_functions());
+  TestCRF crf(state_functions(), transition_functions());
   Sequence<Input> x(5);
   for(int i = 0; i < 5; i++) x[i] = i;
   CoefSequence lambda(1);
   lambda[0] = 1;
-  CoefSequence mu(0);
+  CoefSequence mu(1);
+  mu[0] = 1;
 
   std::cout << norm_factor(x, crf, lambda, mu) << std::endl;
 }
