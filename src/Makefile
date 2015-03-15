@@ -13,6 +13,9 @@ main: $(MAIN_DEPS) test
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test
 
+clean:
+	rm $(wildcard *.exe)
+
 # %.o : %.cpp %.hpp
 # 	mkdir -p $(OBJ_DIR)
 # 	$(CC) -c $< -o $(OBJ_DIR)/$@

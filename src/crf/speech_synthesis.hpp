@@ -2,6 +2,7 @@
 #define __SPEECH_SYNTHESIS_H__
 
 #include<fstream>
+#include<iostream>
 
 #include"crf.hpp"
 #include"../praat/parser.hpp"
@@ -20,7 +21,7 @@ struct LabelAlphabet {
   }
 
   int toInt(const Input& label) const {
-    return label;
+    return fromInt(label).label;
   }
 
   const PhonemeInstance& fromInt(int i) const {
@@ -36,6 +37,7 @@ struct LabelAlphabet {
       int index = toInt(input[i]);
       iters[i] = classes[index].begin();
       class_indices[i] = index;
+
     }
 
     Sequence<Label> labels(input.length());
@@ -91,7 +93,6 @@ void build_data(std::istream& list_input,
   std::vector<std::string> files_map;
 
   while(list_input >> buffer) {
-    // std::cout << buffer << ' ';
     std::ifstream stream(buffer.c_str());
     int size;
     PhonemeInstance* phonemes_from_file = parse_file(stream, size);
@@ -101,15 +102,15 @@ void build_data(std::istream& list_input,
     Sequence<Label> labels(size);
 
     for(int i = 0; i < size; i++) {
+      int phoneme_index = phonemes.size();
       phonemes.push_back(phonemes_from_file[i]);
-      int phoneme_index = files_map.size() - 1;
-      file_indices.push_back(phoneme_index);
+      file_indices.push_back(files_map.size() - 1);
+
       inputs[i] = phoneme_index;
       labels[i] = phoneme_index;
     }
 
     corpus->add(inputs, labels);
-    // std::cout << size << '\n';
   }
 
   alphabet->phonemes = to_array(phonemes);
