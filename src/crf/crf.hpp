@@ -195,7 +195,7 @@ template<class CRF>
 double crf_probability_of(const Sequence<Label>& y, const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
   double numer = 0;
   for(int i = 1; i < y.length(); i++)
-    numer += lambda[i - 1] * crf.f[i - 1](y, i, x);
+    numer += lambda[i - 1] * (*crf.f[i - 1])(y, i, x);
 
   double denom = norm_factor(x, crf, lambda, mu);
   return numer - std::log(denom);
@@ -228,19 +228,24 @@ double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequen
   return result;
 }
 
+#include"../dot/dot.hpp"
 template<class CRF>
 double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
+  // DotPrinter printer("automaton.dot");
+  // printer.start();
   int alphabet_len = crf.label_alphabet.phonemes.length;
-  int autom_size = alphabet_len * x.length() + 1;
+  int autom_size = alphabet_len * x.length() + 2;
   double* table = new double[autom_size];
   // Transitions q,i,y -> f
   int index = autom_size - 1;
   table[index] = 1;
-  
+  index--;
+
   // transitions to final state
-  for(int k = 0; k < alphabet_len; k++) {
+  for(int k = 0; k < alphabet_len; k++, index--) {
     table[index] = 1;
-    index--;
+    // printer.node(index, 1);
+    // printer.edge(index, autom_size - 1, ' ', 1);
   }
   
   // backwards, for every position in the input sequence...
@@ -251,21 +256,26 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
       table[index] = 0;
       for(int j = 0; j < alphabet_len; j++) {
         double increment = transition_value(crf, lambda, mu, x, i, j, k) * table[child + j];
-        std::cout << "table[" << index << "] += " << increment << std::endl;
+        // std::cout << "table[" << index << "] += " << increment << std::endl;
         table[index] += increment;
+        // printer.edge(index, child + j, ' ', increment);
       }
+      // printer.node(index, table[index]);
     }
 
   int child = child_index(0, alphabet_len);
   table[index] = 0;
   for(int j = 0; j < alphabet_len; j++) {
     double increment = state_value(crf, mu, x, j, 0) * table[child + j];
-    std::cout << "table[" << index << "] += " << increment << std::endl;
+    // std::cout << "table[" << index << "] += " << increment << std::endl;
     table[index] += increment;
+    // printer.edge(index, child + j, ' ', increment);
   }
-  
+  // printer.node(index, table[index]);
+
   double denom = table[0];
   delete table;
+  // printer.end();
   return denom;
 }
 

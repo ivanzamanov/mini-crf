@@ -27,7 +27,7 @@ struct TransitionSumAccumulator {
     double prob = crf.probability_of(y, x);
     double sum = 0;
     for(int i = 1; i < y.length(); i++) {
-        sum += lambda[k] * crf.f[k](y, i, x);
+      sum += lambda[k] * (*crf.f[k])(y, i, x);
     }
     result = prob * sum;
   }
@@ -49,7 +49,7 @@ struct StateSumAccumulator {
     double prob = crf.probability_of(y, x);
     double sum = 0;
     for(int i = 1; i < y.length(); i++) {
-        sum += mu[k] * crf.g[k](y, i, x);
+      sum += mu[k] * (*crf.g[k])(y, i, x);
     }
     result = prob * sum;
   }
@@ -89,7 +89,7 @@ public:
       double A = 0;
 
       for(int j = 0; j < y.length(); j++) {
-        A += lambda[pos] * crf.f[pos](y, pos + 1, x);
+        A += lambda[pos] * (*crf.f[pos])(y, pos + 1, x);
       }
 
       // iterate over all label vectors
@@ -112,7 +112,7 @@ public:
       double A = 0;
 
       for(int j = 0; j < y.length(); j++) {
-        A += mu[pos] * crf.g[pos](y, pos + 1, x);
+        A += mu[pos] * (*crf.g[pos])(y, pos + 1, x);
       }
 
       // iterate over all label vectors

@@ -39,15 +39,15 @@ struct Pitch {
   }
 };
 
-Sequence<CRF::StateFunction> state_functions() {
-  Sequence<CRF::StateFunction> result(0);
+Sequence<CRF::StateFunction*> state_functions() {
+  Sequence<CRF::StateFunction*> result(0);
   return result;
 }
 
-Sequence<CRF::TransitionFunction> transition_functions() {
-  Sequence<CRF::TransitionFunction> result(2);
-  result[0] = TransitionFunction<Duration>();
-  result[1] = TransitionFunction<Pitch>();
+Sequence<CRF::TransitionFunction*> transition_functions() {
+  Sequence<CRF::TransitionFunction*> result(2);
+  result[0] = new TransitionFunction<Duration>();
+  result[1] = new TransitionFunction<Pitch>();
   return result;
 }
 
