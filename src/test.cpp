@@ -25,8 +25,8 @@ public:
   virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
     return 1;
   }
-  virtual double operator()(const Label, const Label, const int, const Sequence<Input>&) const {
-    return 1;
+  virtual double operator()(const Label l1, const Label l2, const int, const Sequence<Input>&) const {
+    return (l1 == 1 && l2 == (l1 + 1)) + 1;
   };
 };
 
@@ -52,6 +52,13 @@ Sequence<TestCRF::TransitionFunction*> transition_functions() {
   return result;
 }
 
+template<class T>
+void assertEquals(T expected, T actual) {
+  if(expected != actual) {
+    abort();
+  }
+}
+
 int main() {
   TestCRF crf(state_functions(), transition_functions());
   Sequence<Input> x(5);
@@ -61,5 +68,7 @@ int main() {
   CoefSequence mu(1);
   mu[0] = 1;
 
-  std::cout << norm_factor(x, crf, lambda, mu) << std::endl;
+  //assertEquals(2048.0, norm_factor(x, crf, lambda, mu));
+  std::vector<int> path;
+  norm_factor(x, crf, lambda, mu, &path);
 }
