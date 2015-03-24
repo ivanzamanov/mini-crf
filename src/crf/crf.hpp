@@ -247,6 +247,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   // Transitions q,i,y -> f
   int index = autom_size - 1;
   table[index] = 1;
+  printer.node(index, -2);
   index--;
 
   std::vector<int>* paths;
@@ -255,9 +256,9 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   }
 
   // transitions to final state
-  for(int k = 0; k < alphabet_len; k++, index--) {
+  for(int dest = 0; dest < alphabet_len; dest++, index--) {
     table[index] = 1;
-    printer.node(index, 1);
+    printer.node(index, dest);
     printer.edge(index, autom_size - 1, ' ', 1);
   }
   
@@ -271,36 +272,39 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
       int max_label = -1;
       double max_increment = std::numeric_limits<double>::min();
       for(int dest = 0; dest < alphabet_len; dest++) {
-        double increment = transition_value(crf, lambda, mu, x, src, dest, k) * table[child + dest];
+        double tr_value = transition_value(crf, lambda, mu, x, src, dest, k);
+        double increment = tr_value * table[child + dest];
+        if(tr_value != 1) std::cout << k << ": " << src << "->" << dest << " = " << tr_value << std::endl;
         // std::cout << "table[" << index << "] += " << increment << std::endl;
         table[index] += increment;
         if(max_label == -1 || max_increment <= increment) {
           max_increment = increment;
           max_label = dest;
         }
-        printer.edge(index, child + dest, ' ', increment);
+        printer.edge(index, child + dest, ' ', tr_value);
       }
       if(paths)
         paths[src].push_back(max_label);
-      printer.node(index, table[index]);
+      printer.node(index, src);
     }
 
   int child = child_index(0, alphabet_len);
   table[index] = 0;
   int max_path_index = -1;
   double max_val = std::numeric_limits<double>::min();
-  for(int j = 0; j < alphabet_len; j++) {
-    double increment = state_value(crf, mu, x, j, 0) * table[child + j];
+  for(int src = 0; src < alphabet_len; src++) {
+    double increment = state_value(crf, mu, x, src, 0) * table[child + src];
     // std::cout << "table[" << index << "] += " << increment << std::endl;
     table[index] += increment;
-    printer.edge(index, child + j, ' ', increment);
+    printer.edge(index, child + src, ' ', increment);
 
+    paths[src].push_back(src);
     if(max_path_index == -1 || max_val <= increment) {
-      max_path_index = j;
+      max_path_index = src;
       max_val = increment;
     }
   }
-  printer.node(index, table[index]);
+  printer.node(index, -1);
 
   if(paths) {
     std::cout << "MAX PATH: ";

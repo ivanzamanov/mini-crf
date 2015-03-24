@@ -23,19 +23,20 @@ typedef CRandomField<TestAlphabet> TestCRF;
 class TestTransFunc : public TestCRF::TransitionFunction {
 public:
   virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
-    return 1;
+    return 0;
   }
   virtual double operator()(const Label l1, const Label l2, const int, const Sequence<Input>&) const {
-    return (l1 == 1 && l2 == (l1 + 1)) + 1;
+    double result = (l1 == 2 && l2 == l1) + 1;
+    return result;
   };
 };
 
 class TestStateFunc : public TestCRF::StateFunction {
 public:
-  virtual double operator()(const Sequence<Label>& labelSeq, int pos, const Sequence<Input>& seq) const {
+  virtual double operator()(const Sequence<Label>&, int pos, const Sequence<Input>&) const {
     return pos == 0;
   }
-  virtual double operator()(const Label l, int pos, const Sequence<Input>& seq) const {
+  virtual double operator()(const Label, int pos, const Sequence<Input>&) const {
     return pos == 0;
   };
 };
