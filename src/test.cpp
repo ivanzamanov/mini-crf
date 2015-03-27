@@ -26,8 +26,7 @@ public:
     return 0;
   }
   virtual double operator()(const Label l1, const Label l2, const int, const Sequence<Input>&) const {
-    double result = (l1 == 2 && l2 == l1) + 1;
-    return result;
+    return 1;
   };
 };
 
@@ -69,7 +68,6 @@ int main() {
   CoefSequence mu(1);
   mu[0] = 1;
 
-  //assertEquals(2048.0, norm_factor(x, crf, lambda, mu));
   std::vector<int> path;
-  norm_factor(x, crf, lambda, mu, &path);
+  assertEquals(2048.0, norm_factor(x, crf, lambda, mu, &path));
 }

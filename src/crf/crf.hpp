@@ -265,17 +265,17 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   // backwards, for every position in the input sequence...
   for(int k = x.length() - 2; k >= 0; k--)
     // for every possible label...
-    for(int src = 0; src < alphabet_len; src++, index--) {
+    for(int src = alphabet_len - 1; src >= 0; src--, index--) {
       int child = child_index(k + 1, alphabet_len);
       table[index] = 0;
+      printer.node(index, src);
 
       int max_label = -1;
       double max_increment = std::numeric_limits<double>::min();
-      for(int dest = 0; dest < alphabet_len; dest++) {
+      for(int dest = alphabet_len - 1; dest >= 0; dest--) {
         double tr_value = transition_value(crf, lambda, mu, x, src, dest, k);
         double increment = tr_value * table[child + dest];
-        if(tr_value != 1) std::cout << k << ": " << src << "->" << dest << " = " << tr_value << std::endl;
-        // std::cout << "table[" << index << "] += " << increment << std::endl;
+
         table[index] += increment;
         if(max_label == -1 || max_increment <= increment) {
           max_increment = increment;
@@ -285,16 +285,15 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
       }
       if(paths)
         paths[src].push_back(max_label);
-      printer.node(index, src);
     }
 
   int child = child_index(0, alphabet_len);
   table[index] = 0;
+  printer.node(index, -1);
   int max_path_index = -1;
   double max_val = std::numeric_limits<double>::min();
   for(int src = 0; src < alphabet_len; src++) {
     double increment = state_value(crf, mu, x, src, 0) * table[child + src];
-    // std::cout << "table[" << index << "] += " << increment << std::endl;
     table[index] += increment;
     printer.edge(index, child + src, ' ', increment);
 
@@ -304,14 +303,8 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
       max_val = increment;
     }
   }
-  printer.node(index, -1);
 
   if(paths) {
-    std::cout << "MAX PATH: ";
-    for(auto it = paths[max_path_index].rbegin(); it != paths[max_path_index].rend() ; it++)
-      std::cout << *it << " ";
-
-    std::cout << std::endl;
     *max_path = paths[max_path_index];
     delete[] paths;
   }
