@@ -92,11 +92,7 @@ public:
         A += lambda[pos] * (*crf.f[pos])(y, pos + 1, x);
       }
 
-      // iterate over all label vectors
-      TransitionSumAccumulator<CRF> filter(crf, x, pos, lambda);
-      // TODO: make proper iterator...
-      crf.label_alphabet.iterate_sequences(x, filter);
-      result += A - filter.result;
+      result += A - norm_factor(x, crf, lambda, mu);
     }
 
     return result;

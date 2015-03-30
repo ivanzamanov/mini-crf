@@ -15,6 +15,10 @@ struct TestAlphabet {
     return true;
   }
 
+  bool allowedState(int l1, int l2) const {
+    return true;
+  }
+
   Array<int> phonemes;
 };
 

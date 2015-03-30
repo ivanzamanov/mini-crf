@@ -7,6 +7,10 @@
 #include<limits>
 #include<iostream>
 
+#define DEBUG(x)
+
+//#define DEBUG
+
 // Convenience class representing a sequence of objects
 template<class _Item>
 class Sequence {
@@ -219,7 +223,6 @@ template<class CRF_T>
 double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequence& mu, const Sequence<Input>& x, int label1, int label2, int pos) {
   if(!crf.label_alphabet.allowedTransition(label1, label2))
     return 0;
-
   double result = 0;
   for (int i = 0; i < lambda.length(); i++) {
     const typename CRF_T::TransitionFunction* func = crf.f[i];
@@ -232,23 +235,30 @@ double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequen
 
 #include"../dot/dot.hpp"
 template<class CRF>
+void max_path(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
+  norm_factor(x, crf, lambda, mu, max_path);
+}
+
+template<class CRF>
 double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
   return norm_factor(x, crf, lambda, mu, 0);
 }
 
 template<class CRF>
 double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
-  DotPrinter printer("automaton.dot");
-  //DotPrinter printer(0);
-  printer.start();
+  DEBUG(DotPrinter printer("automaton.dot");
+        printer.start();
+        )
+
   int alphabet_len = crf.label_alphabet.phonemes.length;
   int autom_size = alphabet_len * x.length() + 2;
   double* table = new double[autom_size];
   // Transitions q,i,y -> f
   int index = autom_size - 1;
   table[index] = 1;
-  printer.node(index, -2);
   index--;
+
+  DEBUG(printer.node(index, -2);)
 
   std::vector<int>* paths;
   if(max_path) {
@@ -258,61 +268,79 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   // transitions to final state
   for(int dest = 0; dest < alphabet_len; dest++, index--) {
     table[index] = 1;
-    printer.node(index, dest);
-    printer.edge(index, autom_size - 1, ' ', 1);
+    DEBUG(
+          printer.node(index, dest);
+          printer.edge(index, autom_size - 1, ' ', 1);
+          )
   }
   
   // backwards, for every position in the input sequence...
-  for(int k = x.length() - 2; k >= 0; k--)
+  for(int k = x.length() - 2; k >= 0; k--) {
     // for every possible label...
+    DEBUG(std::cout << "At position " << k << std::endl;)
+
     for(int src = alphabet_len - 1; src >= 0; src--, index--) {
+      if(!crf.label_alphabet.allowedState(src, x[k]))
+        continue;
+
       int child = child_index(k + 1, alphabet_len);
       table[index] = 0;
-      printer.node(index, src);
+      DEBUG(printer.node(index, src);)
 
       int max_label = -1;
       double max_increment = std::numeric_limits<double>::min();
       for(int dest = alphabet_len - 1; dest >= 0; dest--) {
+        if(!crf.label_alphabet.allowedTransition(src, dest))
+          continue;
+
         double tr_value = transition_value(crf, lambda, mu, x, src, dest, k);
         double increment = tr_value * table[child + dest];
 
         table[index] += increment;
-        if(max_label == -1 || max_increment <= increment) {
+
+        if(max_path && (max_label == -1 || max_increment <= increment)) {
           max_increment = increment;
           max_label = dest;
         }
-        printer.edge(index, child + dest, ' ', tr_value);
+        DEBUG(printer.edge(index, child + dest, ' ', tr_value);)
       }
-      if(paths)
+      if(max_path)
         paths[src].push_back(max_label);
     }
+}
 
   int child = child_index(0, alphabet_len);
   table[index] = 0;
-  printer.node(index, -1);
+
+  DEBUG(printer.node(index, -1);)
+
   int max_path_index = -1;
   double max_val = std::numeric_limits<double>::min();
   for(int src = 0; src < alphabet_len; src++) {
     double increment = state_value(crf, mu, x, src, 0) * table[child + src];
     table[index] += increment;
-    printer.edge(index, child + src, ' ', increment);
 
-    paths[src].push_back(src);
-    if(max_path_index == -1 || max_val <= increment) {
-      max_path_index = src;
-      max_val = increment;
+    DEBUG(printer.edge(index, child + src, ' ', increment);)
+
+    if(max_path) {
+      paths[src].push_back(src);
+      if(max_path_index == -1 || max_val <= increment) {
+        max_path_index = src;
+        max_val = increment;
+      }
     }
   }
 
-  if(paths) {
+  if(max_path) {
     *max_path = paths[max_path_index];
     delete[] paths;
   }
 
   double denom = table[0];
-  delete table;
-  printer.end();
+  delete[] table;
+  DEBUG(printer.end();)
   return denom;
 }
 
 #endif
+

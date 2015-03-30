@@ -20,6 +20,10 @@ struct LabelAlphabet {
     return fromInt(l1).label == fromInt(l2).label;
   }
 
+  bool allowedState(int l1, int l2) const {
+    return fromInt(l1).label == fromInt(l2).label;
+  }
+
   int toInt(const Input& label) const {
     return fromInt(label).label;
   }

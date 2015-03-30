@@ -8,14 +8,14 @@ typedef CRandomField<LabelAlphabet> CRF;
 
 template<class Evaluate>
 class TransitionFunction : public CRF::TransitionFunction {
-  virtual double operator()(const Sequence<Label> labels, int pos, const Sequence<Input>& inputs) const {
+  virtual double operator()(const Sequence<Label> labels, int pos, const Sequence<Input>&) const {
     const PhonemeInstance& prev = alphabet->fromInt(labels[pos] - 1);
     const PhonemeInstance& next = alphabet->fromInt(labels[pos]);
     Evaluate eval;
     return eval(prev, next);
   }
 
-  virtual double operator()(const Label l1, const Label l2, int pos, const Sequence<Input>& inputs) const {
+  virtual double operator()(const Label l1, const Label l2, int, const Sequence<Input>&) const {
     const PhonemeInstance& prev = alphabet->fromInt(l1);
     const PhonemeInstance& next = alphabet->fromInt(l2);
     Evaluate eval;
@@ -27,7 +27,7 @@ struct Duration {
   double operator()(const PhonemeInstance& prev, const PhonemeInstance& next) const {
     double d1 = prev.end - prev.start;
     double d2 = next.end - next.start;
-    return d1 != d2;
+    return d1 - d2;
   }
 };
 
@@ -35,7 +35,7 @@ struct Pitch {
   double operator()(const PhonemeInstance& prev, const PhonemeInstance& next) const {
     double d1 = prev.pitch[prev.pitch.length - 1];
     double d2 = next.pitch[0];
-    return d1 != d2;
+    return d1 - d2;
   }
 };
 
