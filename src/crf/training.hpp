@@ -153,7 +153,11 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
 template<class CRF, template <typename> class GDCompute>
 void trainGradientDescent(CRF& crf, Corpus& corpus) {
   CoefSequence lambda(crf.lambda.length());
+  for(int i = 0; i < lambda.length(); i++)
+    lambda[i] = 1;
   CoefSequence mu(crf.mu.length());
+  for(int i = 0; i < mu.length(); i++)
+    mu[i] = 1;
   GDCompute<CRF> gradient;
 
   for(int i = 0; i < 100; i++) {

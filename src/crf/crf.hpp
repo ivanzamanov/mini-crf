@@ -228,15 +228,21 @@ double child_index(int pos, int alphabet_len) {
 
 template<class CRF>
 double state_value(CRF& crf, const CoefSequence& mu, const Sequence<Input>& x, int label, int pos) {
+  if(crf.g.length() == 0)
+    return 1;
+  
   double result = 0;
-  for(int i = 0; i < crf.g.length(); i++)
+  for(int i = 0; i < crf.g.length(); i++) {
     result += mu[i] * (*crf.g[i])(label, pos, x);
+  }
   return result;
 }
 
 template<class CRF_T>
 double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequence& mu, const Sequence<Input>& x, int label1, int label2, int pos) {
   double result = 0;
+  if(crf.f.length() == 0)
+    return 1;
   for (int i = 0; i < lambda.length(); i++) {
     auto* func = crf.f[i];
     double coef = lambda[i];
@@ -258,6 +264,18 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 }
 
 #define COMPARE(x, y) x <= y
+#define MAX std::numeric_limits<double>::max()
+
+double min(double* arr, int n, int& index) {
+  double result = MAX;
+  for(int i = 0; i < n; i++) {
+    if(COMPARE(arr[i], result)) {
+      result = arr[i];
+      index = i;
+    }
+  }
+  return result;
+}
 
 template<class CRF>
 double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
@@ -268,6 +286,11 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   int alphabet_len = crf.label_alphabet.phonemes.length;
   int autom_size = alphabet_len * x.length() + 2;
   double* table = new double[autom_size];
+
+  // Will need for intermediate computations
+  double* tr_values = new double[alphabet_len];
+  // A slice of the table, actually...
+  double* child_values;
   // Transitions q,i,y -> f
   int index = autom_size - 1;
   table[index] = 1;
@@ -282,6 +305,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
   // transitions to final state
   for(int dest = 0; dest < alphabet_len; dest++, index--) {
+    // value of the last "column" of states
     table[index] = 1;
     DEBUG(
           printer.node(index, dest);
@@ -289,17 +313,22 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
           );
   }
   
-  // backwards, for every position in the input sequence...
-  for(int k = x.length() - 2; k >= 0; k--) {
+  // backwards, for every zero-based position in
+  // the input sequence except the last one...
+  for(int pos = x.length() - 2; pos >= 0; pos--) {
     // for every possible label...
-    DEBUG(std::cout << "At position " << k << std::endl);
+    DEBUG(std::cout << "At position " << pos << std::endl);
 
     for(int src = alphabet_len - 1; src >= 0; src--, index--) {
-      if(!crf.label_alphabet.allowedState(src, x[k]))
-        continue;
-
-      int child = child_index(k + 1, alphabet_len);
+      // Must always initialize...
       table[index] = 0;
+
+      // Short-circuit if different phoneme types
+      if(!crf.label_alphabet.allowedState(src, x[pos])) {
+        continue;
+      }
+
+      int child = child_index(pos + 1, alphabet_len);
       DEBUG(printer.node(index, src));
 
       int max_label = -1;
@@ -309,24 +338,31 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
         if(!crf.label_alphabet.allowedTransition(src, dest)) {
           tr_value = 1;
         } else {
-          tr_value = transition_value(crf, lambda, mu, x, src, dest, k);
-          tr_value = std::exp(tr_value);
+          tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
+          tr_values[dest] = tr_value;
         }
-
-        double increment = tr_value * table[child + dest];
+        DEBUG(printer.edge(index, child + dest, ' ', tr_value));
+      }
+      
+      child_values = table + child;
+      for(int dest = alphabet_len - 1; dest >= 0; dest--) {
+        double tr_value = tr_values[dest];
+        double child_value = child_values[dest];
+        tr_value = std::exp(tr_value);
+        // table[child + dest] may be 0 if the target state
+        // was short-circuited
+        double increment = tr_value * child_value;
 
         table[index] += increment;
-        if(!table[index])
-          table[index] = 0;
 
         if(max_path && (max_label == -1 || COMPARE(max_increment, increment))) {
           max_increment = increment;
           max_label = dest;
         }
-        DEBUG(printer.edge(index, child + dest, ' ', tr_value));
       }
 
-      if(table[index] == 0)
+      // This, however, should never be 0
+      if(table[index] == 0 || std::isinf(table[index]))
         table[index] = std::numeric_limits<double>::min();
 
       if(max_path)

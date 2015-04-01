@@ -8,14 +8,15 @@ typedef CRandomField<LabelAlphabet> CRF;
 
 template<class Evaluate>
 class TransitionFunction : public CRF::TransitionFunction {
-  virtual double operator()(const Sequence<Label> labels, int pos, const Sequence<Input>&) const {
+public:
+  double operator()(const Sequence<Label>& labels, int pos, const Sequence<Input>&) const {
     const PhonemeInstance& prev = alphabet->fromInt(labels[pos] - 1);
     const PhonemeInstance& next = alphabet->fromInt(labels[pos]);
     Evaluate eval;
     return eval(prev, next);
   }
 
-  virtual double operator()(const Label l1, const Label l2, int, const Sequence<Input>&) const {
+  double operator()(const Label l1, const Label l2, int, const Sequence<Input>&) const {
     const PhonemeInstance& prev = alphabet->fromInt(l1);
     const PhonemeInstance& next = alphabet->fromInt(l2);
     Evaluate eval;
