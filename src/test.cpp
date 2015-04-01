@@ -59,6 +59,7 @@ Sequence<TestCRF::TransitionFunction*> transition_functions() {
 template<class T>
 void assertEquals(T expected, T actual) {
   if(expected != actual) {
+    std::cout << "Error" << std::endl;
     abort();
   }
 }

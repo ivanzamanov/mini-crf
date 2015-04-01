@@ -16,8 +16,8 @@ struct LabelAlphabet {
   Array<int> file_indices;
   Array<LabelClass> classes;
 
-  bool allowedTransition(int l1, int l2) const {
-    return fromInt(l1).label == fromInt(l2).label;
+  bool allowedTransition(int, int) const {
+    return true;
   }
 
   bool allowedState(int l1, int l2) const {

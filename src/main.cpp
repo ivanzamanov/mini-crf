@@ -8,6 +8,7 @@
 
 const char* const test_file = "/home/ivo/corpus-features/files-list";
 int main() {
+  std::ios_base::sync_with_stdio(false);
   CRF crf(state_functions(), transition_functions());
 
   std::ifstream stream(test_file);
@@ -15,8 +16,8 @@ int main() {
 
   build_data(stream, &crf.label_alphabet, corpus);
 
-  std::cout << "Size: " << crf.label_alphabet.phonemes.length << std::endl;
-  std::cout << "Size: " << corpus->length() << std::endl;
+  std::cout << "Alphabet size: " << crf.label_alphabet.phonemes.length << std::endl;
+  std::cout << "Corpus size: " << corpus->length() << std::endl;
 
   trainGradientDescent<CRF>(crf, *corpus);
   return 0;

@@ -2,6 +2,7 @@
 #define __CRF_TRAINING_H__
 
 #include<iostream>
+#include<cmath>
 #include"crf.hpp"
 
 struct GradientValues {
@@ -9,50 +10,6 @@ struct GradientValues {
     : lambda_values(lambda_size), mu_values(mu_size) { }
   CoefSequence lambda_values;
   CoefSequence mu_values;
-};
-
-template<class CRF>
-struct TransitionSumAccumulator {
-  TransitionSumAccumulator(const CRF& crf,
-                           const Sequence<Input>& inputs,
-                           int k,
-                           const CoefSequence lambda):
-    crf(crf), x(inputs), k(k), lambda(lambda) { }
-  const CRF& crf;
-  const Sequence<Input>& x;
-  int k;
-  const CoefSequence& lambda;
-  double result = 0;
-  void operator()(const Sequence<Label>& y) {
-    double prob = crf.probability_of(y, x);
-    double sum = 0;
-    for(int i = 1; i < y.length(); i++) {
-      sum += lambda[k] * (*crf.f[k])(y, i, x);
-    }
-    result = prob * sum;
-  }
-};
-
-template<class CRF>
-struct StateSumAccumulator {
-  StateSumAccumulator(const CRF& crf,
-                      const Sequence<Input>& inputs,
-                      int k,
-                      const CoefSequence& mu):
-    crf(crf), x(inputs), k(k), mu(mu) { }
-  const CRF& crf;
-  const Sequence<Input>& x;
-  int k;
-  const CoefSequence& mu;
-  double result = 0;
-  void operator()(const Sequence<Label>& y) {
-    double prob = crf.probability_of(y, x);
-    double sum = 0;
-    for(int i = 1; i < y.length(); i++) {
-      sum += mu[k] * (*crf.g[k])(y, i, x);
-    }
-    result = prob * sum;
-  }
 };
 
 template<class CRF>
@@ -82,6 +39,8 @@ public:
     double result = 0;
 
     for(int c = 0; c < corpus.length(); c++) {
+      if( c == 2)
+        break;
       (std::cout << ".").flush();
       const Sequence<Label>& y = corpus.label(c);
 
@@ -89,10 +48,13 @@ public:
       double A = 0;
 
       for(int j = 0; j < y.length(); j++) {
-        A += lambda[pos] * (*crf.f[pos])(y, pos + 1, x);
+        auto func = crf.f[pos];
+        auto coef = lambda[pos];
+        A += coef * (*func)(y, pos + 1, x);
       }
 
-      result += A - norm_factor(x, crf, lambda, mu);
+      double norm = norm_factor(x, crf, lambda, mu);
+      result += std::log(A) - std::log(norm);
     }
 
     return result;
@@ -108,14 +70,13 @@ public:
       double A = 0;
 
       for(int j = 0; j < y.length(); j++) {
-        A += mu[pos] * (*crf.g[pos])(y, pos + 1, x);
+        auto coef = mu[pos];
+        auto func = crf.g[pos];
+        A += coef * (*func)(y, pos + 1, x);
       }
 
-      // iterate over all label vectors
-      StateSumAccumulator<CRF> filter(crf, x, pos, mu);
-      // TODO: make proper iterator...
-      crf.label_alphabet.iterate_sequences(x, filter);
-      result += A - filter.result;
+      double norm = norm_factor(x, crf, lambda, mu);
+      result += log(A) - log(norm);
     }
 
     return result;
@@ -157,7 +118,8 @@ double likelihood(CoefSequence lambdas, CoefSequence mu, Corpus& corpus, CRF& cr
     const Sequence<Label>& y = corpus.label(c);
     const Sequence<Input>& x = corpus.input(c);
 
-    likelihood += crf_probability_of(y, x, crf, lambdas, mu);
+    double proba = crf_probability_of(y, x, crf, lambdas, mu);
+    likelihood += proba;
   }
   std::cout << "Likelihood " << likelihood << std::endl;
   return likelihood;
@@ -165,7 +127,6 @@ double likelihood(CoefSequence lambdas, CoefSequence mu, Corpus& corpus, CRF& cr
 
 template<class CRF>
 double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
-  std::cout << "Step size" << std::endl;
   double alpha = 0.0001d;
   double beta = 0.5d;
   double t = 1;
@@ -185,6 +146,7 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
     right = corpusLikelihood + alpha * t * gradTimesDir;
     t = beta * t;
   }
+  std::cout << "Step size " << t << std::endl;
   return t;
 }
 

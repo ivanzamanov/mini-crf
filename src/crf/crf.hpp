@@ -129,10 +129,12 @@ public:
     g(sf), mu(sf.length()), f(tf), lambda(tf.length()) {
     for(int i = 0; i < f.length(); i++) {
       f[i]->alphabet = &label_alphabet;
+      lambda[i] = 1;
     }
 
     for(int i = 0; i < g.length(); i++) {
       g[i]->alphabet = &label_alphabet;
+      mu[i] = 1;
     }
   };
 
@@ -198,12 +200,25 @@ double crf_probability_of_2(const Sequence<Label>& y, const Sequence<Input>& x, 
 }
 
 template<class CRF>
-double crf_probability_of(const Sequence<Label>& y, const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
+double crf_probability_of(const Sequence<Label>& y, const Sequence<Input>& x, CRF& crf, const CoefSequence& lambdas, const CoefSequence& mus) {
   double numer = 0;
-  for(int i = 1; i < y.length(); i++)
-    numer += lambda[i - 1] * (*crf.f[i - 1])(y, i, x);
+  for(int i = 1; i < y.length(); i++) {
+    for(int lambda = 0; lambda < crf.f.length(); lambda++) {
+      auto func = crf.f[lambda];
+      auto coef = lambdas[lambda];
+      numer += coef * (*func)(y, i, x);
+    }
+  }
 
-  double denom = norm_factor(x, crf, lambda, mu);
+  for(int i = 0; i < y.length(); i++) {
+    for(int mu = 0; mu < crf.g.length(); mu++) {
+      auto func = crf.g[mu];
+      auto coef = mus[mu];
+      numer += coef * (*func)(y, i, x);
+    }
+  }
+
+  double denom = norm_factor(x, crf, lambdas, mus);
   return numer - std::log(denom);
 }
 
@@ -221,11 +236,9 @@ double state_value(CRF& crf, const CoefSequence& mu, const Sequence<Input>& x, i
 
 template<class CRF_T>
 double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequence& mu, const Sequence<Input>& x, int label1, int label2, int pos) {
-  if(!crf.label_alphabet.allowedTransition(label1, label2))
-    return 0;
   double result = 0;
   for (int i = 0; i < lambda.length(); i++) {
-    const typename CRF_T::TransitionFunction* func = crf.f[i];
+    auto* func = crf.f[i];
     double coef = lambda[i];
     result += coef * (*func)(label1, label2, pos, x);
   }
@@ -244,6 +257,8 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   return norm_factor(x, crf, lambda, mu, 0);
 }
 
+#define COMPARE(x, y) x <= y
+
 template<class CRF>
 double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
   DEBUG(DotPrinter printer("automaton.dot");
@@ -260,7 +275,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
   DEBUG(printer.node(index, -2);)
 
-  std::vector<int>* paths;
+  std::vector<int>* paths = 0;
   if(max_path) {
     paths = new std::vector<int>[alphabet_len];
   }
@@ -271,13 +286,13 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
     DEBUG(
           printer.node(index, dest);
           printer.edge(index, autom_size - 1, ' ', 1);
-          )
+          );
   }
   
   // backwards, for every position in the input sequence...
   for(int k = x.length() - 2; k >= 0; k--) {
     // for every possible label...
-    DEBUG(std::cout << "At position " << k << std::endl;)
+    DEBUG(std::cout << "At position " << k << std::endl);
 
     for(int src = alphabet_len - 1; src >= 0; src--, index--) {
       if(!crf.label_alphabet.allowedState(src, x[k]))
@@ -285,46 +300,57 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
       int child = child_index(k + 1, alphabet_len);
       table[index] = 0;
-      DEBUG(printer.node(index, src);)
+      DEBUG(printer.node(index, src));
 
       int max_label = -1;
       double max_increment = std::numeric_limits<double>::min();
       for(int dest = alphabet_len - 1; dest >= 0; dest--) {
-        if(!crf.label_alphabet.allowedTransition(src, dest))
-          continue;
+        double tr_value;
+        if(!crf.label_alphabet.allowedTransition(src, dest)) {
+          tr_value = 1;
+        } else {
+          tr_value = transition_value(crf, lambda, mu, x, src, dest, k);
+          tr_value = std::exp(tr_value);
+        }
 
-        double tr_value = transition_value(crf, lambda, mu, x, src, dest, k);
         double increment = tr_value * table[child + dest];
 
         table[index] += increment;
+        if(!table[index])
+          table[index] = 0;
 
-        if(max_path && (max_label == -1 || max_increment <= increment)) {
+        if(max_path && (max_label == -1 || COMPARE(max_increment, increment))) {
           max_increment = increment;
           max_label = dest;
         }
-        DEBUG(printer.edge(index, child + dest, ' ', tr_value);)
+        DEBUG(printer.edge(index, child + dest, ' ', tr_value));
       }
+
+      if(table[index] == 0)
+        table[index] = std::numeric_limits<double>::min();
+
       if(max_path)
         paths[src].push_back(max_label);
     }
-}
+  }
 
   int child = child_index(0, alphabet_len);
-  table[index] = 0;
 
-  DEBUG(printer.node(index, -1);)
+  DEBUG(printer.node(index, -1));
 
   int max_path_index = -1;
   double max_val = std::numeric_limits<double>::min();
+
+  table[index] = 0;
   for(int src = 0; src < alphabet_len; src++) {
     double increment = state_value(crf, mu, x, src, 0) * table[child + src];
     table[index] += increment;
 
-    DEBUG(printer.edge(index, child + src, ' ', increment);)
+    DEBUG(printer.edge(index, child + src, ' ', increment));
 
     if(max_path) {
       paths[src].push_back(src);
-      if(max_path_index == -1 || max_val <= increment) {
+      if(max_path_index == -1 || COMPARE(max_val, increment)) {
         max_path_index = src;
         max_val = increment;
       }
@@ -338,7 +364,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
   double denom = table[0];
   delete[] table;
-  DEBUG(printer.end();)
+  DEBUG(printer.end());
   return denom;
 }
 
