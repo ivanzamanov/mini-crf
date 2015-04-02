@@ -7,9 +7,8 @@
 #include<limits>
 #include<iostream>
 
-#define DEBUG(x)
-
-//#define DEBUG
+#include"util.hpp"
+#include"../dot/dot.hpp"
 
 // Convenience class representing a sequence of objects
 template<class _Item>
@@ -239,6 +238,11 @@ double state_value(CRF& crf, const CoefSequence& mu, const Sequence<Input>& x, i
 }
 
 template<class CRF_T>
+double transition_value(CRF_T& crf, const Sequence<Input>& x, int label1, int label2, int pos) {
+  return transition_value(crf, x, crf.lambda, crf.mu, label1, label2, pos);
+}
+
+template<class CRF_T>
 double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequence& mu, const Sequence<Input>& x, int label1, int label2, int pos) {
   double result = 0;
   if(crf.f.length() == 0)
@@ -252,7 +256,6 @@ double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequen
   return result;
 }
 
-#include"../dot/dot.hpp"
 template<class CRF>
 void max_path(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
   norm_factor(x, crf, lambda, mu, max_path);
@@ -286,6 +289,8 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   int alphabet_len = crf.label_alphabet.phonemes.length;
   int autom_size = alphabet_len * x.length() + 2;
   double* table = new double[autom_size];
+  // to find maximums
+  util::max_finder mf;
 
   // Will need for intermediate computations
   double* tr_values = new double[alphabet_len];
@@ -327,74 +332,72 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
       if(!crf.label_alphabet.allowedState(src, x[pos])) {
         continue;
       }
-
-      int child = child_index(pos + 1, alphabet_len);
       DEBUG(printer.node(index, src));
 
+      int child = child_index(pos + 1, alphabet_len);
       int max_label = -1;
-      double max_increment = std::numeric_limits<double>::min();
+      
       for(int dest = alphabet_len - 1; dest >= 0; dest--) {
         double tr_value;
         if(!crf.label_alphabet.allowedTransition(src, dest)) {
           tr_value = 1;
         } else {
           tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
-          tr_values[dest] = tr_value;
         }
+        
+        tr_values[dest] = tr_value;
+
         DEBUG(printer.edge(index, child + dest, ' ', tr_value));
       }
       
       child_values = table + child;
+      mf.reset();
       for(int dest = alphabet_len - 1; dest >= 0; dest--) {
         double tr_value = tr_values[dest];
         double child_value = child_values[dest];
-        tr_value = std::exp(tr_value);
         // table[child + dest] may be 0 if the target state
         // was short-circuited
-        double increment = tr_value * child_value;
+        double increment = util::mult_exp(tr_value, child_value);
 
-        table[index] += increment;
+        double d = util::sum(table[index], increment);
+        table[index] = d;
 
-        if(max_path && (max_label == -1 || COMPARE(max_increment, increment))) {
-          max_increment = increment;
-          max_label = dest;
+        if(max_path) {
+          mf.check(dest, increment);
         }
       }
 
       // This, however, should never be 0
-      if(table[index] == 0 || std::isinf(table[index]))
+      if(table[index] == 0 || std::isinf(table[index])) {
+        std::cout << table[index] << " at " << index << std::endl;
         table[index] = std::numeric_limits<double>::min();
+      }
 
       if(max_path)
         paths[src].push_back(max_label);
     }
   }
 
-  int child = child_index(0, alphabet_len);
-
   DEBUG(printer.node(index, -1));
 
-  int max_path_index = -1;
-  double max_val = std::numeric_limits<double>::min();
-
+  mf.reset();
+  int child = child_index(0, alphabet_len);
   table[index] = 0;
+  
   for(int src = 0; src < alphabet_len; src++) {
-    double increment = state_value(crf, mu, x, src, 0) * table[child + src];
-    table[index] += increment;
+    double increment = util::mult(state_value(crf, mu, x, src, 0), table[child + src]);
+    table[index] = util::sum(table[index], increment);
 
     DEBUG(printer.edge(index, child + src, ' ', increment));
 
     if(max_path) {
       paths[src].push_back(src);
-      if(max_path_index == -1 || COMPARE(max_val, increment)) {
-        max_path_index = src;
-        max_val = increment;
-      }
+      mf.check(src, increment);
     }
   }
 
   if(max_path) {
-    *max_path = paths[max_path_index];
+    *max_path = paths[mf.max_pos];
     delete[] paths;
   }
 

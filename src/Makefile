@@ -13,6 +13,9 @@ main: $(MAIN_DEPS) test
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test
 
+main-opt: $(MAIN_DEPS) test
+	$(CMD) -O3 main.cpp $(CPP_FILES) -o main-opt
+
 clean:
 	rm $(wildcard *.exe) main test
 

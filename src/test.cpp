@@ -4,6 +4,7 @@
 #include"crf/crf.hpp"
 #include"crf/training.hpp"
 #include"crf/speech_synthesis.hpp"
+#include"crf/util.hpp"
 
 struct TestAlphabet {
   TestAlphabet() {
@@ -59,12 +60,18 @@ Sequence<TestCRF::TransitionFunction*> transition_functions() {
 template<class T>
 void assertEquals(T expected, T actual) {
   if(expected != actual) {
-    std::cout << "Error" << std::endl;
-    throw "Error";
+    throw std::string("Assert failed");
   }
 }
 
-int main() {
+void testUtils() {
+  std::cout << "Multiplication: " << util::mult(-0.0001d, 0.0001d) << std::endl;
+  std::cout << "ExpMultiplication: " << util::mult_exp(0, -0.0001d) << std::endl;
+  
+  std::cout << "Sum: " << util::sum(0.0001d, 0.0001d) << std::endl;
+}
+
+void testCRF() {
   TestCRF crf(state_functions(), transition_functions());
   Sequence<Input> x(5);
   for(int i = 0; i < 5; i++) x[i] = i;
@@ -75,4 +82,13 @@ int main() {
 
   std::vector<int> path;
   assertEquals(2048.0, norm_factor(x, crf, lambda, mu, &path));
+}
+
+int main() {
+  try {
+  testUtils();
+  testCRF();
+  } catch (std::string s) {
+    std::cout << s << std::endl;
+  }
 }
