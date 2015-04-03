@@ -311,7 +311,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   // transitions to final state
   for(int dest = 0; dest < alphabet_len; dest++, index--) {
     // value of the last "column" of states
-    table[index] = 1;
+    table[index] = 0;
     DEBUG(
           printer.node(index, dest);
           printer.edge(index, autom_size - 1, ' ', 1);
@@ -332,7 +332,6 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
       if(!crf.label_alphabet.allowedState(src, x[pos])) {
         continue;
       }
-      DEBUG(printer.node(index, src));
 
       int child = child_index(pos + 1, alphabet_len);
       int max_label = -1;
@@ -349,7 +348,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
         DEBUG(printer.edge(index, child + dest, ' ', tr_value));
       }
-      
+
       child_values = table + child;
       mf.reset();
       for(int dest = alphabet_len - 1; dest >= 0; dest--) {
@@ -357,15 +356,16 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
         double child_value = child_values[dest];
         // table[child + dest] may be 0 if the target state
         // was short-circuited
-        double increment = util::mult_exp(tr_value, child_value);
 
-        double d = util::sum(table[index], increment);
+        double increment = util::log_mult(tr_value, child_value);
+        double d = util::log_sum(increment, table[index]);
         table[index] = d;
 
         if(max_path) {
           mf.check(dest, increment);
         }
       }
+      DEBUG(printer.node(index, table[index]));
 
       // This, however, should never be 0
       if(table[index] == 0 || std::isinf(table[index])) {
@@ -385,8 +385,8 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   table[index] = 0;
   
   for(int src = 0; src < alphabet_len; src++) {
-    double increment = util::mult(state_value(crf, mu, x, src, 0), table[child + src]);
-    table[index] = util::sum(table[index], increment);
+    double increment = util::log_mult(state_value(crf, mu, x, src, 0), table[child + src]);
+    table[index] = util::log_sum(table[index], increment);
 
     DEBUG(printer.edge(index, child + src, ' ', increment));
 

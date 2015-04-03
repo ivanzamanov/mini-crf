@@ -6,6 +6,8 @@ void DotPrinter::start() {
   if(filePath != 0) {
     file = fopen(filePath, "w");
     fprintf(file, "digraph {\nrankdir = LR;\n");
+    fprintf(file, "ranksep=2\n");
+    //fprintf(file, "nodesep=1.1\n");
     fprintf(file, "splines=line;\n");
   }
 }
