@@ -19,17 +19,17 @@ public:
                            CoefSequence& lambda, CoefSequence& mu) {
     GradientValues result(lambda.length(), mu.length());
 
-    std::cout << "Lambda gradient" << std::endl;
+    std::cerr << "Lambda gradient" << std::endl;
     for(int i = 0; i < lambda.length(); i++) {
       result.lambda_values[i] = computeLambdaGradient(i, lambda, mu, crf, corpus);
     }
-    std::cout << '\n';
+    std::cerr << '\n';
 
-    std::cout << "Mu gradient" << std::endl;
+    std::cerr << "Mu gradient" << std::endl;
     for(int i = 0; i < mu.length(); i++) {
       result.mu_values[i] = computeMuGradient(i, lambda, mu, crf, corpus);
     }
-    std::cout << '\n';
+    std::cerr << '\n';
 
     return result;
   };
@@ -41,7 +41,7 @@ public:
     for(int c = 0; c < corpus.length(); c++) {
       if( c == 2)
         break;
-      (std::cout << ".").flush();
+      (std::cerr << ".").flush();
       const Sequence<Label>& y = corpus.label(c);
 
       const Sequence<Input>& x = corpus.input(c);
@@ -121,7 +121,7 @@ double likelihood(CoefSequence lambdas, CoefSequence mu, Corpus& corpus, CRF& cr
     double proba = crf_probability_of(y, x, crf, lambdas, mu);
     likelihood += proba;
   }
-  std::cout << "Likelihood " << likelihood << std::endl;
+  std::cerr << "Likelihood " << likelihood << std::endl;
   return likelihood;
 }
 
@@ -146,7 +146,7 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
     right = corpusLikelihood + alpha * t * gradTimesDir;
     t = beta * t;
   }
-  std::cout << "Step size " << t << std::endl;
+  std::cerr << "Step size " << t << std::endl;
   return t;
 }
 
@@ -161,7 +161,7 @@ void trainGradientDescent(CRF& crf, Corpus& corpus) {
   GDCompute<CRF> gradient;
 
   for(int i = 0; i < 100; i++) {
-    std::cout << "Iteration " << i << std::endl;
+    std::cerr << "Iteration " << i << std::endl;
     GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
     double stepSize = calculateStepSize(values, crf, corpus);
 

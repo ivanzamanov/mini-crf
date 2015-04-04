@@ -8,7 +8,7 @@
 
 static void check_buffer(const std::string& expected, const std::string& actual) {
   if(actual.compare(expected)) {
-    std::cout << "Expected: " << expected << " got: " << actual << '\n';
+    std::cerr << "Expected: " << expected << " got: " << actual << '\n';
   }
 }
 

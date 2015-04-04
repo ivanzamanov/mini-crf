@@ -38,10 +38,10 @@ public:
 class TestStateFunc : public TestCRF::StateFunction {
 public:
   virtual double operator()(const Sequence<Label>&, int pos, const Sequence<Input>&) const {
-    return 0;
+    return pos == 0;
   }
   virtual double operator()(const Label, int pos, const Sequence<Input>&) const {
-    return 0;
+    return pos == 0;
   };
 };
 
@@ -60,7 +60,7 @@ Sequence<TestCRF::TransitionFunction*> transition_functions() {
 template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
   if(expected != actual) {
-    std::cout << "Expected " << expected << ", actual " << actual << std::endl;
+    std::cerr << "Expected " << expected << ", actual " << actual << std::endl;
     throw std::string("Assert failed ") + msg;
   }
 }
@@ -71,19 +71,19 @@ void assertEquals(T expected, T actual) {
 }
 
 void testUtils() {
-  std::cout << "Multiplication: " << util::mult(-0.0001d, 0.0001d) << std::endl;
-  std::cout << "ExpMultiplication: " << util::mult_exp(0, -0.0001d) << std::endl;
+  std::cerr << "Multiplication: " << util::mult(-0.0001d, 0.0001d) << std::endl;
+  std::cerr << "ExpMultiplication: " << util::mult_exp(0, -0.0001d) << std::endl;
   
-  std::cout << "Sum same sign: " << util::sum(0.02d, 0.01d) << std::endl; // 0.03
-  std::cout << "Sum same sign: " << util::sum(0.01d, 0.02d) << std::endl; // 0.03
-  std::cout << "Sum same sign neg: " << util::sum(-0.02d, -0.01d) << std::endl; // 0.03
-  std::cout << "Sum same sign neg: " << util::sum(-0.01d, -0.02d) << std::endl; // 0.03
+  std::cerr << "Sum same sign: " << util::sum(0.02d, 0.01d) << std::endl; // 0.03
+  std::cerr << "Sum same sign: " << util::sum(0.01d, 0.02d) << std::endl; // 0.03
+  std::cerr << "Sum same sign neg: " << util::sum(-0.02d, -0.01d) << std::endl; // 0.03
+  std::cerr << "Sum same sign neg: " << util::sum(-0.01d, -0.02d) << std::endl; // 0.03
   
-  std::cout << "Sum diff sign: " << util::sum(-0.02d, 0.01d) << std::endl; // -0.01
-  std::cout << "Sum diff sign: " << util::sum(-0.01d, 0.02d) << std::endl; // 0.01
-  std::cout << "Sum diff sign: " << util::sum(0.02d, -0.01d) << std::endl; // 0.01
-  std::cout << "Sum diff sign: " << util::sum(-0.01d, 0.02d) << std::endl; // 0.01
-  std::cout << "Sum diff sign: " << util::sum(0.01d, -0.02d) << std::endl; // -0.01
+  std::cerr << "Sum diff sign: " << util::sum(-0.02d, 0.01d) << std::endl; // -0.01
+  std::cerr << "Sum diff sign: " << util::sum(-0.01d, 0.02d) << std::endl; // 0.01
+  std::cerr << "Sum diff sign: " << util::sum(0.02d, -0.01d) << std::endl; // 0.01
+  std::cerr << "Sum diff sign: " << util::sum(-0.01d, 0.02d) << std::endl; // 0.01
+  std::cerr << "Sum diff sign: " << util::sum(0.01d, -0.02d) << std::endl; // -0.01
 }
 
 void testCRF() {
@@ -101,9 +101,9 @@ void testCRF() {
 
 int main() {
   try {
-  testUtils();
-  testCRF();
+    testUtils();
+    testCRF();
   } catch (std::string s) {
-    std::cout << s << std::endl;
+    std::cerr << s << std::endl;
   }
 }

@@ -6,6 +6,7 @@
 #include<cstring>
 #include<limits>
 #include<iostream>
+#include<algorithm>
 
 #include"util.hpp"
 #include"../dot/dot.hpp"
@@ -266,9 +267,6 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   return norm_factor(x, crf, lambda, mu, 0);
 }
 
-#define COMPARE(x, y) x <= y
-#define MAX std::numeric_limits<double>::max()
-
 double min(double* arr, int n, int& index) {
   double result = MAX;
   for(int i = 0; i < n; i++) {
@@ -289,8 +287,6 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   int alphabet_len = crf.label_alphabet.phonemes.length;
   int autom_size = alphabet_len * x.length() + 2;
   double* table = new double[autom_size];
-  // to find maximums
-  util::max_finder mf;
 
   // Will need for intermediate computations
   double* tr_values = new double[alphabet_len];
@@ -308,10 +304,12 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
     paths = new std::vector<int>[alphabet_len];
   }
 
+  int pos = x.length() - 1;
   // transitions to final state
   for(int dest = 0; dest < alphabet_len; dest++, index--) {
     // value of the last "column" of states
-    table[index] = 0;
+    bool is_allowed = crf.label_alphabet.allowedState(dest, x[pos]);
+    table[index] = is_allowed;
     DEBUG(
           printer.node(index, dest);
           printer.edge(index, autom_size - 1, ' ', 1);
@@ -320,84 +318,77 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   
   // backwards, for every zero-based position in
   // the input sequence except the last one...
-  for(int pos = x.length() - 2; pos >= 0; pos--) {
+  for(pos--; pos >= 0; pos--) {
     // for every possible label...
-    DEBUG(std::cout << "At position " << pos << std::endl);
+    DEBUG(std::cerr << "At position " << pos << std::endl);
 
     for(int src = alphabet_len - 1; src >= 0; src--, index--) {
-      // Must always initialize...
-      table[index] = 0;
-
       // Short-circuit if different phoneme types
-      if(!crf.label_alphabet.allowedState(src, x[pos])) {
-        continue;
-      }
-
-      int child = child_index(pos + 1, alphabet_len);
-      int max_label = -1;
+      if(crf.label_alphabet.allowedState(src, x[pos])) {
+        int child = child_index(pos + 1, alphabet_len);
       
-      for(int dest = alphabet_len - 1; dest >= 0; dest--) {
-        double tr_value;
-        if(!crf.label_alphabet.allowedTransition(src, dest)) {
-          tr_value = 1;
-        } else {
-          tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
-        }
+        for(int dest = alphabet_len - 1; dest >= 0; dest--) {
+          double tr_value;
+          if(!crf.label_alphabet.allowedTransition(src, dest)) {
+            tr_value = 0;
+          } else {
+            tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
+          }
         
-        tr_values[dest] = tr_value;
+          tr_values[dest] = tr_value;
 
-        DEBUG(printer.edge(index, child + dest, ' ', tr_value));
-      }
+          DEBUG(printer.edge(index, child + dest, ' ', tr_value));
+        }
 
-      child_values = table + child;
-      mf.reset();
-      for(int dest = alphabet_len - 1; dest >= 0; dest--) {
-        double tr_value = tr_values[dest];
-        double child_value = child_values[dest];
-        // table[child + dest] may be 0 if the target state
-        // was short-circuited
+        child_values = table + child;
+        // Initialize with one transition's value
+        table[index] = 0;
+        for(int dest = alphabet_len - 1; dest >= 0; dest--) { // Exclude that one transition
+          // tr_value is the power of the transition' actual value
+          double tr_value = tr_values[dest];
+          // child_value is the log of the child's actual value
+          double child_value = child_values[dest];
 
-        double increment = util::log_mult(tr_value, child_value);
-        double d = util::log_sum(increment, table[index]);
-        table[index] = d;
+          double increment = util::mult(tr_value, child_value);
+          tr_values[dest] = increment;
+          double d = util::sum(increment, table[index]);
+          table[index] = d;
+        }
 
-        if(max_path) {
-          mf.check(dest, increment);
+        DEBUG(printer.node(index, table[index]));
+
+        // This, however, should never be 0
+        if(table[index] == 0 || std::isinf(table[index])) {
+          std::cerr << table[index] << " at " << index << std::endl;
+          table[index] = std::numeric_limits<double>::min();
         }
       }
-      DEBUG(printer.node(index, table[index]));
 
-      // This, however, should never be 0
-      if(table[index] == 0 || std::isinf(table[index])) {
-        std::cout << table[index] << " at " << index << std::endl;
-        table[index] = std::numeric_limits<double>::min();
+      if(max_path) {
+        double* max = std::max_element(tr_values, tr_values + alphabet_len);
+        paths[src].push_back(max - tr_values);
       }
-
-      if(max_path)
-        paths[src].push_back(max_label);
     }
   }
 
   DEBUG(printer.node(index, -1));
 
-  mf.reset();
   int child = child_index(0, alphabet_len);
-  table[index] = 0;
-  
+  table[index] = 0; // Again, initialize with one state and exclude from further sums
   for(int src = 0; src < alphabet_len; src++) {
-    double increment = util::log_mult(state_value(crf, mu, x, src, 0), table[child + src]);
-    table[index] = util::log_sum(table[index], increment);
+    double state_val = state_value(crf, mu, x, src, 0);
+    double increment = util::mult(state_val, table[child + src]);
+    tr_values[src] = increment;
+    table[index] = util::sum(table[index], increment);
 
     DEBUG(printer.edge(index, child + src, ' ', increment));
-
-    if(max_path) {
-      paths[src].push_back(src);
-      mf.check(src, increment);
-    }
   }
 
   if(max_path) {
-    *max_path = paths[mf.max_pos];
+    double* max = std::max_element(tr_values, tr_values + alphabet_len);
+    max_path->push_back(max - tr_values);
+    for(auto it = paths[max - tr_values].rbegin(); it != paths[max - tr_values].rend(); it++)
+      max_path->push_back(*it);
     delete[] paths;
   }
 

@@ -72,12 +72,12 @@ MFCCMatrix* readMFCCMatrix(std::string filename) {
   m.dy = dy;
   m.y1 = y1;
 
-  // std::cout << result;
+  // std::cerr << result;
 
   // std::getline(input, buf); // something like z [] []
   for(int i = 0; i < m.rows(); i++) {
     std::getline(input, buf); // meaningless line
-    // std::cout << buf << std::endl;
+    // std::cerr << buf << std::endl;
     for(int j = 0; j < m.cols(); j++) {
       double val = nextMatrixValue(input, buf);
       m(i, j) = val;

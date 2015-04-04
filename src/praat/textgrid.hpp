@@ -75,7 +75,7 @@ void readIntervals(TextGrid* text_grid, std::istream& input) {
     grid[i].xmin = nextValue(input);
     grid[i].xmax = nextValue(input);
     nextStringValue(input, grid[i].text);
-    // std::cout << "Interval "
+    // std::cerr << "Interval "
     //           << i + 1
     //           << ": "
     //           << grid[i].xmin

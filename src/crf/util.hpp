@@ -4,10 +4,11 @@
 #include<cmath>
 #include<limits>
 
-#define DEBUG(x) x
+#define DEBUG(x)
+#define MY_E 2.71828182845904523536028747135266250 // e
 
-#define COMPARE(x, y) x <= y
-#define MAX std::numeric_limits<double>::max()
+#define COMPARE(x, y) x >= y
+#define MAX std::numeric_limits<double>::min()
 
 using namespace std;
 
@@ -38,6 +39,10 @@ namespace util {
       std::swap(logX, logY);
     return log( exp(logY - logX) + 1) + logX;
   }
+
+  double log_sum2(double logX, double logY) {
+    return logX + log_sum(MY_E, logY - logX);
+  }
   
   double sum_log(double x, double y) {
     if(x == 0)
@@ -65,7 +70,6 @@ namespace util {
       return sign * exp ( log_sum );
     }
   }
-
   
   double sum(double x, double y) {
     if(x == 0)

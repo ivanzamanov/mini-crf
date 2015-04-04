@@ -16,6 +16,15 @@ struct LabelAlphabet {
   Array<int> file_indices;
   Array<LabelClass> classes;
 
+  std::string file_of(int phonId) {
+    return files[file_indices[phonId]];
+  }
+
+  Input first_by_label(char label) {
+    LabelClass& clazz = classes[label];
+    return clazz.front();
+  }
+
   bool allowedTransition(int, int) const {
     return true;
   }
@@ -89,7 +98,7 @@ void build_data(std::istream& list_input,
                 LabelAlphabet* alphabet,
                 Corpus* corpus) {
 
-  std::cout << "Building label alphabet" << '\n';
+  std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
   // phonemes[i] came from file files_map[file_indices[i]]
@@ -121,7 +130,7 @@ void build_data(std::istream& list_input,
   alphabet->files = to_array(files_map);
   alphabet->file_indices = to_array(file_indices);
   alphabet->classes = build_classes(phonemes);
-  std::cout << "End building alphabet" << '\n';
+  std::cerr << "End building alphabet" << '\n';
 }
 
 #endif
