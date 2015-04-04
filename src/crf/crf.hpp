@@ -324,6 +324,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
     for(int src = alphabet_len - 1; src >= 0; src--, index--) {
       // Short-circuit if different phoneme types
+      table[index] = 0;
       if(crf.label_alphabet.allowedState(src, x[pos])) {
         int child = child_index(pos + 1, alphabet_len);
       
@@ -341,15 +342,13 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
         }
 
         child_values = table + child;
-        // Initialize with one transition's value
-        table[index] = 0;
-        for(int dest = alphabet_len - 1; dest >= 0; dest--) { // Exclude that one transition
+        for(int dest = alphabet_len - 1; dest >= 0; dest--) {
           // tr_value is the power of the transition' actual value
           double tr_value = tr_values[dest];
           // child_value is the log of the child's actual value
           double child_value = child_values[dest];
 
-          double increment = util::mult(tr_value, child_value);
+          double increment = util::sum(tr_value, child_value);
           tr_values[dest] = increment;
           double d = util::sum(increment, table[index]);
           table[index] = d;
@@ -363,6 +362,8 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
           table[index] = std::numeric_limits<double>::min();
         }
       }
+      if(table[index] < 0)
+        table[index] = 1;
 
       if(max_path) {
         double* max = std::max_element(tr_values, tr_values + alphabet_len);
