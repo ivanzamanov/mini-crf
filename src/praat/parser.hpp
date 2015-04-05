@@ -16,6 +16,10 @@ struct FixedArray {
   const T& operator[](int n) const {
     return values[n];
   };
+
+  int length() {
+    return _length;
+  }
 };
 
 template<class T>

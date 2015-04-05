@@ -39,12 +39,12 @@ void from_path(LabelAlphabet& alphabet, vector<int>& path) {
 }
 
 int main(int argc, const char** argv) {
+  std::ios_base::sync_with_stdio(false);
   if(argc < 2) {
     std::cerr << "Usage: <sentence>" << std::endl;
     return 1;
   }
 
-  std::ios_base::sync_with_stdio(false);
   const char* input = argv[1];
   std::cerr << "Sentence: " << input << std::endl;
   CRF crf(state_functions(), transition_functions());

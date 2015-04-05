@@ -31,7 +31,7 @@ public:
     return 0;
   }
   virtual double operator()(const Label l1, const Label l2, const int, const Sequence<Input>&) const {
-    return 1;
+    return l1 == l2;
   };
 };
 
@@ -96,7 +96,13 @@ void testCRF() {
   mu[0] = 1;
 
   std::vector<int> path;
-  assertEquals(2048.0, norm_factor(x, crf, lambda, mu, &path));
+  max_path(x, crf, lambda, mu, &path);
+
+  for(unsigned i = 0; i < path.size(); i++)
+    std::cout << path[i] << " ";
+  std::cout << std::endl;
+
+  assertEquals(2048.0, norm_factor(x, crf, lambda, mu));
 }
 
 int main() {

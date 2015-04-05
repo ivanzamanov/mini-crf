@@ -1,6 +1,8 @@
 form Concatenation
      comment Input file
      sentence fileName /home/ivo/praat-test
+     comment Output file
+     sentence outputPath /home/ivo/concat-output.wav
 endform
 
 writeInfo: ""
@@ -36,3 +38,5 @@ for i to segments
 endfor
 
 Concatenate
+
+Save as WAV file... 'outputPath$'

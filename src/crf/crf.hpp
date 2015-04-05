@@ -306,10 +306,10 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
   int pos = x.length() - 1;
   // transitions to final state
-  for(int dest = 0; dest < alphabet_len; dest++, index--) {
+  for(int dest = alphabet_len - 1; dest >= 0; dest--, index--) {
     // value of the last "column" of states
     bool is_allowed = crf.label_alphabet.allowedState(dest, x[pos]);
-    table[index] = is_allowed;
+    table[index] = is_allowed ? 1 : std::numeric_limits<double>::infinity();
     DEBUG(
           printer.node(index, dest);
           printer.edge(index, autom_size - 1, ' ', 1);
@@ -320,76 +320,83 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
   // the input sequence except the last one...
   for(pos--; pos >= 0; pos--) {
     // for every possible label...
-    DEBUG(std::cerr << "At position " << pos << std::endl);
-
     for(int src = alphabet_len - 1; src >= 0; src--, index--) {
       // Short-circuit if different phoneme types
-      table[index] = 0;
       if(crf.label_alphabet.allowedState(src, x[pos])) {
         int child = child_index(pos + 1, alphabet_len);
       
         for(int dest = alphabet_len - 1; dest >= 0; dest--) {
           double tr_value;
-          if(!crf.label_alphabet.allowedTransition(src, dest)) {
-            tr_value = 0;
-          } else {
-            tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
-          }
-        
+          tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
           tr_values[dest] = tr_value;
 
           DEBUG(printer.edge(index, child + dest, ' ', tr_value));
         }
 
         child_values = table + child;
-        for(int dest = alphabet_len - 1; dest >= 0; dest--) {
-          // tr_value is the power of the transition' actual value
-          double tr_value = tr_values[dest];
-          // child_value is the log of the child's actual value
-          double child_value = child_values[dest];
+        // tr_value is the power of the transition' actual value
+        double tr_value = tr_values[0];
+        // child_value is the log of the child's actual value
+        double child_value = child_values[0];
+        table[index] = tr_value + child_value;
+        tr_values[0] = tr_value + child_value;
 
-          double increment = util::sum(tr_value, child_value);
-          tr_values[dest] = increment;
-          double d = util::sum(increment, table[index]);
-          table[index] = d;
+        for(int dest = alphabet_len - 1; dest > 0; dest--) {
+          //double increment = util::sum(tr_value, child_value);
+          //double d = util::sum(increment, table[index]);
+          tr_value = tr_values[dest];
+          child_value = child_values[dest];
+          table[index] = std::min(tr_value + child_value, table[index]);
+          tr_values[dest] = tr_value + child_value;
         }
 
         DEBUG(printer.node(index, table[index]));
 
         // This, however, should never be 0
         if(table[index] == 0 || std::isinf(table[index])) {
-          std::cerr << table[index] << " at " << index << std::endl;
-          table[index] = std::numeric_limits<double>::min();
+           std::cerr << table[index] << " at " << index << std::endl;
         }
-      }
-      if(table[index] < 0)
-        table[index] = 1;
 
-      if(max_path) {
-        double* max = std::max_element(tr_values, tr_values + alphabet_len);
-        paths[src].push_back(max - tr_values);
+        if(max_path) {
+          double* max = std::min_element(tr_values, tr_values + alphabet_len);
+          paths[src].push_back(max - tr_values);
+        }
+      } else {
+        table[index] = std::numeric_limits<double>::infinity();
+        paths[src].push_back(-1);
       }
+      DEBUG(std::cerr << "p=" << pos << ",s=" << src << ",d=" << *(paths[src].rbegin()) << std::endl);
     }
   }
 
   DEBUG(printer.node(index, -1));
 
   int child = child_index(0, alphabet_len);
-  table[index] = 0; // Again, initialize with one state and exclude from further sums
-  for(int src = 0; src < alphabet_len; src++) {
-    double state_val = state_value(crf, mu, x, src, 0);
-    double increment = util::mult(state_val, table[child + src]);
+  double state_val = state_value(crf, mu, x, 0, 0);
+  table[index] = state_val + table[child + 0];
+  tr_values[0] = state_val + table[child + 0];
+
+  for(int src = 1; src < alphabet_len; src++) {
+    bool is_allowed = crf.label_alphabet.allowedState(src, x[pos]);
+    state_val = is_allowed ? state_value(crf, mu, x, src, 0) : std::numeric_limits<double>::infinity();
+
+    double increment = state_val + table[child + src];
     tr_values[src] = increment;
-    table[index] = util::sum(table[index], increment);
+    //table[index] = util::sum(table[index], increment);
+    table[index] = std::min(table[index], increment);
 
     DEBUG(printer.edge(index, child + src, ' ', increment));
   }
 
   if(max_path) {
-    double* max = std::max_element(tr_values, tr_values + alphabet_len);
-    max_path->push_back(max - tr_values);
-    for(auto it = paths[max - tr_values].rbegin(); it != paths[max - tr_values].rend(); it++)
-      max_path->push_back(*it);
+    double* max = std::min_element(tr_values, tr_values + alphabet_len);
+    int state = max - tr_values;
+    max_path->push_back(state);
+    DEBUG(std::cerr << "Best starts at " << max - tr_values << std::endl);
+    for(int i = x.length() - 2; i >= 0; i--) {
+      state = paths[state][i];
+      max_path->push_back(state);
+    }
     delete[] paths;
   }
 

@@ -25,6 +25,16 @@ struct LabelAlphabet {
     return clazz.front();
   }
 
+  int* possible_labels(int inp, int& n) {
+    const PhonemeInstance& phon = fromInt(inp);
+    n = classes[phon.label].size();
+    int* result = new int[n];
+    int* idx = result;
+    for(auto it = classes[phon.label].begin(); it != classes[phon.label].end(); it++, idx++)
+      *idx = *it;
+    return result;
+  }
+
   bool allowedTransition(int, int) const {
     return true;
   }
@@ -109,6 +119,7 @@ void build_data(std::istream& list_input,
     std::ifstream stream(buffer.c_str());
     int size;
     PhonemeInstance* phonemes_from_file = parse_file(stream, size);
+    list_input >> buffer;
     files_map.push_back(buffer);
 
     Sequence<Input> inputs(size);
@@ -125,6 +136,19 @@ void build_data(std::istream& list_input,
 
     corpus->add(inputs, labels);
   }
+
+  /*bool hasA = false, hasB = false;
+  for(auto it = phonemes.begin(); it != phonemes.end();) {
+    if((*it).label == 'a' && !hasA) {
+      hasA = true;
+      it++;
+    } else if((*it).label == 'b' && !hasB) {
+      hasB = true;
+      it++;
+    } else {
+      it = phonemes.erase(it);
+    }
+  }*/
 
   alphabet->phonemes = to_array(phonemes);
   alphabet->files = to_array(files_map);

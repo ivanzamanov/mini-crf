@@ -19,7 +19,7 @@ do
     if [ -f $GRID ]; then
         echo "Extracting from $WAV"
 				OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
-				echo $OUTPUT >> $FILES_LIST
+				echo "$OUTPUT $WAV" >> $FILES_LIST
         $EXTRACTOR_SCRIPT "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
     fi
