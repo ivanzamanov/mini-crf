@@ -7,34 +7,34 @@
 #include"crf.hpp"
 #include"../praat/parser.hpp"
 
+template<class LabelObject>
 struct LabelAlphabet {
-  typedef std::vector<Label> LabelClass;
+  typedef std::vector<int> LabelClass;
   typedef std::vector<LabelClass::const_iterator> Iterators;
 
-  Array<PhonemeInstance> phonemes;
-  Array<std::string> files;
-  Array<int> file_indices;
   Array<LabelClass> classes;
+  Array<LabelObject> labels;
+  
+  void build_classes() {
+    const int length = 256;
+    classes.data = new LabelAlphabet::LabelClass[length];
+    classes.length = length;
 
-  std::string file_of(int phonId) {
-    return files[file_indices[phonId]];
+    for(int i = 0; i < labels.length; i++) {
+      classes[labels[i].label].push_back(i);
+    }
   }
 
-  Input first_by_label(char label) {
-    LabelClass& clazz = classes[label];
-    return clazz.front();
+  int size() const {
+    return labels.length;
   }
 
   bool allowedState(int l1, int l2) const {
     return fromInt(l1).label == fromInt(l2).label;
   }
 
-  int toInt(const Input& label) const {
-    return fromInt(label).label;
-  }
-
-  const PhonemeInstance& fromInt(int i) const {
-    return phonemes[i];
+  const LabelObject& fromInt(int i) const {
+    return labels[i];
   }
 
   template<class Filter>
@@ -43,10 +43,9 @@ struct LabelAlphabet {
     std::vector<int> class_indices(input.size());
 
     for(unsigned i = 0; i < input.size(); i++) {
-      int index = toInt(input[i]);
+      int index = labels[input[i]].label;
       iters[i] = classes[index].begin();
       class_indices[i] = index;
-
     }
 
     std::vector<Label> labels(input.size());
@@ -72,25 +71,21 @@ struct LabelAlphabet {
   }
 };
 
-Array<LabelAlphabet::LabelClass> build_classes(std::vector<PhonemeInstance> phonemes) {
-  Array<LabelAlphabet::LabelClass> result;
-  const int length = 256;
-  result.data = new LabelAlphabet::LabelClass[length];
-  result.length = length;
-  auto it = phonemes.begin();
-  int i = 0;
+struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
+  Array<std::string> files;
+  Array<int> file_indices;
 
-  while(it != phonemes.end()) {
-    PhonemeInstance& phon = *it;
-    result[phon.label].push_back(i);
-    i++;
-    ++it;
+  std::string file_of(int phonId) {
+    return files[file_indices[phonId]];
   }
 
-  return result;
-}
+  Input first_by_label(char label) {
+    LabelClass& clazz = classes[label];
+    return clazz.front();
+  }
+};
 
-void build_data(std::istream& list_input, LabelAlphabet* alphabet, Corpus* corpus) {
+void build_data(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus* corpus) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
@@ -133,10 +128,11 @@ void build_data(std::istream& list_input, LabelAlphabet* alphabet, Corpus* corpu
     }
   }*/
 
-  alphabet->phonemes = to_array(phonemes);
+  alphabet->labels = to_array(phonemes);
+  alphabet->build_classes();
+
   alphabet->files = to_array(files_map);
   alphabet->file_indices = to_array(file_indices);
-  alphabet->classes = build_classes(phonemes);
   std::cerr << "End building alphabet" << '\n';
 }
 

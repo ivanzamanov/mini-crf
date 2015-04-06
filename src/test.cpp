@@ -4,49 +4,61 @@
 #include"crf/crf.hpp"
 
 struct TestAlphabet {
-  TestAlphabet() {
-    phonemes.length = 4;
-    phonemes.data = new int[4]{1,2,3,4};
-  }
+  TestAlphabet() { }
 
   bool allowedState(int l1, int l2) const {
     return true;
   }
 
-  Array<int> phonemes;
+  int size() const {
+    return 4;
+  }
 };
 
 typedef CRandomField<TestAlphabet> TestCRF;
 
 class TestTransFunc : public TestCRF::TransitionFunction {
 public:
-  virtual double operator()(const vector<Label>&, int, const vector<Input>&) const {
-    return 0;
+  vector<int> best_path;
+
+  TestTransFunc(): best_path() { }
+  
+  TestTransFunc(vector<int> best_path): best_path(best_path) { }
+
+  virtual double operator()(const vector<Label>& labels, int pos, const vector<Input>&) const {
+    return best_path[pos - 1] == labels[pos - 1] && best_path[pos] == labels[pos];
   }
-  virtual double operator()(const Label l1, const Label l2, const int, const vector<Input>&) const {
-    return l1 == l2;
+
+  virtual double operator()(const Label l1, const Label l2, const int pos, const vector<Input>&) const {
+    return best_path[pos - 1] == l1 && best_path[pos] == l2;
   };
 };
 
 class TestStateFunc : public TestCRF::StateFunction {
 public:
-  virtual double operator()(const vector<Label>&, int pos, const vector<Input>&) const {
-    return pos == 0;
+  vector<int> best_path;
+  
+  TestStateFunc(): best_path() { }
+  TestStateFunc(vector<int> best_path): best_path(best_path) { }
+
+  virtual double operator()(const vector<Label>& labels, int pos, const vector<Input>&) const {
+    return best_path[pos] == labels[pos];
   }
-  virtual double operator()(const Label, int pos, const vector<Input>&) const {
-    return pos == 0;
+
+  virtual double operator()(const Label label, int pos, const vector<Input>&) const {
+    return best_path[pos] == label;
   };
 };
 
 vector<TestCRF::StateFunction*> state_functions() {
-  vector<TestCRF::StateFunction*> result(1);
-  result[0] = new TestStateFunc();
+  vector<TestCRF::StateFunction*> result;
+  result.push_back(new TestStateFunc());
   return result;
 }
 
 vector<TestCRF::TransitionFunction*> transition_functions() {
-  vector<TestCRF::TransitionFunction*> result(1);
-  result[0] = new TestTransFunc();
+  vector<TestCRF::TransitionFunction*> result;
+  result.push_back(new TestTransFunc());
   return result;
 }
 

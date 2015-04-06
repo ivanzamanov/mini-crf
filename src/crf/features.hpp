@@ -5,7 +5,7 @@
 #include"crf.hpp"
 #include"speech_synthesis.hpp"
 
-typedef CRandomField<LabelAlphabet> CRF;
+typedef CRandomField<PhonemeAlphabet> CRF;
 
 template<class Evaluate>
 class StateFunction : public CRF::StateFunction {

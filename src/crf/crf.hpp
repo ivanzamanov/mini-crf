@@ -254,7 +254,7 @@ struct FunctionalAutomaton {
   vector<Input> x;
 
   int alphabet_length() {
-    return alphabet.phonemes.length;
+    return alphabet.size();
   }
 
   bool allowedState(int y, int x) {

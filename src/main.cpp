@@ -8,12 +8,12 @@
 
 const char* const files_list = "/home/ivo/corpus-features/files-list";
 
-void build_data(LabelAlphabet* alphabet, Corpus& corpus) {
+void build_data(PhonemeAlphabet* alphabet, Corpus& corpus) {
   std::ifstream stream(files_list);
   build_data(stream, alphabet, &corpus);
 }
 
-std::vector<Input> to_sequence(LabelAlphabet& alphabet, const char* str) {
+std::vector<Input> to_sequence(PhonemeAlphabet& alphabet, const char* str) {
   int length = strlen(str);
   std::vector<Input> result(length);
   std::cerr << "Input phoneme ids: ";
@@ -25,10 +25,10 @@ std::vector<Input> to_sequence(LabelAlphabet& alphabet, const char* str) {
   return result;
 }
 
-void from_path(LabelAlphabet& alphabet, std::vector<int> &path) {
+void from_path(PhonemeAlphabet& alphabet, std::vector<int> &path) {
   std::stringstream phonemeIds;
   for(auto it = path.begin(); it != path.end(); it++) {
-    PhonemeInstance* phon = &alphabet.phonemes[*it];
+    PhonemeInstance* phon = &alphabet.labels[*it];
     phonemeIds << *it << "=" << phon->label << " ";
     std::string file = alphabet.file_of(*it);
     std::cout << "File=" << file << " ";
@@ -51,7 +51,7 @@ int main(int argc, const char** argv) {
   Corpus corpus;
   build_data(&crf.label_alphabet, corpus);
 
-  std::cerr << "Alphabet size: " << crf.label_alphabet.phonemes.length << std::endl;
+  std::cerr << "Alphabet size: " << crf.label_alphabet.size() << std::endl;
   std::cerr << "Corpus size: " << corpus.size() << std::endl;
 
   std::vector<Input> phoneme_sequence = to_sequence(crf.label_alphabet, input);
