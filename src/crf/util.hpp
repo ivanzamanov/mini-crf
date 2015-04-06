@@ -3,123 +3,64 @@
 
 #include<cmath>
 #include<limits>
+#include<vector>
 
-#define DEBUG(x)
+#define DEBUG(x) x
 #define MY_E 2.71828182845904523536028747135266250 // e
 
-#define COMPARE(x, y) x >= y
-#define MAX std::numeric_limits<double>::min()
-
-using namespace std;
-
 namespace util {
-  double mult_exp(double x, double y) {
-    if(y == 0)
-      return 0;
-    int sign = (y > 0) ? 1 : -1;
-    double absX = abs(x);
-    double logAbsY = log(abs(y));
-    double mod = exp( absX + logAbsY );
-    return sign * mod;
+  double mult_exp(double x, double y);
+  double mult(double x, double y);
+  double log_mult(double logX, double logY);
+  double log_sum(double logX, double logY);
+  double log_sum2(double logX, double logY);
+  double sum_log(double x, double y);
+};
+
+template<class T, int _length>
+struct FixedArray {
+  T values[_length];
+
+  T& operator[](int n) {
+    return values[n];
+  };
+
+  const T& operator[](int n) const {
+    return values[n];
+  };
+
+  int length() {
+    return _length;
   }
+};
 
-  double mult(double x, double y) {
-    if(x == 0 || y == 0)
-      return 0;
-    int sign = (x * y > 0) ? 1 : -1;
-    return sign * exp( log(abs(x)) + log(abs(y)) );
-  }
-  
-  double log_mult(double logX, double logY) {
-    return logX + logY;
-  }
-  
-  double log_sum(double logX, double logY) {
-    if(logX > logY)
-      std::swap(logX, logY);
-    return log( exp(logY - logX) + 1) + logX;
-  }
+template<class T>
+struct Array {
+  int length;
+  T* data;
 
-  double log_sum2(double logX, double logY) {
-    return logX + log_sum(MY_E, logY - logX);
-  }
-  
-  double sum_log(double x, double y) {
-    if(x == 0)
-      return y;
-    if(y == 0)
-      return x;
-    if(x == -y)
-      return 0;
+  T& operator[](int n) {
+    return data[n];
+  };
 
-    bool same_sign = x * y > 0;
-    int sign;
-    if(same_sign) {
-      sign = (x > 0) ? 1 : -1;
-
-      double logAbsX = x;
-      double log_sum = log( exp(y - logAbsX) + 1) + logAbsX;
-      return sign * exp ( log_sum );
-    } else {
-      sign = (x + y) > 0 ? 1 : -1;
-      if(abs(x) > abs(y))
-        std::swap(x, y);
-
-      double logAbsX = log(abs(x));
-      double log_sum = log( exp(log(abs(y)) - logAbsX) - 1) + logAbsX;
-      return sign * exp ( log_sum );
-    }
-  }
-  
-  double sum(double x, double y) {
-    if(x == 0)
-      return y;
-    if(y == 0)
-      return x;
-    if(x == -y)
-      return 0;
-
-    bool same_sign = x * y > 0;
-    int sign;
-    if(same_sign) {
-      sign = (x > 0) ? 1 : -1;
-
-      double logAbsX = log(abs(x));
-      double log_sum = log( exp(log(abs(y)) - logAbsX) + 1) + logAbsX;
-      return sign * exp ( log_sum );
-    } else {
-      sign = (x + y) > 0 ? 1 : -1;
-      if(abs(x) > abs(y))
-        std::swap(x, y);
-
-      double logAbsX = log(abs(x));
-      double log_sum = log( exp(log(abs(y)) - logAbsX) - 1) + logAbsX;
-      return sign * exp ( log_sum );
-    }
-  }
-  
-  double sub(double x, double y) {
-    return sum(x, -y);
-  }
-
-  struct max_finder {
-    max_finder():max_pos(-1), max_val(MAX) { }
-    
-    int max_pos;
-    double max_val;
-    
-    void check(int pos, double val) {
-      if(max_pos == -1 || COMPARE(max_val, val)) {
-        max_pos = pos;
-        max_val = val;
-      }
-    }
-    
-    void reset() {
-      max_pos = -1;
-      max_val = MAX;
-    }
+  const T& operator[](int n) const {
+    return data[n];
   };
 };
+
+template<class T>
+Array<T> to_array(std::vector<T> &v) {
+  Array<T> result;
+  result.data = new T[v.size()];
+  result.length = v.size();
+  auto it = v.begin();
+  int i = 0;
+  while(it != v.end()) {
+    result[i] = *it;
+    i++;
+    ++it;
+  }
+  return result;
+}
 
 #endif

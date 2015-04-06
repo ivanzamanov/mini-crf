@@ -1,62 +1,14 @@
 #ifndef __CRF_H__
 #define __CRF_H__
 
-#include<cmath>
-#include<vector>
 #include<cstring>
-#include<limits>
 #include<iostream>
 #include<algorithm>
 
 #include"util.hpp"
 #include"../dot/dot.hpp"
 
-// Convenience class representing a sequence of objects
-template<class _Item>
-class Sequence {
-public:
-  Sequence(int size): size(size) {
-    data = new _Item[size];
-  };
-  Sequence(const Sequence<_Item>& other): size(other.size) {
-    data = new _Item[size];
-    memcpy(data, other.data, size * sizeof(_Item));
-  };
-  const Sequence<_Item>& operator=(const Sequence<_Item>& other) {
-    delete data;
-    size = other.size;
-    data = new _Item[size];
-    memcpy(data, other.data, size * sizeof(_Item));
-    return *this;
-  };
-  ~Sequence() {
-    delete[] data;
-  };
-
-  const _Item& operator[](int pos) const {
-    if(pos < 0 || pos >= size)
-      return data[0]; // TODO: fix
-
-    return data[pos];
-  };
-
-  _Item& operator[](int pos) {
-    return get(pos);
-  };
-
-  _Item& get(int pos) {
-    if(pos < 0 || pos >= size)
-      return data[0]; // TODO: fix
-
-    return data[pos];
-  };
-  int length() const {
-    return size;
-  };
-private:
-  int size;
-  _Item* data;
-};
+using std::vector;
 
 template<class Key, class Value>
 struct Pair {
@@ -65,36 +17,32 @@ struct Pair {
   const Value value;
 };
 
-
 typedef int Label;
 typedef int Input;
 
 class Corpus {
 public:
-  const Sequence<Label>& label(int i) {
+  const vector<Label>& label(int i) {
     return labels[i];
   };
 
-  const Sequence<Input>& input(int i) {
+  const vector<Input>& input(int i) {
     return inputs[i];
   };
 
-  int length() const {
+  int size() const {
     return inputs.size();
   };
 
-  void add(Sequence<Input>& input, Sequence<Input>& labels) {
+  void add(vector<Input>& input, vector<Input>& labels) {
     this->inputs.push_back(input);
     this->labels.push_back(labels);
   };
 
 private:
-  std::vector<Sequence<Input> > inputs;
-  std::vector<Sequence<Label> > labels;
+  vector<vector<Input> > inputs;
+  vector<vector<Label> > labels;
 };
-
-// Will be used as the coefficient sequences
-typedef Sequence<double> CoefSequence;
 
 template<class LabelAlphabet>
 class CRandomField {
@@ -107,52 +55,53 @@ public:
   
   class StateFunction : public BaseFunction {
   public:
-    virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
+    virtual double operator()(const vector<Label>&, int, const vector<Input>&) const {
       return 0;
     }
-    virtual double operator()(const Label, int, const Sequence<Input>&) const {
+
+    virtual double operator()(const Label, int, const vector<Input>&) const {
       return 0;
     };
   };
 
   class TransitionFunction : public BaseFunction {
   public:
-    virtual double operator()(const Sequence<Label>&, int, const Sequence<Input>&) const {
+    virtual double operator()(const vector<Label>&, int, const vector<Input>&) const {
       return 0;
     }
-    virtual double operator()(const Label, const Label, const int, const Sequence<Input>&) const {
+    virtual double operator()(const Label, const Label, const int, const vector<Input>&) const {
       return 0;
     };
   };
 
-  CRandomField(Sequence<StateFunction*> sf, Sequence<TransitionFunction*> tf):
-    g(sf), mu(sf.length()), f(tf), lambda(tf.length()) {
-    for(int i = 0; i < f.length(); i++) {
+  CRandomField(vector<StateFunction*> sf, vector<TransitionFunction*> tf):
+    g(sf), mu(), f(tf), lambda() {
+    for(unsigned i = 0; i < f.size(); i++) {
       f[i]->alphabet = &label_alphabet;
-      lambda[i] = 1;
+      lambda.push_back(1);
     }
 
-    for(int i = 0; i < g.length(); i++) {
+    for(unsigned i = 0; i < g.size(); i++) {
       g[i]->alphabet = &label_alphabet;
-      mu[i] = 1;
+      mu.push_back(1);
     }
   };
 
   ~CRandomField() { };
 
-  double probability_of(const Sequence<Label>& y, const Sequence<Input> x) const {
+  double probability_of(const vector<Label>& y, const vector<Input> x) const {
     return crf_probability_of(y, x, *this, lambda, mu);
   }
 
   // Vertex features
-  Sequence<StateFunction*> g;
+  vector<StateFunction*> g;
   // Vertex feature coefficients
-  CoefSequence mu;
+  vector<double> mu;
 
   // Edge features
-  Sequence<TransitionFunction*> f;
+  vector<TransitionFunction*> f;
   // Edge feature coefficients
-  CoefSequence lambda;
+  vector<double> lambda;
 
   LabelAlphabet label_alphabet;
 };
@@ -160,21 +109,21 @@ public:
 template<class CRF>
 struct AllSumAccumulator {
   AllSumAccumulator(const CRF& crf,
-                    const Sequence<Input>& inputs,
-                    const CoefSequence& mu,
-                    const CoefSequence& lambda):
+                    const vector<Input>& inputs,
+                    const vector<double>& mu,
+                    const vector<double>& lambda):
     crf(crf), x(inputs), lambda(lambda), mu(mu) { }
 
   const CRF& crf;
-  const Sequence<Input>& x;
-  const CoefSequence& lambda;
-  const CoefSequence& mu;
+  const vector<Input>& x;
+  const vector<double>& lambda;
+  const vector<double>& mu;
   double result = 0;
   int count = 0;
 
-  void operator()(const Sequence<Label>& y) {
+  void operator()(const vector<Label>& y) {
     double sum = 0;
-    for(int i = 1; i < y.length(); i++) {
+    for(int i = 1; i < y.size(); i++) {
       for(int j = 0; j < crf.f.length(); j++) {
         sum += lambda[i] * crf.f[j](y, i, x);
       }
@@ -187,9 +136,9 @@ struct AllSumAccumulator {
 };
 
 template<class CRF>
-double crf_probability_of_2(const Sequence<Label>& y, const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
+double crf_probability_of_2(const vector<Label>& y, const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu) {
   double numer = 0;
-  for(int i = 1; i < y.length(); i++)
+  for(int i = 1; i < y.size(); i++)
     numer += lambda[i - 1] * crf.f[i - 1](y, i, x);
 
   AllSumAccumulator<CRF> filter(crf, x, lambda, mu);
@@ -200,9 +149,9 @@ double crf_probability_of_2(const Sequence<Label>& y, const Sequence<Input>& x, 
 }
 
 template<class CRF>
-double crf_probability_of(const Sequence<Label>& y, const Sequence<Input>& x, CRF& crf, const CoefSequence& lambdas, const CoefSequence& mus) {
+double crf_probability_of(const vector<Label>& y, const vector<Input>& x, CRF& crf, const vector<double>& lambdas, const vector<double>& mus) {
   double numer = 0;
-  for(int i = 1; i < y.length(); i++) {
+  for(int i = 1; i < y.size(); i++) {
     for(int lambda = 0; lambda < crf.f.length(); lambda++) {
       auto func = crf.f[lambda];
       auto coef = lambdas[lambda];
@@ -210,7 +159,7 @@ double crf_probability_of(const Sequence<Label>& y, const Sequence<Input>& x, CR
     }
   }
 
-  for(int i = 0; i < y.length(); i++) {
+  for(int i = 0; i < y.size(); i++) {
     for(int mu = 0; mu < crf.g.length(); mu++) {
       auto func = crf.g[mu];
       auto coef = mus[mu];
@@ -227,28 +176,28 @@ double child_index(int pos, int alphabet_len) {
 }
 
 template<class CRF>
-double state_value(CRF& crf, const CoefSequence& mu, const Sequence<Input>& x, int label, int pos) {
-  if(crf.g.length() == 0)
+double state_value(CRF& crf, const vector<double>& mu, const vector<Input>& x, int label, int pos) {
+  if(!crf.g.size())
     return 1;
   
   double result = 0;
-  for(int i = 0; i < crf.g.length(); i++) {
+  for(unsigned i = 0; i < crf.g.size(); i++) {
     result += mu[i] * (*crf.g[i])(label, pos, x);
   }
   return result;
 }
 
 template<class CRF_T>
-double transition_value(CRF_T& crf, const Sequence<Input>& x, int label1, int label2, int pos) {
+double transition_value(CRF_T& crf, const vector<Input>& x, int label1, int label2, int pos) {
   return transition_value(crf, x, crf.lambda, crf.mu, label1, label2, pos);
 }
 
 template<class CRF_T>
-double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequence& mu, const Sequence<Input>& x, int label1, int label2, int pos) {
+double transition_value(CRF_T& crf, const vector<double>& lambda, const vector<double>& mu, const vector<Input>& x, int label1, int label2, int pos) {
   double result = 0;
-  if(crf.f.length() == 0)
+  if(!crf.f.size())
     return 1;
-  for (int i = 0; i < lambda.length(); i++) {
+  for (unsigned i = 0; i < lambda.size(); i++) {
     auto* func = crf.f[i];
     double coef = lambda[i];
     result += coef * (*func)(label1, label2, pos, x);
@@ -258,34 +207,23 @@ double transition_value(CRF_T& crf, const CoefSequence& lambda, const CoefSequen
 }
 
 template<class CRF>
-void max_path(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
+void max_path(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
   norm_factor(x, crf, lambda, mu, max_path);
 }
 
 template<class CRF>
-double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu) {
+double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu) {
   return norm_factor(x, crf, lambda, mu, 0);
 }
 
-double min(double* arr, int n, int& index) {
-  double result = MAX;
-  for(int i = 0; i < n; i++) {
-    if(COMPARE(arr[i], result)) {
-      result = arr[i];
-      index = i;
-    }
-  }
-  return result;
-}
-
 template<class CRF>
-double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambda, const CoefSequence& mu, std::vector<int>* max_path) {
+double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
   DEBUG(DotPrinter printer("automaton.dot");
         printer.start();
         )
 
   int alphabet_len = crf.label_alphabet.phonemes.length;
-  int autom_size = alphabet_len * x.length() + 2;
+  int autom_size = alphabet_len * x.size() + 2;
   double* table = new double[autom_size];
 
   // Will need for intermediate computations
@@ -299,12 +237,12 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
   DEBUG(printer.node(index, -2);)
 
-  std::vector<int>* paths = 0;
+  vector<int>* paths = 0;
   if(max_path) {
-    paths = new std::vector<int>[alphabet_len];
+    paths = new vector<int>[alphabet_len];
   }
 
-  int pos = x.length() - 1;
+  int pos = x.size() - 1;
   // transitions to final state
   for(int dest = alphabet_len - 1; dest >= 0; dest--, index--) {
     // value of the last "column" of states
@@ -363,7 +301,9 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
         }
       } else {
         table[index] = std::numeric_limits<double>::infinity();
-        paths[src].push_back(-1);
+        if(max_path) {
+          paths[src].push_back(-1);
+        }
       }
       DEBUG(std::cerr << "p=" << pos << ",s=" << src << ",d=" << *(paths[src].rbegin()) << std::endl);
     }
@@ -373,11 +313,15 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 
   int child = child_index(0, alphabet_len);
   double state_val = state_value(crf, mu, x, 0, 0);
-  table[index] = state_val + table[child + 0];
-  tr_values[0] = state_val + table[child + 0];
+  int src = alphabet_len - 1;
+  pos = 0;
+  bool is_allowed = crf.label_alphabet.allowedState(src, x[pos]);
+  state_val = is_allowed ? state_value(crf, mu, x, src, 0) : std::numeric_limits<double>::infinity();
+  table[index] = state_val + table[child + src];
+  tr_values[src] = state_val + table[child + src];
 
-  for(int src = 1; src < alphabet_len; src++) {
-    bool is_allowed = crf.label_alphabet.allowedState(src, x[pos]);
+  for(src = alphabet_len - 2; src >= 0; src--, index--) {
+    is_allowed = crf.label_alphabet.allowedState(src, x[pos]);
     state_val = is_allowed ? state_value(crf, mu, x, src, 0) : std::numeric_limits<double>::infinity();
 
     double increment = state_val + table[child + src];
@@ -393,7 +337,7 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
     int state = max - tr_values;
     max_path->push_back(state);
     DEBUG(std::cerr << "Best starts at " << max - tr_values << std::endl);
-    for(int i = x.length() - 2; i >= 0; i--) {
+    for(int i = x.size() - 2; i >= 0; i--) {
       state = paths[state][i];
       max_path->push_back(state);
     }
@@ -407,4 +351,3 @@ double norm_factor(const Sequence<Input>& x, CRF& crf, const CoefSequence& lambd
 }
 
 #endif
-

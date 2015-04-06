@@ -13,9 +13,9 @@ void build_data(LabelAlphabet* alphabet, Corpus& corpus) {
   build_data(stream, alphabet, &corpus);
 }
 
-Sequence<Input> to_sequence(LabelAlphabet& alphabet, const char* str) {
+std::vector<Input> to_sequence(LabelAlphabet& alphabet, const char* str) {
   int length = strlen(str);
-  Sequence<Input> result(length);
+  std::vector<Input> result(length);
   std::cerr << "Input phoneme ids: ";
   for(int i = 0; i < length; i++) {
     result[i] = alphabet.first_by_label(str[i]);
@@ -25,7 +25,7 @@ Sequence<Input> to_sequence(LabelAlphabet& alphabet, const char* str) {
   return result;
 }
 
-void from_path(LabelAlphabet& alphabet, vector<int>& path) {
+void from_path(LabelAlphabet& alphabet, std::vector<int> &path) {
   std::stringstream phonemeIds;
   for(auto it = path.begin(); it != path.end(); it++) {
     PhonemeInstance* phon = &alphabet.phonemes[*it];
@@ -51,10 +51,10 @@ int main(int argc, const char** argv) {
   Corpus corpus;
   build_data(&crf.label_alphabet, corpus);
 
-  Sequence<Input> phoneme_sequence = to_sequence(crf.label_alphabet, input);
-
   std::cerr << "Alphabet size: " << crf.label_alphabet.phonemes.length << std::endl;
-  std::cerr << "Corpus size: " << corpus.length() << std::endl;
+  std::cerr << "Corpus size: " << corpus.size() << std::endl;
+
+  std::vector<Input> phoneme_sequence = to_sequence(crf.label_alphabet, input);
 
   std::vector<int> path;
   max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);

@@ -52,23 +52,23 @@ struct LabelAlphabet {
   }
 
   template<class Filter>
-  void iterate_sequences(const Sequence<Input>& input, Filter& filter) const {
-    std::vector<LabelClass::const_iterator> iters(input.length());
-    std::vector<int> class_indices(input.length());
+  void iterate_sequences(const std::vector<Input>& input, Filter& filter) const {
+    std::vector<LabelClass::const_iterator> iters(input.size());
+    std::vector<int> class_indices(input.size());
 
-    for(int i = 0; i < input.length(); i++) {
+    for(unsigned i = 0; i < input.size(); i++) {
       int index = toInt(input[i]);
       iters[i] = classes[index].begin();
       class_indices[i] = index;
 
     }
 
-    Sequence<Label> labels(input.length());
+    std::vector<Label> labels(input.size());
     permute(iters, class_indices, 0, labels, filter);
   }
 
   template<class Filter>
-  void permute(Iterators& iters, std::vector<int>& class_indices, unsigned index, Sequence<Label>& labels, Filter& filter) const {
+  void permute(Iterators& iters, std::vector<int>& class_indices, unsigned index, std::vector<Label>& labels, Filter& filter) const {
     if(index == iters.size() - 1) {
       while(iters[index] != classes[class_indices[index]].end()) {
         labels[index] = *iters[index];
@@ -122,16 +122,16 @@ void build_data(std::istream& list_input,
     list_input >> buffer;
     files_map.push_back(buffer);
 
-    Sequence<Input> inputs(size);
-    Sequence<Label> labels(size);
+    std::vector<Input> inputs;
+    std::vector<Label> labels;
 
     for(int i = 0; i < size; i++) {
       int phoneme_index = phonemes.size();
       phonemes.push_back(phonemes_from_file[i]);
       file_indices.push_back(files_map.size() - 1);
 
-      inputs[i] = phoneme_index;
-      labels[i] = phoneme_index;
+      inputs.push_back(phoneme_index);
+      labels.push_back(phoneme_index);
     }
 
     corpus->add(inputs, labels);
@@ -142,7 +142,7 @@ void build_data(std::istream& list_input,
     if((*it).label == 'a' && !hasA) {
       hasA = true;
       it++;
-    } else if((*it).label == 'b' && !hasB) {
+    } else if((*it).label == 's' && !hasB) {
       hasB = true;
       it++;
     } else {

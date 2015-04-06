@@ -8,25 +8,25 @@
 struct GradientValues {
   GradientValues(int lambda_size, int mu_size)
     : lambda_values(lambda_size), mu_values(mu_size) { }
-  CoefSequence lambda_values;
-  CoefSequence mu_values;
+  std::vector<double> lambda_values;
+  std::vector<double> mu_values;
 };
 
 template<class CRF>
 class NaiveGDCompute {
 public:
   GradientValues calculate(CRF& crf, Corpus& corpus,
-                           CoefSequence& lambda, CoefSequence& mu) {
-    GradientValues result(lambda.length(), mu.length());
+                           std::vector<double>& lambda, std::vector<double>& mu) {
+    GradientValues result(lambda.size(), mu.size());
 
     std::cerr << "Lambda gradient" << std::endl;
-    for(int i = 0; i < lambda.length(); i++) {
+    for(int i = 0; i < lambda.size(); i++) {
       result.lambda_values[i] = computeLambdaGradient(i, lambda, mu, crf, corpus);
     }
     std::cerr << '\n';
 
     std::cerr << "Mu gradient" << std::endl;
-    for(int i = 0; i < mu.length(); i++) {
+    for(int i = 0; i < mu.size(); i++) {
       result.mu_values[i] = computeMuGradient(i, lambda, mu, crf, corpus);
     }
     std::cerr << '\n';
@@ -34,20 +34,20 @@ public:
     return result;
   };
 
-  double computeLambdaGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
+  double computeLambdaGradient(int pos, std::vector<double>& lambda, std::vector<double>& mu,
                                CRF& crf, Corpus& corpus) {
     double result = 0;
 
-    for(int c = 0; c < corpus.length(); c++) {
+    for(int c = 0; c < corpus.size(); c++) {
       if( c == 2)
         break;
       (std::cerr << ".").flush();
-      const Sequence<Label>& y = corpus.label(c);
+      const std::vector<Label>& y = corpus.label(c);
 
-      const Sequence<Input>& x = corpus.input(c);
+      const std::vector<Input>& x = corpus.input(c);
       double A = 0;
 
-      for(int j = 0; j < y.length(); j++) {
+      for(int j = 0; j < y.size(); j++) {
         auto func = crf.f[pos];
         auto coef = lambda[pos];
         A += coef * (*func)(y, pos + 1, x);
@@ -60,16 +60,16 @@ public:
     return result;
   };
 
-  double computeMuGradient(int pos, CoefSequence& lambda, CoefSequence& mu,
+  double computeMuGradient(int pos, std::vector<double>& lambda, std::vector<double>& mu,
                            CRF& crf, Corpus& corpus) {
     double result = 0;
 
-    for(int c = 0; c < corpus.length(); c++) {
-      const Sequence<Label>& y = corpus.label(c);
-      const Sequence<Input>& x = corpus.input(c);
+    for(int c = 0; c < corpus.size(); c++) {
+      const std::vector<Label>& y = corpus.label(c);
+      const std::vector<Input>& x = corpus.input(c);
       double A = 0;
 
-      for(int j = 0; j < y.length(); j++) {
+      for(int j = 0; j < y.size(); j++) {
         auto coef = mu[pos];
         auto func = crf.g[pos];
         A += coef * (*func)(y, pos + 1, x);
@@ -94,29 +94,29 @@ void trainGradientDescent(CRF& crf, Corpus& corpus) {
   trainGradientDescent<CRF, NaiveGDCompute>(crf, corpus);
 }
 
-CoefSequence concat(CoefSequence& s1, CoefSequence& s2) {
-  CoefSequence result(s1.length() + s2.length());
-  for(int i = 0; i < s1.length(); i++)
+std::vector<double> concat(std::vector<double>& s1, std::vector<double>& s2) {
+  std::vector<double> result(s1.size() + s2.size());
+  for(unsigned i = 0; i < s1.size(); i++)
     result[i] = s1[i];
-  for(int i = 0; i < s2.length(); i++) {
-    result[s1.length() + i] = s2[i];
+  for(unsigned i = 0; i < s2.size(); i++) {
+    result[s1.size() + i] = s2[i];
   }
   return result;
 }
 
-CoefSequence operator+(CoefSequence& s1, CoefSequence& s2) {
-  CoefSequence result(s1.length() + s2.length());
-  for(int i = 0; i < s1.length(); i++)
+std::vector<double> operator+(std::vector<double>& s1, std::vector<double>& s2) {
+  std::vector<double> result(s1.size() + s2.size());
+  for(unsigned i = 0; i < s1.size(); i++)
     result[i] = s1[i] + s2[i];
   return result;
 }
 
 template<class CRF>
-double likelihood(CoefSequence lambdas, CoefSequence mu, Corpus& corpus, CRF& crf) {
+double likelihood(std::vector<double> lambdas, std::vector<double> mu, Corpus& corpus, CRF& crf) {
   double likelihood = 0;
-  for(int c = 0; c < corpus.length(); c++) {
-    const Sequence<Label>& y = corpus.label(c);
-    const Sequence<Input>& x = corpus.input(c);
+  for(int c = 0; c < corpus.size(); c++) {
+    const std::vector<Label>& y = corpus.label(c);
+    const std::vector<Input>& x = corpus.input(c);
 
     double proba = crf_probability_of(y, x, crf, lambdas, mu);
     likelihood += proba;
@@ -130,12 +130,12 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
   double alpha = 0.0001d;
   double beta = 0.5d;
   double t = 1;
-  CoefSequence lambdas = crf.lambda;
-  CoefSequence mu = crf.mu;
-  CoefSequence gradientVector = concat(direction.lambda_values, direction.mu_values);
+  std::vector<double> lambdas = crf.lambda;
+  std::vector<double> mu = crf.mu;
+  std::vector<double> gradientVector = concat(direction.lambda_values, direction.mu_values);
   double corpusLikelihood = likelihood(lambdas, mu, corpus, crf);
   double gradTimesDir = 0;
-  for(int i = 0; i < gradientVector.length(); i++) {
+  for(int i = 0; i < gradientVector.size(); i++) {
     gradTimesDir += -gradientVector[i] * gradientVector[i];
   }
 
@@ -152,11 +152,11 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
 
 template<class CRF, template <typename> class GDCompute>
 void trainGradientDescent(CRF& crf, Corpus& corpus) {
-  CoefSequence lambda(crf.lambda.length());
-  for(int i = 0; i < lambda.length(); i++)
+  std::vector<double> lambda(crf.lambda.size());
+  for(int i = 0; i < lambda.size(); i++)
     lambda[i] = 1;
-  CoefSequence mu(crf.mu.length());
-  for(int i = 0; i < mu.length(); i++)
+  std::vector<double> mu(crf.mu.size());
+  for(int i = 0; i < mu.size(); i++)
     mu[i] = 1;
   GDCompute<CRF> gradient;
 
@@ -165,10 +165,10 @@ void trainGradientDescent(CRF& crf, Corpus& corpus) {
     GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
     double stepSize = calculateStepSize(values, crf, corpus);
 
-    for(int i = 0; i < crf.lambda.length(); i++)
+    for(int i = 0; i < crf.lambda.size(); i++)
       crf.lambda[i] += -values.lambda_values[i] * stepSize;
 
-    for(int i = 0; i < crf.mu.length(); i++)
+    for(int i = 0; i < crf.mu.size(); i++)
       crf.mu[i] += -values.mu_values[i] * stepSize;
   }
 

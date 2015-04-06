@@ -1,0 +1,4 @@
+#ifndef __FUNCTIONAL_AUTOMATON_H__
+#define __FUNCTIONAL_AUTOMATON_H__
+
+#endif

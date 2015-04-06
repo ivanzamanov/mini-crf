@@ -10,14 +10,14 @@ typedef CRandomField<LabelAlphabet> CRF;
 template<class Evaluate>
 class StateFunction : public CRF::StateFunction {
 public:
-  double operator()(const Sequence<Label>& labels, int pos, const Sequence<Input>& inputs) const {
+  double operator()(const std::vector<Label>& labels, int pos, const std::vector<Input>& inputs) const {
     const PhonemeInstance& prev = alphabet->fromInt(labels[pos]);
     const PhonemeInstance& next = alphabet->fromInt(inputs[pos]);
     Evaluate eval;
     return eval(prev, next);
   }
 
-  double operator()(const Label l1, int pos, const Sequence<Input>& inputs) const {
+  double operator()(const Label l1, int pos, const std::vector<Input>& inputs) const {
     const PhonemeInstance& prev = alphabet->fromInt(l1);
     const PhonemeInstance& next = alphabet->fromInt(inputs[pos]);
     Evaluate eval;
@@ -28,14 +28,14 @@ public:
 template<class Evaluate>
 class TransitionFunction : public CRF::TransitionFunction {
 public:
-  double operator()(const Sequence<Label>& labels, int pos, const Sequence<Input>&) const {
+  double operator()(const std::vector<Label>& labels, int pos, const std::vector<Input>&) const {
     const PhonemeInstance& prev = alphabet->fromInt(labels[pos] - 1);
     const PhonemeInstance& next = alphabet->fromInt(labels[pos]);
     Evaluate eval;
     return eval(prev, next);
   }
 
-  double operator()(const Label l1, const Label l2, int, const Sequence<Input>&) const {
+  double operator()(const Label l1, const Label l2, int, const std::vector<Input>&) const {
     const PhonemeInstance& prev = alphabet->fromInt(l1);
     const PhonemeInstance& next = alphabet->fromInt(l2);
     Evaluate eval;
@@ -72,16 +72,16 @@ struct MFCCDist {
   }
 };
 
-Sequence<CRF::StateFunction*> state_functions() {
-  Sequence<CRF::StateFunction*> result(0);
+std::vector<CRF::StateFunction*> state_functions() {
+  std::vector<CRF::StateFunction*> result;
   return result;
 }
 
-Sequence<CRF::TransitionFunction*> transition_functions() {
-  Sequence<CRF::TransitionFunction*> result(2);
+std::vector<CRF::TransitionFunction*> transition_functions() {
+  std::vector<CRF::TransitionFunction*> result;
   //result[0] = new TransitionFunction<Duration>();
-  result[1] = new TransitionFunction<Pitch>();
-  result[2] = new TransitionFunction<MFCCDist>();
+  result.push_back(new TransitionFunction<Pitch>());
+  result.push_back(new TransitionFunction<MFCCDist>());
   return result;
 }
 
