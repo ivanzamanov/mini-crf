@@ -25,20 +25,6 @@ struct LabelAlphabet {
     return clazz.front();
   }
 
-  int* possible_labels(int inp, int& n) {
-    const PhonemeInstance& phon = fromInt(inp);
-    n = classes[phon.label].size();
-    int* result = new int[n];
-    int* idx = result;
-    for(auto it = classes[phon.label].begin(); it != classes[phon.label].end(); it++, idx++)
-      *idx = *it;
-    return result;
-  }
-
-  bool allowedTransition(int, int) const {
-    return true;
-  }
-
   bool allowedState(int l1, int l2) const {
     return fromInt(l1).label == fromInt(l2).label;
   }
@@ -104,10 +90,7 @@ Array<LabelAlphabet::LabelClass> build_classes(std::vector<PhonemeInstance> phon
   return result;
 }
 
-void build_data(std::istream& list_input,
-                LabelAlphabet* alphabet,
-                Corpus* corpus) {
-
+void build_data(std::istream& list_input, LabelAlphabet* alphabet, Corpus* corpus) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;

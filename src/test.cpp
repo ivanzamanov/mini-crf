@@ -9,10 +9,6 @@ struct TestAlphabet {
     phonemes.data = new int[4]{1,2,3,4};
   }
 
-  bool allowedTransition(int l1, int l2) const {
-    return true;
-  }
-
   bool allowedState(int l1, int l2) const {
     return true;
   }

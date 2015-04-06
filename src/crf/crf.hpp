@@ -47,12 +47,14 @@ private:
 template<class LabelAlphabet>
 class CRandomField {
 public:
+  typedef LabelAlphabet Alphabet;
+
   class BaseFunction {
   public:
     LabelAlphabet* alphabet;
     virtual ~BaseFunction() { };
   };
-  
+
   class StateFunction : public BaseFunction {
   public:
     virtual double operator()(const vector<Label>&, int, const vector<Input>&) const {
@@ -73,6 +75,8 @@ public:
       return 0;
     };
   };
+
+  CRandomField(): g(), mu(), f(), lambda() { };
 
   CRandomField(vector<StateFunction*> sf, vector<TransitionFunction*> tf):
     g(sf), mu(), f(tf), lambda() {
@@ -171,40 +175,6 @@ double crf_probability_of(const vector<Label>& y, const vector<Input>& x, CRF& c
   return numer - std::log(denom);
 }
 
-double child_index(int pos, int alphabet_len) {
-  return 1 + (pos * alphabet_len);
-}
-
-template<class CRF>
-double state_value(CRF& crf, const vector<double>& mu, const vector<Input>& x, int label, int pos) {
-  if(!crf.g.size())
-    return 1;
-  
-  double result = 0;
-  for(unsigned i = 0; i < crf.g.size(); i++) {
-    result += mu[i] * (*crf.g[i])(label, pos, x);
-  }
-  return result;
-}
-
-template<class CRF_T>
-double transition_value(CRF_T& crf, const vector<Input>& x, int label1, int label2, int pos) {
-  return transition_value(crf, x, crf.lambda, crf.mu, label1, label2, pos);
-}
-
-template<class CRF_T>
-double transition_value(CRF_T& crf, const vector<double>& lambda, const vector<double>& mu, const vector<Input>& x, int label1, int label2, int pos) {
-  double result = 0;
-  if(!crf.f.size())
-    return 1;
-  for (unsigned i = 0; i < lambda.size(); i++) {
-    auto* func = crf.f[i];
-    double coef = lambda[i];
-    result += coef * (*func)(label1, label2, pos, x);
-  }
-  result += state_value(crf, mu, x, label2, pos);
-  return result;
-}
 
 template<class CRF>
 void max_path(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
@@ -216,138 +186,194 @@ double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambd
   return norm_factor(x, crf, lambda, mu, 0);
 }
 
-template<class CRF>
+struct DefaultAggregations {
+  // Usually sum, i.e. transition + child
+  double concat(double d1, double d2) {
+    return d1 + d2;
+  }
+
+  // +Inf, since this looks for minimal path
+  double infinity() {
+    return std::numeric_limits<double>::infinity();
+  }
+
+  // Usually the minimum of the two or if calculating
+  // normalization factor - log(exp(d1) + exp(d2))
+  double aggregate(double d1, double d2) {
+    return std::min(d1, d2);
+  }
+
+  // Check whether this is infinity - for debugging purposes only
+  bool isinf(double d) {
+    return std::isinf(d);
+  }
+
+  // Return an iterator to the value of the best next child
+  double* pick_best(double* it_start, double* it_end) {
+    return std::min_element(it_start, it_end);
+  }
+
+  // Value of a transition from a last state, corresponding to a position
+  // in the input, 1 by def.
+  double empty() {
+    return 1;
+  }
+
+  // Initialization value for aggregation, e.g. 0 for sum
+  // or 1 for multiplication
+  double init() {
+    return 0;
+  }
+};
+
+template<class CRF, class Functions=DefaultAggregations>
+struct FunctionalAutomaton;
+
+template<class CRF, class Functions=DefaultAggregations>
 double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
-  DEBUG(DotPrinter printer("automaton.dot");
-        printer.start();
-        )
+  FunctionalAutomaton<CRF> a(crf.label_alphabet);
+  a.lambda = lambda;
+  a.mu = mu;
+  a.f = crf.f;
+  a.g = crf.g;
+  a.x = x;
 
-  int alphabet_len = crf.label_alphabet.phonemes.length;
-  int autom_size = alphabet_len * x.size() + 2;
-  double* table = new double[autom_size];
+  return a.norm_factor(max_path);
+}
 
-  // Will need for intermediate computations
-  double* tr_values = new double[alphabet_len];
-  // A slice of the table, actually...
-  double* child_values;
-  // Transitions q,i,y -> f
-  int index = autom_size - 1;
-  table[index] = 1;
-  index--;
+template<class CRF, class Functions>
+struct FunctionalAutomaton {
+  FunctionalAutomaton(const typename CRF::Alphabet &alphabet): alphabet(alphabet) { }
 
-  DEBUG(printer.node(index, -2);)
+  Functions funcs;
+  const typename CRF::Alphabet &alphabet;
+  vector<typename CRF::StateFunction*> g;
+  vector<double> mu;
+  vector<typename CRF::TransitionFunction*> f;
+  vector<double> lambda;
+  vector<Input> x;
 
-  vector<int>* paths = 0;
-  if(max_path) {
-    paths = new vector<int>[alphabet_len];
+  int alphabet_length() {
+    return alphabet.phonemes.length;
   }
 
-  int pos = x.size() - 1;
-  // transitions to final state
-  for(int dest = alphabet_len - 1; dest >= 0; dest--, index--) {
-    // value of the last "column" of states
-    bool is_allowed = crf.label_alphabet.allowedState(dest, x[pos]);
-    table[index] = is_allowed ? 1 : std::numeric_limits<double>::infinity();
-    DEBUG(
-          printer.node(index, dest);
-          printer.edge(index, autom_size - 1, ' ', 1);
-          );
+  bool allowedState(int y, int x) {
+    return alphabet.allowedState(y, x);
   }
-  
-  // backwards, for every zero-based position in
-  // the input sequence except the last one...
-  for(pos--; pos >= 0; pos--) {
-    // for every possible label...
-    for(int src = alphabet_len - 1; src >= 0; src--, index--) {
-      // Short-circuit if different phoneme types
-      if(crf.label_alphabet.allowedState(src, x[pos])) {
-        int child = child_index(pos + 1, alphabet_len);
-      
-        for(int dest = alphabet_len - 1; dest >= 0; dest--) {
-          double tr_value;
-          tr_value = transition_value(crf, lambda, mu, x, src, dest, pos);
-          tr_values[dest] = tr_value;
 
-          DEBUG(printer.edge(index, child + dest, ' ', tr_value));
-        }
+  int child_index(int pos) {
+    return 1 + (pos * alphabet_length());
+  }
 
-        child_values = table + child;
-        // tr_value is the power of the transition' actual value
-        double tr_value = tr_values[0];
-        // child_value is the log of the child's actual value
-        double child_value = child_values[0];
-        table[index] = tr_value + child_value;
-        tr_values[0] = tr_value + child_value;
+  template<bool includeState, bool includeTransition>
+  double calculate_value(int src, int dest, int pos) {
+    double result = 0;
+    if(includeTransition) {
+      for (unsigned i = 0; i < lambda.size(); i++) {
+        auto* func = f[i];
+        double coef = lambda[i];
+        result += coef * (*func)(src, dest, pos, x);
+      }
+    }
 
-        for(int dest = alphabet_len - 1; dest > 0; dest--) {
-          //double increment = util::sum(tr_value, child_value);
-          //double d = util::sum(increment, table[index]);
-          tr_value = tr_values[dest];
-          child_value = child_values[dest];
-          table[index] = std::min(tr_value + child_value, table[index]);
-          tr_values[dest] = tr_value + child_value;
-        }
+    if(includeState) {
+      for(unsigned i = 0; i < g.size(); i++) {
+        auto* func = g[i];
+        double coef = mu[i];
+        result += coef * (*func)(dest, pos, x);
+      }
+    }
+    return result;
+  }
 
-        DEBUG(printer.node(index, table[index]));
+  template<bool includeState, bool includeTransition>
+  void populate_transitions(double *tr_values, int src, int pos) {
+    for(int dest = alphabet_length() - 1; dest >= 0; dest--) {
+      double tr_value = calculate_value<includeState, includeTransition>(src, dest, pos);
+      tr_values[dest] = tr_value;
+    }
+  }
 
-        // This, however, should never be 0
-        if(table[index] == 0 || std::isinf(table[index])) {
-           std::cerr << table[index] << " at " << index << std::endl;
-        }
+  void aggregate_values(double* aggregate_destination, double* transition_values, double* child_values, int pos) {
+    double &agg = *aggregate_destination;
+    agg = funcs.init();
+    for(int dest = alphabet_length() - 1; dest >= 0; dest--) {
+      double increment = funcs.concat(transition_values[dest], child_values[dest]);
+      agg = funcs.aggregate(increment, agg);
+      transition_values[dest] = increment;
+    }
+  }
 
-        if(max_path) {
-          double* max = std::min_element(tr_values, tr_values + alphabet_len);
-          paths[src].push_back(max - tr_values);
-        }
-      } else {
-        table[index] = std::numeric_limits<double>::infinity();
-        if(max_path) {
-          paths[src].push_back(-1);
+  double norm_factor(vector<int>* max_path) {
+    int autom_size = alphabet_length() * x.size() + 1;
+    double* table = new double[autom_size];
+    // Will need for intermediate computations
+    double* tr_values = new double[alphabet_length()];
+    // Transitions q,i,y -> f
+    int index = autom_size - 1;
+    int pos = x.size() - 1;
+
+    vector<int>* paths = 0;
+    if(max_path) {
+      paths = new vector<int>[alphabet_length()];
+    }
+
+    // transitions to final state
+    for(int dest = alphabet_length() - 1; dest >= 0; dest--, index--) {
+      // value of the last "column" of states
+      table[index] = allowedState(dest, x[pos]) ? funcs.empty() : funcs.infinity();
+    }
+
+    // backwards, for every zero-based position in
+    // the input sequence except the last one...
+    for(pos--; pos >= 0; pos--) {
+      // for every possible label...
+      for(int src = alphabet_length() - 1; src >= 0; src--, index--) {
+        // Short-circuit if different phoneme types
+        if(allowedState(src, x[pos])) {
+          // Obtain transition values to all children
+          populate_transitions<true, true>(tr_values, src, pos);
+          aggregate_values(table + index, tr_values, table + child_index(pos + 1), pos);
+
+          // This, however, should never be 0
+          /*if(table[index] == 0 || funcs.isinf(table[index])) {
+             std::cerr << table[index] << " at " << index << std::endl;
+          }*/
+
+          if(max_path) {
+            double* max = funcs.pick_best(tr_values, tr_values + alphabet_length());
+            paths[src].push_back(max - tr_values);
+          }
+
+        } else {
+          table[index] = funcs.infinity();
+
+          if(max_path) {
+            paths[src].push_back(-1);
+          }
         }
       }
-      DEBUG(std::cerr << "p=" << pos << ",s=" << src << ",d=" << *(paths[src].rbegin()) << std::endl);
     }
-  }
 
-  DEBUG(printer.node(index, -1));
+    populate_transitions<true, false>(tr_values, 0, pos);
+    aggregate_values(table + index, tr_values, table + child_index(pos + 1), pos);
 
-  int child = child_index(0, alphabet_len);
-  double state_val = state_value(crf, mu, x, 0, 0);
-  int src = alphabet_len - 1;
-  pos = 0;
-  bool is_allowed = crf.label_alphabet.allowedState(src, x[pos]);
-  state_val = is_allowed ? state_value(crf, mu, x, src, 0) : std::numeric_limits<double>::infinity();
-  table[index] = state_val + table[child + src];
-  tr_values[src] = state_val + table[child + src];
-
-  for(src = alphabet_len - 2; src >= 0; src--, index--) {
-    is_allowed = crf.label_alphabet.allowedState(src, x[pos]);
-    state_val = is_allowed ? state_value(crf, mu, x, src, 0) : std::numeric_limits<double>::infinity();
-
-    double increment = state_val + table[child + src];
-    tr_values[src] = increment;
-    //table[index] = util::sum(table[index], increment);
-    table[index] = std::min(table[index], increment);
-
-    DEBUG(printer.edge(index, child + src, ' ', increment));
-  }
-
-  if(max_path) {
-    double* max = std::min_element(tr_values, tr_values + alphabet_len);
-    int state = max - tr_values;
-    max_path->push_back(state);
-    DEBUG(std::cerr << "Best starts at " << max - tr_values << std::endl);
-    for(int i = x.size() - 2; i >= 0; i--) {
-      state = paths[state][i];
+    if(max_path) {
+      double* max = funcs.pick_best(tr_values, tr_values + alphabet_length());
+      int state = max - tr_values;
       max_path->push_back(state);
-    }
-    delete[] paths;
-  }
 
-  double denom = table[0];
-  delete[] table;
-  DEBUG(printer.end());
-  return denom;
-}
+      for(int i = x.size() - 2; i >= 0; i--) {
+        state = paths[state][i];
+        max_path->push_back(state);
+      }
+      delete[] paths;
+    }
+
+    double denom = table[0];
+    delete[] table;
+    return denom;
+  }
+};
 
 #endif
