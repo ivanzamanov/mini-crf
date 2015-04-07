@@ -1,13 +1,26 @@
 #include<iostream>
 #include<fstream>
+#include<cstdlib>
 
 #include"crf/crf.hpp"
 
-struct TestAlphabet {
-  TestAlphabet() { }
+struct TestObject {
+  int label = 0;
+};
+
+static const int CLASSES = 3;
+
+struct TestAlphabet : LabelAlphabet<TestObject> {
+  TestAlphabet() {
+    labels.data = new TestObject[size()];
+    for(int i = 0; i < size(); i++)
+      labels[i].label = i % CLASSES;
+    labels.length = size();
+    build_classes();
+  }
 
   bool allowedState(int l1, int l2) const {
-    return true;
+    return l1 % CLASSES == l2 % CLASSES;
   }
 
   int size() const {
@@ -26,11 +39,17 @@ public:
   TestTransFunc(vector<int> best_path): best_path(best_path) { }
 
   virtual double operator()(const vector<Label>& labels, int pos, const vector<Input>&) const {
-    return best_path[pos - 1] == labels[pos - 1] && best_path[pos] == labels[pos];
+    if(best_path[pos - 1] == labels[pos - 1] && best_path[pos] == labels[pos])
+      return -1;
+    else
+      return rand();
   }
 
   virtual double operator()(const Label l1, const Label l2, const int pos, const vector<Input>&) const {
-    return best_path[pos - 1] == l1 && best_path[pos] == l2;
+    if(best_path[pos - 1] == l1 && best_path[pos] == l2)
+      return -1;
+    else
+      return rand();
   };
 };
 
@@ -42,11 +61,17 @@ public:
   TestStateFunc(vector<int> best_path): best_path(best_path) { }
 
   virtual double operator()(const vector<Label>& labels, int pos, const vector<Input>&) const {
-    return best_path[pos] == labels[pos];
+    if(best_path[pos] == labels[pos])
+      return -1;
+    else
+      return rand();
   }
 
   virtual double operator()(const Label label, int pos, const vector<Input>&) const {
-    return best_path[pos] == label;
+    if(best_path[pos] == label)
+      return -1;
+    else
+      return rand();
   };
 };
 
@@ -93,23 +118,62 @@ void testUtils() {
   */
 }
 
+void test_path(TestCRF* crf, const vector<Label>& labels) {
+  ((TestTransFunc*) crf->f[0])->best_path = labels;
+  ((TestStateFunc*) crf->g[0])->best_path = labels;
+
+  FunctionalAutomaton<TestCRF> a(crf->label_alphabet);
+  a.lambda = crf->lambda;
+  a.mu = crf->mu;
+  a.f = crf->f;
+  a.g = crf->g;
+  a.x = labels;
+
+  vector<int> best_path;
+
+  std::cerr << "Input path: ";
+  for(unsigned i = 0; i < labels.size(); i++)
+    std::cerr << labels[i] << " ";
+  std::cerr << std::endl;
+
+  a.norm_factor(&best_path);
+
+  std::cerr << "Output path: ";
+  for(unsigned i = 0; i < best_path.size(); i++)
+    std::cerr << best_path[i] << " ";
+  std::cerr << std::endl;
+
+  assertEquals(labels.size(), best_path.size());
+  for(unsigned i = 0; i < labels.size(); i++) {
+    assertEquals(best_path[i], labels[i]);
+    assertEquals(best_path[i] % CLASSES, crf->label_alphabet.fromInt(labels[i]).label % CLASSES);
+  }
+}
+
+struct TestFilter {
+  TestCRF *crf;
+
+  void operator()(const vector<Label> &labels) {
+    test_path(crf, labels);
+  }
+};
+
 void testCRF() {
+  srand(5);
+
   TestCRF crf(state_functions(), transition_functions());
-  vector<Input> x;
-  for(int i = 0; i < 5; i++) x.push_back(i);
   std::vector<double> lambda;
   lambda.push_back(1.0);
   std::vector<double> mu;
   mu.push_back(1.0);
 
-  std::vector<int> path;
-  max_path(x, crf, lambda, mu, &path);
+  vector<Input> x;
+  for(int i = 0; i < crf.label_alphabet.size(); i++)
+    x.push_back(i);
 
-  for(unsigned i = 0; i < path.size(); i++)
-    std::cout << path[i] << " ";
-  std::cout << std::endl;
-
-  assertEquals(2048.0, norm_factor(x, crf, lambda, mu));
+  TestFilter filter;
+  filter.crf = &crf;
+  crf.label_alphabet.iterate_sequences(x, filter);
 }
 
 int main() {

@@ -8,6 +8,13 @@
 #define DEBUG(x) x
 #define MY_E 2.71828182845904523536028747135266250 // e
 
+template<class Key, class Value>
+struct Pair {
+  Pair(const Key& key, const Value& value): key(key), value(value) { }
+  const Key key;
+  const Value value;
+};
+
 namespace util {
   double mult_exp(double x, double y);
   double mult(double x, double y);
