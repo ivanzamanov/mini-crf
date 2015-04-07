@@ -24,7 +24,7 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
   }
 
   int size() const {
-    return 4;
+    return 9;
   }
 };
 
@@ -131,17 +131,17 @@ void test_path(TestCRF* crf, const vector<Label>& labels) {
 
   vector<int> best_path;
 
-  std::cerr << "Input path: ";
+  /*std::cerr << "Input path: ";
   for(unsigned i = 0; i < labels.size(); i++)
     std::cerr << labels[i] << " ";
-  std::cerr << std::endl;
+  std::cerr << std::endl;*/
 
   a.norm_factor(&best_path);
 
-  std::cerr << "Output path: ";
+  /*std::cerr << "Output path: ";
   for(unsigned i = 0; i < best_path.size(); i++)
     std::cerr << best_path[i] << " ";
-  std::cerr << std::endl;
+  std::cerr << std::endl;*/
 
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {

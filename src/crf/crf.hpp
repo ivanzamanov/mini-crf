@@ -202,8 +202,8 @@ struct DefaultAggregations {
   }
 
   // Return an iterator to the value of the best next child
-  vector<Transition>::const_iterator pick_best(vector<Transition>* children) {
-    return std::min_element(children->begin(), children->end(), compare);
+  vector<Transition>::const_iterator pick_best(vector<Transition>& children) {
+    return std::min_element(children.begin(), children.end(), compare);
   }
 
   static bool compare(const Transition& t1, const Transition& t2) {
@@ -279,16 +279,18 @@ struct FunctionalAutomaton {
 
   template<bool includeState, bool includeTransition>
   void populate_transitions(vector<Transition>* children, int src, int pos) {
-    for(auto it = children->begin(); it != children->end(); it++)
-      (*it).value = calculate_value<includeState, includeTransition>(src, (*it).child, pos);
+    for(auto it = children->begin(); it != children->end(); it++) {
+      double transition = calculate_value<includeState, includeTransition>(src, (*it).child, pos);
+      (*it).value = funcs.concat((*it).value, transition);
+    }
   }
 
   void aggregate_values(double* aggregate_destination, vector<Transition>* children) {
     double &agg = *aggregate_destination;
-    agg = funcs.empty();
-    for(auto it = children->begin(); it != children->end(); it++) {
-      double increment = funcs.concat(agg, (*it).value);
-      agg = funcs.aggregate(increment, agg);
+    auto it = children->begin();
+    agg = (*it).value;
+    for(++it; it != children->end(); it++) {
+      agg = funcs.aggregate((*it).value, agg);
     }
   }
 
@@ -312,38 +314,39 @@ struct FunctionalAutomaton {
 
     // backwards, for every zero-based position in
     // the input sequence except the last one...
-    for(; pos > 0; pos--) {
+    for(pos--; pos >= 0; pos--) {
       // for every possible label...
       for(int src = alphabet_length() - 1; src >= 0; src--) {
         // Short-circuit if different phoneme types
-        if(allowedState(src, x[pos - 1])) {
+        vector<Transition> temp_children = *children;
+        if(allowedState(src, x[pos])) {
           // Obtain transition values to all children
-          populate_transitions<true, true>(children, src, pos);
+          populate_transitions<true, true>(&temp_children, src, pos + 1);
           double value;
-          aggregate_values(&value, children);
-
-          if(max_path) {
-            auto max = funcs.pick_best(children);
-            paths[src].push_back((*max).child);
-          }
+          aggregate_values(&value, &temp_children);
 
           next_children->push_back(Transition(src, value));
         }
+
+        if(max_path) {
+          auto max = funcs.pick_best(temp_children);
+          paths[src].push_back((*max).child);
+        }
       }
 
-      std::swap(children, next_children);
       children->clear();
+      std::swap(children, next_children);
     }
 
-    populate_transitions<true, true>(next_children, 0, pos);
+    populate_transitions<true, false>(children, 0, 0);
     double value;
-    aggregate_values(&value, next_children);
+    aggregate_values(&value, children);
 
     if(max_path) {
-      auto max = funcs.pick_best(children);
+      auto max = funcs.pick_best(*children);
       max_path->push_back((*max).child);
 
-      int state = max - children->begin();
+      int state = (*max).child;
       for(int i = x.size() - 2; i >= 0; i--) {
         state = paths[state][i];
         max_path->push_back(state);
