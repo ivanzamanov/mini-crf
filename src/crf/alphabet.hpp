@@ -19,12 +19,12 @@ struct LabelAlphabet {
     classes.data = new LabelAlphabet::LabelClass[length];
     classes.length = length;
 
-    for(int i = 0; i < labels.length; i++) {
+    for(unsigned i = 0; i < labels.length; i++) {
       classes[labels[i].label].push_back(i);
     }
   }
 
-  int size() const {
+  unsigned size() const {
     return labels.length;
   }
 

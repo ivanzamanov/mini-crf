@@ -70,7 +70,7 @@ PhonemeInstance* parse_file(std::istream& stream, int& size) {
   return result;
 }
 
-std::ostream& operator<<(std::ostream& str, PhonemeInstance& ph) {
+std::ostream& operator<<(std::ostream& str, const PhonemeInstance& ph) {
   str << ph.start;
   str << ph.end;
   str << ph.frames;

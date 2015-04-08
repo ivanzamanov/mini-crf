@@ -21,8 +21,11 @@ struct PhonemeInstance {
   char label;
 };
 
-std::ostream& operator<<(std::ostream&, PhonemeInstance&);
-std::istream& operator>>(std::istream&, PhonemeInstance&);
+// For binary streams only
+std::ostream& operator<<(std::ostream&, const PhonemeInstance&);
+// For binary streams only
+std::istream& operator>>(std::istream&, const PhonemeInstance&);
+
 PhonemeInstance* parse_file(std::istream& stream, int& size);
 
 #endif

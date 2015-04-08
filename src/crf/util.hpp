@@ -43,7 +43,7 @@ struct FixedArray {
 
 template<class T>
 struct Array {
-  int length;
+  unsigned length;
   T* data;
 
   T& operator[](int n) {

@@ -16,8 +16,11 @@ test: $(MAIN_DEPS) test.cpp
 main-opt: $(MAIN_DEPS) test
 	$(CMD) -O3 main.cpp $(CPP_FILES) -o main-opt
 
+text2bin: $(MAIN_DEPS) text2bin.cpp
+	$(CMD) text2bin.cpp $(CPP_FILES) -o text2bin
+
 clean:
-	rm $(wildcard *.exe) main test
+	rm $(wildcard *.exe) main test text2bin
 
 # %.o : %.cpp %.hpp
 # 	mkdir -p $(OBJ_DIR)
