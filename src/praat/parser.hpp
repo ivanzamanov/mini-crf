@@ -10,22 +10,24 @@ static const int MFCC_N = 12;
 
 typedef FixedArray<double, MFCC_N> MfccArray;
 
+struct Frame {
+  MfccArray mfcc;
+  double pitch;
+};
+
 struct PhonemeInstance {
+  Array<Frame> frames;
   double start;
   double end;
-  // Array of MFCC arrays
-  MfccArray* mfcc;
-  // Length of mfcc
-  int frames;
-  Array<double> pitch;
   char label;
 };
 
-// For binary streams only
-std::ostream& operator<<(std::ostream&, const PhonemeInstance&);
-// For binary streams only
-std::istream& operator>>(std::istream&, const PhonemeInstance&);
+BinaryWriter& operator<<(BinaryWriter&, const PhonemeInstance&);
+BinaryReader& operator>>(BinaryReader&, PhonemeInstance&);
 
 PhonemeInstance* parse_file(std::istream& stream, int& size);
+
+bool compare(Frame& p1, Frame& p2);
+bool compare(PhonemeInstance& p1, PhonemeInstance& p2);
 
 #endif

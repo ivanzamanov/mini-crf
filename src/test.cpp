@@ -103,12 +103,11 @@ void assertEquals(T expected, T actual) {
 void testUtils() {
   std::cerr << "Multiplication: " << util::mult(-0.0001d, 0.0001d) << std::endl;
   std::cerr << "ExpMultiplication: " << util::mult_exp(0, -0.0001d) << std::endl;
-
   /*
   std::cerr << "Sum same sign: " << util::sum(0.02d, 0.01d) << std::endl; // 0.03
   std::cerr << "Sum same sign: " << util::sum(0.01d, 0.02d) << std::endl; // 0.03
-  std::cerr << "Sum same sign neg: " << util::sum(-0.02d, -0.01d) << std::endl; // 0.03
-  std::cerr << "Sum same sign neg: " << util::sum(-0.01d, -0.02d) << std::endl; // 0.03
+  std::cerr << "Sum same sign neg: " << util::sum(-0.02d, -0.01d) << std::endl; // -0.03
+  std::cerr << "Sum same sign neg: " << util::sum(-0.01d, -0.02d) << std::endl; // -0.03
   
   std::cerr << "Sum diff sign: " << util::sum(-0.02d, 0.01d) << std::endl; // -0.01
   std::cerr << "Sum diff sign: " << util::sum(-0.01d, 0.02d) << std::endl; // 0.01
@@ -136,7 +135,7 @@ void test_path(TestCRF* crf, const vector<Label>& labels) {
     std::cerr << labels[i] << " ";
   std::cerr << std::endl;*/
 
-  a.norm_factor(&best_path);
+  a.traverse(&best_path);
 
   /*std::cerr << "Output path: ";
   for(unsigned i = 0; i < best_path.size(); i++)

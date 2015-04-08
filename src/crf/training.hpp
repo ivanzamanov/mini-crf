@@ -20,13 +20,13 @@ public:
     GradientValues result(lambda.size(), mu.size());
 
     std::cerr << "Lambda gradient" << std::endl;
-    for(int i = 0; i < lambda.size(); i++) {
+    for(unsigned i = 0; i < lambda.size(); i++) {
       result.lambda_values[i] = computeLambdaGradient(i, lambda, mu, crf, corpus);
     }
     std::cerr << '\n';
 
     std::cerr << "Mu gradient" << std::endl;
-    for(int i = 0; i < mu.size(); i++) {
+    for(unsigned i = 0; i < mu.size(); i++) {
       result.mu_values[i] = computeMuGradient(i, lambda, mu, crf, corpus);
     }
     std::cerr << '\n';
@@ -54,7 +54,7 @@ public:
       }
 
       double norm = norm_factor(x, crf, lambda, mu);
-      result += std::log(A) - std::log(norm);
+      result += A - norm;
     }
 
     return result;
@@ -76,7 +76,7 @@ public:
       }
 
       double norm = norm_factor(x, crf, lambda, mu);
-      result += log(A) - log(norm);
+      result += A - norm;
     }
 
     return result;
@@ -127,15 +127,15 @@ double likelihood(std::vector<double> lambdas, std::vector<double> mu, Corpus& c
 
 template<class CRF>
 double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
-  double alpha = 0.0001d;
-  double beta = 0.5d;
+  double alpha = 0.0001;
+  double beta = 0.5;
   double t = 1;
   std::vector<double> lambdas = crf.lambda;
   std::vector<double> mu = crf.mu;
   std::vector<double> gradientVector = concat(direction.lambda_values, direction.mu_values);
   double corpusLikelihood = likelihood(lambdas, mu, corpus, crf);
   double gradTimesDir = 0;
-  for(int i = 0; i < gradientVector.size(); i++) {
+  for(unsigned i = 0; i < gradientVector.size(); i++) {
     gradTimesDir += -gradientVector[i] * gradientVector[i];
   }
 
@@ -153,16 +153,17 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
 template<class CRF, template <typename> class GDCompute>
 void trainGradientDescent(CRF& crf, Corpus& corpus) {
   std::vector<double> lambda(crf.lambda.size());
-  for(int i = 0; i < lambda.size(); i++)
+  for(unsigned i = 0; i < lambda.size(); i++)
     lambda[i] = 1;
   std::vector<double> mu(crf.mu.size());
-  for(int i = 0; i < mu.size(); i++)
+  for(unsigned i = 0; i < mu.size(); i++)
     mu[i] = 1;
   GDCompute<CRF> gradient;
 
   for(int i = 0; i < 100; i++) {
     std::cerr << "Iteration " << i << std::endl;
     GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
+    std::cerr << "Calculating step size" << std::endl;
     double stepSize = calculateStepSize(values, crf, corpus);
 
     for(int i = 0; i < crf.lambda.size(); i++)

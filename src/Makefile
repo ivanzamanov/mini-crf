@@ -7,7 +7,7 @@ CMD = $(CC) $(CFLAGS)
 MAIN_DEPS = $(wildcard */*.hpp */*.cpp *.hpp) main.cpp
 CPP_FILES = $(wildcard */*.cpp)
 
-main: $(MAIN_DEPS) test
+main: $(MAIN_DEPS)
 	$(CMD) main.cpp $(CPP_FILES) -o main
 
 test: $(MAIN_DEPS) test.cpp
@@ -19,8 +19,11 @@ main-opt: $(MAIN_DEPS) test
 text2bin: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) text2bin.cpp $(CPP_FILES) -o text2bin
 
+all: clean main test main-opt text2bin
+  
+
 clean:
-	rm $(wildcard *.exe) main test text2bin
+	rm -f $(wildcard *.exe) main test text2bin
 
 # %.o : %.cpp %.hpp
 # 	mkdir -p $(OBJ_DIR)

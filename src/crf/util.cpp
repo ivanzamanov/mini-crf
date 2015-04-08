@@ -58,4 +58,36 @@ namespace util {
       return sign * std::exp ( log_sum );
     }
   }
+
+  double sum(double x, double y) {
+    if(x == 0)
+      return y;
+    if(y == 0)
+      return x;
+    if(x == -y)
+      return 0;
+
+    double logAbsX = std::log(std::abs(x));
+    double logAbsY = std::log(std::abs(y));
+    if(logAbsX > logAbsY) {
+      std::swap(logAbsX, logAbsY);
+      std::swap(x, y);
+    }
+
+    double result = std::log( std::exp(logAbsY - logAbsX) + 1) + logAbsX;
+    int sign;
+    if(x < 0 && y < 0) sign = -1;
+    else if(x > 0 && y > 0) sign = 1;
+    else sign = (y > 0 ? 1 : -1);
+
+    return std::exp(result) * sign;
+  }
+}
+
+bool compare(std::string &s1, std::string &s2) {
+  return s1 == s2;
+}
+
+bool compare(int& i1, int& i2) {
+  return i1 == i2;
 }

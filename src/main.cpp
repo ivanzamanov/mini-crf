@@ -1,5 +1,4 @@
 #include<fstream>
-#include<sstream>
 
 #include"crf/crf.hpp"
 #include"crf/features.hpp"
@@ -25,19 +24,6 @@ std::vector<Input> to_sequence(PhonemeAlphabet& alphabet, const char* str) {
   return result;
 }
 
-void from_path(PhonemeAlphabet& alphabet, std::vector<int> &path) {
-  std::stringstream phonemeIds;
-  for(auto it = path.begin(); it != path.end(); it++) {
-    PhonemeInstance* phon = &alphabet.labels[*it];
-    phonemeIds << *it << "=" << phon->label << " ";
-    std::string file = alphabet.file_of(*it);
-    std::cout << "File=" << file << " ";
-    std::cout << "Start=" << phon->start << " ";
-    std::cout << "End=" << phon->end << '\n';
-  }
-  std::cerr << phonemeIds.str() << std::endl;
-}
-
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
   if(argc < 2) {
@@ -56,9 +42,9 @@ int main(int argc, const char** argv) {
 
   std::vector<Input> phoneme_sequence = to_sequence(crf.label_alphabet, input);
 
-  std::vector<int> path;
-  max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
-  from_path(crf.label_alphabet, path);
-  //trainGradientDescent<CRF>(crf, corpus);
+  //std::vector<int> path;
+  //max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
+  //crf.label_alphabet.print_synth(path);
+  trainGradientDescent<CRF>(crf, corpus);
   return 0;
 }

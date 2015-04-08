@@ -20,7 +20,7 @@ public:
     return inputs[i];
   };
 
-  int size() const {
+  unsigned size() const {
     return inputs.size();
   };
 
@@ -145,16 +145,16 @@ double crf_probability_of_2(const vector<Label>& y, const vector<Input>& x, CRF&
 template<class CRF>
 double crf_probability_of(const vector<Label>& y, const vector<Input>& x, CRF& crf, const vector<double>& lambdas, const vector<double>& mus) {
   double numer = 0;
-  for(int i = 1; i < y.size(); i++) {
-    for(int lambda = 0; lambda < crf.f.length(); lambda++) {
+  for(unsigned i = 1; i < y.size(); i++) {
+    for(int lambda = 0; lambda < crf.f.size(); lambda++) {
       auto func = crf.f[lambda];
       auto coef = lambdas[lambda];
       numer += coef * (*func)(y, i, x);
     }
   }
 
-  for(int i = 0; i < y.size(); i++) {
-    for(int mu = 0; mu < crf.g.length(); mu++) {
+  for(unsigned i = 0; i < y.size(); i++) {
+    for(int mu = 0; mu < crf.g.size(); mu++) {
       auto func = crf.g[mu];
       auto coef = mus[mu];
       numer += coef * (*func)(y, i, x);
@@ -165,17 +165,6 @@ double crf_probability_of(const vector<Label>& y, const vector<Input>& x, CRF& c
   return numer - std::log(denom);
 }
 
-
-template<class CRF>
-void max_path(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
-  norm_factor(x, crf, lambda, mu, max_path);
-}
-
-template<class CRF>
-double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu) {
-  return norm_factor(x, crf, lambda, mu, 0);
-}
-
 struct Transition {
   Transition(int child, double value):
     value(value), child(child) { }
@@ -184,15 +173,10 @@ struct Transition {
   int child;
 };
 
-struct DefaultAggregations {
+struct MinPathFindFunctions {
   // Usually sum, i.e. transition + child
   double concat(double d1, double d2) {
     return d1 + d2;
-  }
-
-  // +Inf, since this looks for minimal path
-  double infinity() {
-    return std::numeric_limits<double>::infinity();
   }
 
   // Usually the minimum of the two or if calculating
@@ -217,11 +201,11 @@ struct DefaultAggregations {
   }
 };
 
-template<class CRF, class Functions=DefaultAggregations>
+template<class CRF, class Functions=MinPathFindFunctions>
 struct FunctionalAutomaton;
 
-template<class CRF, class Functions=DefaultAggregations>
-double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
+template<class CRF, class Functions=MinPathFindFunctions>
+double traverse_automaton(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
   FunctionalAutomaton<CRF> a(crf.label_alphabet);
   a.lambda = lambda;
   a.mu = mu;
@@ -229,7 +213,7 @@ double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambd
   a.g = crf.g;
   a.x = x;
 
-  return a.norm_factor(max_path);
+  return a.traverse(max_path);
 }
 
 template<class CRF, class Functions>
@@ -294,7 +278,7 @@ struct FunctionalAutomaton {
     }
   }
 
-  double norm_factor(vector<int>* max_path) {
+  double traverse(vector<int>* max_path) {
     // Will need for intermediate computations
     vector<Transition>* children = new vector<Transition>();
     vector<Transition>* next_children = new vector<Transition>();
@@ -357,5 +341,34 @@ struct FunctionalAutomaton {
     return value;
   }
 };
+
+template<class CRF>
+void max_path(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
+  traverse_automaton(x, crf, lambda, mu, max_path);
+}
+
+struct NormFactorFunctions {
+  // Usually sum, i.e. transition + child
+  double concat(double d1, double d2) {
+    return d1 + d2;
+  }
+
+  // Usually the minimum of the two or if calculating
+  // normalization factor - log(exp(d1) + exp(d2))
+  double aggregate(double d1, double d2) {
+    return util::log_sum(d1, d2);
+  }
+
+  // Value of a transition from a last state, corresponding to a position
+  // in the input, 1 by def.
+  double empty() {
+    return 1;
+  }
+};
+
+template<class CRF>
+double norm_factor(const vector<Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu) {
+  return traverse_automaton<CRF, NormFactorFunctions>(x, crf, lambda, mu, 0);
+}
 
 #endif
