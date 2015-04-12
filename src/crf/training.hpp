@@ -38,7 +38,7 @@ public:
                                CRF& crf, Corpus& corpus) {
     double result = 0;
 
-    for(int c = 0; c < corpus.size(); c++) {
+    for(unsigned c = 0; c < corpus.size(); c++) {
       if( c == 2)
         break;
       (std::cerr << ".").flush();
@@ -47,7 +47,7 @@ public:
       const std::vector<Input>& x = corpus.input(c);
       double A = 0;
 
-      for(int j = 0; j < y.size(); j++) {
+      for(unsigned j = 0; j < y.size(); j++) {
         auto func = crf.f[pos];
         auto coef = lambda[pos];
         A += coef * (*func)(y, pos + 1, x);
@@ -64,12 +64,12 @@ public:
                            CRF& crf, Corpus& corpus) {
     double result = 0;
 
-    for(int c = 0; c < corpus.size(); c++) {
+    for(unsigned c = 0; c < corpus.size(); c++) {
       const std::vector<Label>& y = corpus.label(c);
       const std::vector<Input>& x = corpus.input(c);
       double A = 0;
 
-      for(int j = 0; j < y.size(); j++) {
+      for(unsigned j = 0; j < y.size(); j++) {
         auto coef = mu[pos];
         auto func = crf.g[pos];
         A += coef * (*func)(y, pos + 1, x);
@@ -114,7 +114,7 @@ std::vector<double> operator+(std::vector<double>& s1, std::vector<double>& s2) 
 template<class CRF>
 double likelihood(std::vector<double> lambdas, std::vector<double> mu, Corpus& corpus, CRF& crf) {
   double likelihood = 0;
-  for(int c = 0; c < corpus.size(); c++) {
+  for(unsigned c = 0; c < corpus.size(); c++) {
     const std::vector<Label>& y = corpus.label(c);
     const std::vector<Input>& x = corpus.input(c);
 
@@ -160,16 +160,16 @@ void trainGradientDescent(CRF& crf, Corpus& corpus) {
     mu[i] = 1;
   GDCompute<CRF> gradient;
 
-  for(int i = 0; i < 100; i++) {
-    std::cerr << "Iteration " << i << std::endl;
+  for(int k = 0; k < 100; k++) {
+    std::cerr << "Iteration " << k << std::endl;
     GradientValues values = gradient.calculate(crf, corpus, lambda, mu);
     std::cerr << "Calculating step size" << std::endl;
     double stepSize = calculateStepSize(values, crf, corpus);
 
-    for(int i = 0; i < crf.lambda.size(); i++)
+    for(unsigned i = 0; i < crf.lambda.size(); i++)
       crf.lambda[i] += -values.lambda_values[i] * stepSize;
 
-    for(int i = 0; i < crf.mu.size(); i++)
+    for(unsigned i = 0; i < crf.mu.size(); i++)
       crf.mu[i] += -values.mu_values[i] * stepSize;
   }
 

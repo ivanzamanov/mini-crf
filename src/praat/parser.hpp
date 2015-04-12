@@ -20,6 +20,12 @@ struct PhonemeInstance {
   double start;
   double end;
   char label;
+
+  unsigned size() const { return frames.length; }
+
+  const Frame& at(unsigned index) const { return frames[index]; }
+  const Frame& first() const { return frames[0]; }
+  const Frame& last() const { return frames[size() - 1]; }
 };
 
 BinaryWriter& operator<<(BinaryWriter&, const PhonemeInstance&);

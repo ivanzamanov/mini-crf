@@ -146,7 +146,7 @@ template<class CRF>
 double crf_probability_of(const vector<Label>& y, const vector<Input>& x, CRF& crf, const vector<double>& lambdas, const vector<double>& mus) {
   double numer = 0;
   for(unsigned i = 1; i < y.size(); i++) {
-    for(int lambda = 0; lambda < crf.f.size(); lambda++) {
+    for(unsigned lambda = 0; lambda < crf.f.size(); lambda++) {
       auto func = crf.f[lambda];
       auto coef = lambdas[lambda];
       numer += coef * (*func)(y, i, x);
@@ -154,7 +154,7 @@ double crf_probability_of(const vector<Label>& y, const vector<Input>& x, CRF& c
   }
 
   for(unsigned i = 0; i < y.size(); i++) {
-    for(int mu = 0; mu < crf.g.size(); mu++) {
+    for(unsigned mu = 0; mu < crf.g.size(); mu++) {
       auto func = crf.g[mu];
       auto coef = mus[mu];
       numer += coef * (*func)(y, i, x);

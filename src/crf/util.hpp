@@ -38,7 +38,7 @@ struct FixedArray {
     return values[n];
   };
 
-  int length() {
+  unsigned length() const {
     return _length;
   }
 };

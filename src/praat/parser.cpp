@@ -95,7 +95,7 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
 
 bool compare(Frame& p1, Frame& p2) {
   bool same = p1.pitch == p2.pitch;
-  for(int i = 0; i < p1.mfcc.length(); i++)
+  for(unsigned i = 0; i < p1.mfcc.length(); i++)
     same = same && p1.mfcc[i] == p2.mfcc[i];
   return same;
 }

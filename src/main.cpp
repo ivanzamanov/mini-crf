@@ -5,11 +5,9 @@
 #include"crf/training.hpp"
 #include"crf/speech_synthesis.hpp"
 
-const char* const files_list = "/home/ivo/corpus-features/files-list";
-
 void build_data(PhonemeAlphabet* alphabet, Corpus& corpus) {
-  std::ifstream stream(files_list);
-  build_data(stream, alphabet, &corpus);
+  std::ifstream stream("db.bin");
+  build_data_bin(stream, *alphabet, corpus);
 }
 
 std::vector<Input> to_sequence(PhonemeAlphabet& alphabet, const char* str) {
