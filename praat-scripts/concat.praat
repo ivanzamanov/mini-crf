@@ -5,7 +5,6 @@ form Concatenation
      sentence outputPath /home/ivo/concat-output.wav
 endform
 
-writeInfo: ""
 strings = Read Strings from raw text file... 'fileName$'
 selectObject: strings
 

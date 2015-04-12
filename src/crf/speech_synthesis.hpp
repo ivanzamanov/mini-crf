@@ -87,7 +87,7 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corp
 
   for(unsigned i = 0; i < alphabet.size(); i++)
     r >> alphabet.labels[i] >> alphabet.file_indices[i];
-  std::cout << "Read phonemes, " << r.bytes << " bytes\n";
+  std::cerr << "Read phonemes, " << r.bytes << " bytes\n";
 
   unsigned count;
   r >> count;
@@ -101,7 +101,7 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corp
       r >> str[j];
     alphabet.files[i] = str;
   }
-  std::cout << "Read file names, " << r.bytes << " bytes\n";
+  std::cerr << "Read file names, " << r.bytes << " bytes\n";
 
   unsigned corpus_size;
   r >> corpus_size;
@@ -121,7 +121,7 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corp
 
   alphabet.build_classes();
 
-  std::cout << "Read " << r.bytes << " bytes" << std::endl;
+  std::cerr << "Read " << r.bytes << " bytes" << std::endl;
 }
 
 #endif

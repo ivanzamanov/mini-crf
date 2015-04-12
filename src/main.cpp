@@ -40,9 +40,9 @@ int main(int argc, const char** argv) {
 
   std::vector<Input> phoneme_sequence = to_sequence(crf.label_alphabet, input);
 
-  //std::vector<int> path;
-  //max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
-  //crf.label_alphabet.print_synth(path);
-  trainGradientDescent<CRF>(crf, corpus);
+  std::vector<int> path;
+  max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
+  crf.label_alphabet.print_synth(path);
+  //trainGradientDescent<CRF>(crf, corpus);
   return 0;
 }
