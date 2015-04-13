@@ -6,6 +6,7 @@
 #include<sstream>
 
 #include"crf.hpp"
+#include"../praat/textgrid.hpp"
 #include"../praat/parser.hpp"
 
 struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
@@ -21,19 +22,69 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
     return clazz.front();
   }
 
+  std::vector<Input> to_sequence(const std::string str) {
+    std::vector<Input> result(str.length());
+    std::cerr << "Input phoneme ids: ";
+    for(unsigned i = 0; i < str.length(); i++) {
+      result[i] = first_by_label(str[i]);
+      std::cerr << result[i] << " ";
+    }
+    std::cerr << std::endl;
+    return result;
+  }
+};
+
+struct SynthPrinter {
+  SynthPrinter(PhonemeAlphabet& alphabet): alphabet(alphabet) { }
+
+  PhonemeAlphabet& alphabet;
+
   void print_synth(std::vector<int> &path) {
+    print_synth(path, std::cout);
+  }
+
+  void print_synth(std::vector<int> &path, const std::string file) {
+    std::ofstream out(file);
+    print_synth(path, out);
+  }
+
+  void print_synth(std::vector<int> &path, std::ostream& out) {
     std::stringstream phonemeIds;
     for(auto it = path.begin(); it != path.end(); it++) {
-      PhonemeInstance* phon = &labels[*it];
-      phonemeIds << *it << "=" << phon->label << " ";
-      std::string file = file_of(*it);
-      std::cout << "File=" << file << " ";
-      std::cout << "Start=" << phon->start << " ";
-      std::cout << "End=" << phon->end << " ";
-      std::cout << "Label=" << phon->label << '\n';
+      const PhonemeInstance& phon = alphabet.fromInt(*it);
+      phonemeIds << *it << "=" << phon.label << " ";
+      std::string file = alphabet.file_of(*it);
+      out << "File=" << file << " ";
+      out << "Start=" << phon.start << " ";
+      out << "End=" << phon.end << " ";
+      out << "Label=" << phon.label << '\n';
     }
 
     std::cerr << phonemeIds.str() << std::endl;
+  }
+
+  void print_textgrid(std::vector<int> &path, const std::string file) {
+    std::ofstream out(file);
+    print_textgrid(path, out);
+  }
+
+  void print_textgrid(std::vector<int> &path, std::ostream& out) {
+    TextGrid grid(path.size());
+    unsigned i = 0;
+    double time_offset = 0;
+    for(auto it = path.begin(); it != path.end(); it++) {
+      const PhonemeInstance& phon = alphabet.fromInt(*it);
+
+      grid[i].xmin = time_offset;
+      time_offset += phon.duration();
+      grid[i].xmax = time_offset;
+
+      std::stringstream str;
+      str << phon.label << "= " << *it << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch;
+      grid[i].text = str.str();
+      i++;
+    }
+    out << grid;
   }
 };
 

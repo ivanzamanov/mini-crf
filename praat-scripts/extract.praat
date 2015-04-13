@@ -47,12 +47,25 @@ mfccObj = To MFCC... mfccCount mfccWindowLength timeStep 100 100 0.0
 selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames
 
+procedure toPrecision: toPrecision.value
+    #appendInfoLine: "toPrecision arg ", toPrecision.value
+    procresult = round( toPrecision.value / timeStep) * timeStep
+    #appendInfoLine: "toPrecision ", procresult
+endproc
+
 for i to intervalCount
     selectObject: textGridObj
     intervalLabel$ = Get label of interval... 1 i
+
     startPoint = Get start point... 1 i
+    @toPrecision: startPoint
+    startPoint = procresult
+
     endPoint = Get end point... 1 i
-    timePoint = startPoint
+    @toPrecision: endPoint
+    endPoint = procresult
+
+    timePoint = startPoint + (timeStep / 2)
     appendFileLine: outputFile$, "[Entry]"
     appendFileLine: outputFile$, "label=", intervalLabel$
     appendFileLine: outputFile$, "start=", timePoint
@@ -63,7 +76,10 @@ for i to intervalCount
         timePoint = timePoint + timeStep
     endwhile
     selectObject: mfccObj
-    timePoint = startPoint
+    timePoint = startPoint + (timeStep / 2)
+
+    #appendInfoLine: timePoint, " at ", i
+
     appendFileLine: outputFile$, "frames=", pointsCount
     while timePoint < endPoint
         frame = Get frame number from time... timePoint
