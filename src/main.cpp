@@ -1,6 +1,7 @@
 #include<fstream>
 #include<algorithm>
 #include<string>
+#include<sstream>
 #include<ios>
 
 #include"options.hpp"
@@ -8,6 +9,17 @@
 #include"crf/features.hpp"
 #include"crf/training.hpp"
 #include"crf/speech_synthesis.hpp"
+
+void print_usage() {
+    std::cerr << "Usage: <cmd> <options>\n";
+    std::cerr << "--mode [synth|query]\n";
+    std::cerr << "--database <bin_db_file>\n";
+    std::cerr << "--input <input_string>\n";
+    std::cerr << "--textgrid <textgrid_output>\n";
+    std::cerr << "--phonid (query only)\n";
+    std::cerr << "--sentence (query only)\n";
+    std::cerr << "--concat-cost (query only)\n";
+}
 
 CRF crf(state_functions(), transition_functions());
 Corpus corpus;
@@ -28,7 +40,10 @@ int synthesize(Options& opts) {
 }
 
 int parse_int(const std::string& str) {
-  return std::stoi(str);
+  int result;
+  std::stringstream stream(str);
+  stream >> result;
+  return result;
 }
 
 static const char DELIM = ',';
@@ -80,7 +95,7 @@ void build_data(const Options& opts, PhonemeAlphabet* alphabet, Corpus& corpus) 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
   if(argc < MIN_OPTS) {
-    std::cerr << "Usage: <sentence>" << std::endl;
+    print_usage();
     return 1;
   }
 
