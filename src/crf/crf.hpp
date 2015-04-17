@@ -219,6 +219,7 @@ double traverse_automaton(const vector<Input>& x, CRF& crf, const vector<double>
 template<class CRF, class Functions>
 struct FunctionalAutomaton {
   FunctionalAutomaton(const typename CRF::Alphabet &alphabet): alphabet(alphabet) { }
+  FunctionalAutomaton(const CRF& crf): alphabet(crf.label_alphabet), g(crf.g), mu(crf.mu), f(crf.f), lambda(crf.lambda) { }
 
   Functions funcs;
   const typename CRF::Alphabet &alphabet;
@@ -238,6 +239,10 @@ struct FunctionalAutomaton {
 
   int child_index(int pos) {
     return 1 + pos * alphabet_length();
+  }
+
+  double concat_cost(int src, int dest) {
+    return calculate_value<false, true>(src, dest, 0);
   }
 
   template<bool includeState, bool includeTransition>
