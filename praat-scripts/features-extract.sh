@@ -2,7 +2,7 @@
 set -e
 source $(dirname $0)/functions.sh
 
-CORPUS_PATH="/home/ivo/SpeechSynthesis/corpus-small"
+CORPUS_PATH="/cygdrive/c/Users/ivo/Desktop/SpeechSynthesis/DianaPregledani"
 OUTPUT_PATH="/home/ivo/corpus-features"
 
 PRAAT=praat
