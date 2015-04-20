@@ -1,7 +1,6 @@
 #include<fstream>
 #include<algorithm>
 #include<string>
-#include<sstream>
 #include<ios>
 
 #include"options.hpp"
@@ -19,31 +18,43 @@ void print_usage() {
     std::cerr << "--phonid (query only)\n";
     std::cerr << "--sentence (query only)\n";
     std::cerr << "--concat-cost (query only)\n";
+
+    std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
 }
 
 CRF crf(state_functions(), transition_functions());
 Corpus corpus;
 
 int synthesize(Options& opts) {
-  for(unsigned i = 0; i < opts.input.length(); i++) {
+  for(unsigned i = 0; i < opts.input.length(); i++)
     if(opts.input[i] == ' ') opts.input.at(i) = '_';
-  }
-
-  std::vector<Input> phoneme_sequence = crf.label_alphabet.to_sequence(opts.input);
 
   std::vector<int> path;
-  max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
+  pre_process(crf.label_alphabet);
+
+  std::istream* input_stream;
+  if(opts.input == "-")
+    input_stream = &std::cin;
+  else {
+    std::ifstream ifs(opts.input);
+    input_stream = &ifs;
+  }
+
+  std::vector<PhonemeInstance> input = parse_synth_input_csv(*input_stream);
+
+  if(opts.phon_id) {
+    std::vector<std::string> id_strings = split_string(opts.input, ',');
+    path.resize(id_strings.size());
+    std::transform(id_strings.begin(), id_strings.end(), path.begin(), util::parse_int);
+  } else {
+    std::vector<Input> phoneme_sequence = crf.label_alphabet.to_sequence(opts.input);
+    max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
+  }
+
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path);
   sp.print_textgrid(path, opts.text_grid);
   return 0;
-}
-
-int parse_int(const std::string& str) {
-  int result;
-  std::stringstream stream(str);
-  stream >> result;
-  return result;
 }
 
 static const char DELIM = ',';
@@ -65,9 +76,9 @@ int query(const Options& opts) {
   if(opts.phon_id) {
     std::vector<std::string> id_strings = split_string(opts.input, ',');
     ids.resize(id_strings.size());
-    std::transform(id_strings.begin(), id_strings.end(), ids.begin(), parse_int);
+    std::transform(id_strings.begin(), id_strings.end(), ids.begin(), util::parse_int);
   } else if (opts.sentence) {
-    int index = parse_int(opts.input);
+    int index = util::parse_int(opts.input);
     ids = corpus.input(index);
   } else return 1;
   

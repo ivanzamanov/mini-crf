@@ -1,7 +1,10 @@
 #include<iostream>
 #include<fstream>
+#include<sstream>
 #include<cstdlib>
 
+#include"praat/parser.hpp"
+#include"crf/speech_synthesis.hpp"
 #include"crf/crf.hpp"
 
 struct TestObject {
@@ -175,10 +178,27 @@ void testCRF() {
   crf.label_alphabet.iterate_sequences(x, filter);
 }
 
+void testSynthInputCSV() {
+  const std::string csv("id,duration,pitch\np,0.5,251.12");
+  std::stringstream csv_str(csv);
+  vector<PhonemeInstance> phons = parse_synth_input_csv(csv_str);
+
+  assertEquals('p', phons[0].label);
+  assertEquals(0.5, phons[0].duration());
+  assertEquals(251.12, phons[0].first().pitch);
+
+  csv_str.seekp(0); csv_str.seekg(0);
+  print_synth_input_csv(csv_str, phons);
+  assertEquals(csv, csv_str.str());
+}
+
 int main() {
   try {
     testUtils();
     testCRF();
+    testSynthInputCSV();
+
+    std::cout << "All tests passed\n";
   } catch (std::string s) {
     std::cerr << s << std::endl;
   }

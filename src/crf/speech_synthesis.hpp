@@ -32,6 +32,15 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
     std::cerr << std::endl;
     return result;
   }
+
+  std::vector<int> phonemes_of_file(int file_index) {
+    std::vector<int> result;
+    for(unsigned i = 0; i < file_indices.length && (file_indices[i] <= file_index); i++) {
+      if(file_indices[i] == file_index)
+        result.push_back(i);
+    }
+    return result;
+  }
 };
 
 struct SynthPrinter {
@@ -173,6 +182,37 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corp
   alphabet.build_classes();
 
   std::cerr << "Read " << r.bytes << " bytes" << std::endl;
+}
+
+void pre_process(PhonemeAlphabet& alphabet) {
+  // phonemes without pitch - assign that of the nearest neightbor with pitch
+  for(unsigned i = 0; i < alphabet.files.length; i++) {
+    std::vector<int> phonemes = alphabet.phonemes_of_file(i);
+
+    double last_pitch = 0;
+    for(auto it = phonemes.begin(); it != phonemes.end(); it++) {
+      PhonemeInstance& phi = alphabet.fromInt(*it);
+      for(auto frame_it = phi.frames.begin(); frame_it != phi.frames.end(); ++frame_it) {
+        Frame& frame = *frame_it;
+        if(frame.pitch == 0)
+          frame.pitch = last_pitch;
+        else
+          last_pitch = frame.pitch;
+      }
+    }
+
+    last_pitch = 0;
+    for(auto it = phonemes.rbegin(); it != phonemes.rend(); it++) {
+      PhonemeInstance& phi = alphabet.fromInt(*it);
+      for(auto frame_it = phi.frames.rbegin(); frame_it != phi.frames.rend(); ++frame_it) {
+        Frame& frame = *frame_it;
+        if(frame.pitch == 0)
+          frame.pitch = last_pitch;
+        else
+          last_pitch = frame.pitch;
+      }
+    }
+  }
 }
 
 #endif

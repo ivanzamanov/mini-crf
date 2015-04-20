@@ -10,6 +10,8 @@
 
 using std::vector;
 
+const double TRAINING_RATIO = 0.3;
+
 class Corpus {
 public:
   const vector<Label>& label(int i) {
@@ -27,6 +29,22 @@ public:
   void add(vector<Input>& input, vector<Input>& labels) {
     this->inputs.push_back(input);
     this->labels.push_back(labels);
+  };
+
+  Corpus training_part() {
+    Corpus result;
+    unsigned count = size() / TRAINING_RATIO;
+    for(unsigned i = 0; i < count; i++)
+      result.add(inputs[i], labels[i]);
+    return result;
+  };
+
+  Corpus testing_part() {
+    Corpus result;
+    unsigned count = size() / TRAINING_RATIO;
+    for(unsigned i = count; i < size(); i++)
+      result.add(inputs[i], labels[i]);
+    return result;
   };
 
 private:

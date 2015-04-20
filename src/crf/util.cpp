@@ -1,3 +1,5 @@
+#include<sstream>
+
 #include"util.hpp"
 
 namespace util {
@@ -81,6 +83,13 @@ namespace util {
     else sign = (y > 0 ? 1 : -1);
 
     return std::exp(result) * sign;
+  }
+
+  int parse_int(const std::string& str) {
+    int result;
+    std::stringstream stream(str);
+    stream >> result;
+    return result;
   }
 }
 

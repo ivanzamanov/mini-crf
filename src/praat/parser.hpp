@@ -4,6 +4,7 @@
 #include<iostream>
 #include<vector>
 
+#include"../praat/matrix.hpp"
 #include"../crf/util.hpp"
 
 static const int MFCC_N = 12;
@@ -11,6 +12,11 @@ static const int MFCC_N = 12;
 typedef FixedArray<double, MFCC_N> MfccArray;
 
 struct Frame {
+  Frame() { }
+  Frame(double pitch): pitch(pitch) {
+    for(unsigned i = 0; i < mfcc.length(); i++) mfcc[i] = 0;
+  }
+
   MfccArray mfcc;
   double pitch;
 };
@@ -28,6 +34,9 @@ struct PhonemeInstance {
   const Frame& first() const { return frames[0]; }
   const Frame& last() const { return frames[size() - 1]; }
 };
+
+void print_synth_input_csv(std::ostream&, std::vector<PhonemeInstance>&);
+std::vector<PhonemeInstance> parse_synth_input_csv(std::istream&);
 
 BinaryWriter& operator<<(BinaryWriter&, const PhonemeInstance&);
 BinaryReader& operator>>(BinaryReader&, PhonemeInstance&);

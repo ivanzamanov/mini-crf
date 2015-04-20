@@ -24,6 +24,8 @@ namespace util {
   double log_sum2(double logX, double logY);
   double sum_log(double x, double y);
   double sum(double x, double y);
+
+  int parse_int(const std::string& str);
 };
 
 template<class T, int _length>
@@ -44,18 +46,47 @@ struct FixedArray {
 };
 
 template<class T>
+struct ArrayIteratorBase {
+  ArrayIteratorBase(T* data): data(data) { }
+  T* data;
+
+  T& operator*() { return *data; }
+
+  void increment() { data++; }
+  void decrement() { data--; }
+
+  bool operator==(const ArrayIteratorBase<T>& o) const { return data == o.data; }
+  bool operator!=(const ArrayIteratorBase<T>& o) const { return data != o.data; }
+};
+
+template<class T, bool reverse = false>
+struct ArrayIterator : public ArrayIteratorBase<T> {
+  ArrayIterator(T* data): ArrayIteratorBase<T>(data) { }
+
+  void operator++() { if(reverse) ArrayIteratorBase<T>::decrement(); else ArrayIteratorBase<T>::increment(); }
+};
+
+template<class T>
 struct Array {
   unsigned length;
   T* data;
 
-  T& operator[](int n) {
-    return data[n];
-  };
+  T& operator[](int n) { return data[n]; };
+  const T& operator[](int n) const { return data[n]; };
 
-  const T& operator[](int n) const {
-    return data[n];
-  };
+  ArrayIterator<T> begin() { return ArrayIterator<T>(data); }
+  ArrayIterator<T> end() { return ArrayIterator<T>(data + length); }
+
+  ArrayIterator<T, true> rbegin() { return ArrayIterator<T, true>(data + length); }
+  ArrayIterator<T, true> rend() { return ArrayIterator<T, true>(data - 1); }
 };
+
+template<class T>
+void singleton_array(Array<T>& result, T el) {
+  result.length = 1;
+  result.data = new T[1];
+  result.data[0] = el;
+}
 
 bool compare(std::string &, std::string&);
 bool compare(int& i1, int& i2);

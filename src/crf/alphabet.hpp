@@ -32,6 +32,10 @@ struct LabelAlphabet {
     return fromInt(l1).label == fromInt(l2).label;
   }
 
+  LabelObject& fromInt(int i) {
+    return labels[i];
+  }
+
   const LabelObject& fromInt(int i) const {
     return labels[i];
   }

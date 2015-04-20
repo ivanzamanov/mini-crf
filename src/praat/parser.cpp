@@ -1,8 +1,6 @@
 #include<sstream>
 #include<string>
-#include<iostream>
 #include<cstring>
-#include<vector>
 
 #include"parser.hpp"
 
@@ -102,4 +100,69 @@ bool compare(Frame& p1, Frame& p2) {
 
 bool compare(PhonemeInstance& p1, PhonemeInstance& p2) {
   return compare(p1.frames, p2.frames) && p1.start == p2.start && p1.end == p2.end && p1.label == p2.label;
+}
+
+unsigned occurrence_count(char c, const std::string& str) {
+  unsigned result = 0;
+  for(unsigned i = 0; i < str.size(); i++)
+    result += (str[i] == c);
+  return result;
+}
+
+static std::string CSV_HEADER("id,duration,pitch");
+bool check_csv(std::istream& is) {
+  std::string buffer;
+  std::getline(is, buffer);
+
+  if(buffer[buffer.size() - 1] == '\r') // Windows sh**...
+    buffer.pop_back();
+
+  return buffer == CSV_HEADER ? 3 : 0;
+}
+
+std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
+  std::vector<PhonemeInstance> result;
+
+  unsigned cols = check_csv(is);
+  if(!cols) {
+    std::cerr << "Bad CSV input\n";
+    return result;
+  }
+
+  std::string buffer;
+  char id;
+  while(is >> id) {
+    char c;
+    double duration, pitch;
+
+    is >> c >> duration >> c >> pitch;
+    PhonemeInstance p;
+    p.label = id;
+    p.start = 0;
+    p.end = duration;
+    singleton_array(p.frames, Frame(pitch));
+    result.push_back(p);
+  }
+
+  return result;
+}
+
+double mid_pitch(const PhonemeInstance& p) {
+  return p.frames[p.frames.length / 2].pitch;
+}
+
+void print_synth_input_csv_phoneme(std::ostream& os, const PhonemeInstance& p) {
+  double pitch = mid_pitch(p);
+  os << p.label << ',' << p.duration() << ',' << pitch;
+}
+
+void print_synth_input_csv(std::ostream& os, std::vector<PhonemeInstance>& phons) {
+  os << CSV_HEADER << '\n';
+  auto it = phons.begin();
+  print_synth_input_csv_phoneme(os, *it);
+
+  for(; it != phons.end(); it++) {
+    os << '\n';
+    print_synth_input_csv_phoneme(os, *it);
+  }
 }
