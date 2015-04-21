@@ -23,7 +23,7 @@ void print_usage() {
 }
 
 CRF crf(state_functions(), transition_functions());
-Corpus corpus;
+Corpus<int, int> corpus;
 
 int synthesize(Options& opts) {
   for(unsigned i = 0; i < opts.input.length(); i++)
@@ -47,7 +47,7 @@ int synthesize(Options& opts) {
     path.resize(id_strings.size());
     std::transform(id_strings.begin(), id_strings.end(), path.begin(), util::parse_int);
   } else {
-    std::vector<Input> phoneme_sequence = crf.label_alphabet.to_sequence(opts.input);
+    std::vector<CRF::Input> phoneme_sequence = crf.label_alphabet.to_sequence(opts.input);
     max_path(phoneme_sequence, crf, crf.lambda, crf.mu, &path);
   }
 
@@ -98,7 +98,7 @@ int query(const Options& opts) {
   return 0;
 }
 
-void build_data(const Options& opts, PhonemeAlphabet* alphabet, Corpus& corpus) {
+void build_data(const Options& opts, PhonemeAlphabet* alphabet, Corpus<int, int>& corpus) {
   std::ifstream db(opts.db);
   build_data_bin(db, *alphabet, corpus);
 }

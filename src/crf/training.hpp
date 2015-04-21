@@ -15,7 +15,7 @@ struct GradientValues {
 template<class CRF>
 class NaiveGDCompute {
 public:
-  GradientValues calculate(CRF& crf, Corpus& corpus,
+  GradientValues calculate(CRF& crf, typename CRF::TrainingCorpus& corpus,
                            std::vector<double>& lambda, std::vector<double>& mu) {
     GradientValues result(lambda.size(), mu.size());
 
@@ -35,16 +35,16 @@ public:
   };
 
   double computeLambdaGradient(int pos, std::vector<double>& lambda, std::vector<double>& mu,
-                               CRF& crf, Corpus& corpus) {
+                               CRF& crf, typename  CRF::TrainingCorpus& corpus) {
     double result = 0;
 
     for(unsigned c = 0; c < corpus.size(); c++) {
       if( c == 2)
         break;
       (std::cerr << ".").flush();
-      const std::vector<Label>& y = corpus.label(c);
+      const std::vector<typename CRF::Label>& y = corpus.label(c);
 
-      const std::vector<Input>& x = corpus.input(c);
+      const std::vector<typename CRF::Input>& x = corpus.input(c);
       double A = 0;
 
       for(unsigned j = 0; j < y.size(); j++) {
@@ -61,12 +61,12 @@ public:
   };
 
   double computeMuGradient(int pos, std::vector<double>& lambda, std::vector<double>& mu,
-                           CRF& crf, Corpus& corpus) {
+                           CRF& crf, typename CRF::TrainingCorpus& corpus) {
     double result = 0;
 
     for(unsigned c = 0; c < corpus.size(); c++) {
-      const std::vector<Label>& y = corpus.label(c);
-      const std::vector<Input>& x = corpus.input(c);
+      const std::vector<typename CRF::Label>& y = corpus.label(c);
+      const std::vector<typename CRF::Input>& x = corpus.input(c);
       double A = 0;
 
       for(unsigned j = 0; j < y.size(); j++) {
@@ -85,12 +85,12 @@ public:
 };
 
 template<class CRF>
-bool errorObjectiveReached(CRF& crf, Corpus& corpus) {
+bool errorObjectiveReached(CRF& crf, typename CRF::TrainingCorpus& corpus) {
   return false;
 }
 
 template<class CRF>
-void trainGradientDescent(CRF& crf, Corpus& corpus) {
+void trainGradientDescent(CRF& crf, typename CRF::TrainingCorpus& corpus) {
   trainGradientDescent<CRF, NaiveGDCompute>(crf, corpus);
 }
 
@@ -112,13 +112,13 @@ std::vector<double> operator+(std::vector<double>& s1, std::vector<double>& s2) 
 }
 
 template<class CRF>
-double likelihood(std::vector<double> lambdas, std::vector<double> mu, Corpus& corpus, CRF& crf) {
+double likelihood(std::vector<double> lambdas, std::vector<double> mu, typename CRF::TrainingCorpus& corpus, CRF& crf) {
   double likelihood = 0;
   for(unsigned c = 0; c < corpus.size(); c++) {
-    const std::vector<Label>& y = corpus.label(c);
-    const std::vector<Input>& x = corpus.input(c);
+    const std::vector<typename CRF::Label>& y = corpus.label(c);
+    const std::vector<typename CRF::Input>& x = corpus.input(c);
 
-    double proba = crf_probability_of(y, x, crf, lambdas, mu);
+    double proba = crf.probability_of(y, x, crf, lambdas, mu);
     likelihood += proba;
   }
   std::cerr << "Likelihood " << likelihood << std::endl;
@@ -126,7 +126,7 @@ double likelihood(std::vector<double> lambdas, std::vector<double> mu, Corpus& c
 }
 
 template<class CRF>
-double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
+double calculateStepSize(GradientValues& direction, CRF& crf, typename CRF::TrainingCorpus& corpus) {
   double alpha = 0.0001;
   double beta = 0.5;
   double t = 1;
@@ -135,9 +135,8 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
   std::vector<double> gradientVector = concat(direction.lambda_values, direction.mu_values);
   double corpusLikelihood = likelihood(lambdas, mu, corpus, crf);
   double gradTimesDir = 0;
-  for(unsigned i = 0; i < gradientVector.size(); i++) {
+  for(unsigned i = 0; i < gradientVector.size(); i++)
     gradTimesDir += -gradientVector[i] * gradientVector[i];
-  }
 
   double left = likelihood(lambdas + direction.lambda_values, mu + direction.mu_values, corpus, crf);
   double right = corpusLikelihood + alpha * t * gradTimesDir;
@@ -151,7 +150,7 @@ double calculateStepSize(GradientValues& direction, CRF& crf, Corpus& corpus) {
 }
 
 template<class CRF, template <typename> class GDCompute>
-void trainGradientDescent(CRF& crf, Corpus& corpus) {
+void trainGradientDescent(CRF& crf, typename CRF::TrainingCorpus& corpus) {
   std::vector<double> lambda(crf.lambda.size());
   for(unsigned i = 0; i < lambda.size(); i++)
     lambda[i] = 1;

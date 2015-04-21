@@ -17,17 +17,18 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
     return files[file_indices[phonId]];
   }
 
-  Input first_by_label(char label) {
+  int first_by_label(char label) {
     LabelClass& clazz = classes[label];
     return clazz.front();
   }
 
-  std::vector<Input> to_sequence(const std::string str) {
-    std::vector<Input> result(str.length());
+  std::vector<Label> to_sequence(const std::string str) {
+    std::vector<Label> result(str.length());
     std::cerr << "Input phoneme ids: ";
     for(unsigned i = 0; i < str.length(); i++) {
-      result[i] = first_by_label(str[i]);
-      std::cerr << result[i] << " ";
+      int first = first_by_label(str[i]);
+      result[i] = fromInt(first);
+      std::cerr << first << " ";
     }
     std::cerr << std::endl;
     return result;
@@ -97,7 +98,7 @@ struct SynthPrinter {
   }
 };
 
-void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus* corpus) {
+void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<int, int>* corpus) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
@@ -112,8 +113,8 @@ void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus*
     list_input >> buffer;
     files_map.push_back(buffer);
 
-    std::vector<Input> inputs;
-    std::vector<Label> labels;
+    std::vector<int> inputs;
+    std::vector<int> labels;
 
     for(int i = 0; i < size; i++) {
       int phoneme_index = phonemes.size();
@@ -135,7 +136,7 @@ void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus*
   std::cerr << "End building alphabet" << '\n';
 }
 
-void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corpus) {
+void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<int, int>& corpus) {
   BinaryReader r(&input);
   unsigned alphabet_size;
   r >> alphabet_size;
@@ -167,12 +168,12 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corp
   r >> corpus_size;
   for(unsigned i = 0; i < corpus_size; i++) {
     r >> length;
-    vector<Input> input(length);
+    vector<int> input(length);
     for(unsigned j = 0; j < length; j++)
       r >> input[j];
 
     r >> length;
-    vector<Label> labels(length);
+    vector<int> labels(length);
     for(unsigned j = 0; j < length; j++)
       r >> labels[j];
 

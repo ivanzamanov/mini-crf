@@ -8,6 +8,8 @@
 #include"crf/crf.hpp"
 
 struct TestObject {
+  TestObject() { };
+  TestObject(int l): label(l) { }
   int label = 0;
 };
 
@@ -22,8 +24,8 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
     build_classes();
   }
 
-  bool allowedState(int l1, int l2) const {
-    return l1 % CLASSES == l2 % CLASSES;
+  bool allowedState(const Label& l1, const Label& l2) const {
+    return l1.label % CLASSES == l2.label % CLASSES;
   }
 
   int size() const {
@@ -31,7 +33,7 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
   }
 };
 
-typedef CRandomField<TestAlphabet> TestCRF;
+typedef CRandomField<TestAlphabet, int> TestCRF;
 
 class TestTransFunc : public TestCRF::TransitionFunction {
 public:
@@ -41,15 +43,15 @@ public:
   
   TestTransFunc(vector<int> best_path): best_path(best_path) { }
 
-  virtual double operator()(const vector<Label>& labels, int pos, const vector<Input>&) const {
-    if(best_path[pos - 1] == labels[pos - 1] && best_path[pos] == labels[pos])
+  virtual double operator()(const vector<TestCRF::Label>& labels, int pos, const vector<TestCRF::Input>&) const {
+    if(best_path[pos - 1] == labels[pos - 1].label && best_path[pos] == labels[pos].label)
       return -1;
     else
       return rand();
   }
 
-  virtual double operator()(const Label l1, const Label l2, const int pos, const vector<Input>&) const {
-    if(best_path[pos - 1] == l1 && best_path[pos] == l2)
+  virtual double operator()(const TestCRF::Label& l1, const TestCRF::Label l2, const int pos, const vector<TestCRF::Input>&) const {
+    if(best_path[pos - 1] == l1.label && best_path[pos] == l2.label)
       return -1;
     else
       return rand();
@@ -63,15 +65,15 @@ public:
   TestStateFunc(): best_path() { }
   TestStateFunc(vector<int> best_path): best_path(best_path) { }
 
-  virtual double operator()(const vector<Label>& labels, int pos, const vector<Input>&) const {
-    if(best_path[pos] == labels[pos])
+  virtual double operator()(const vector<TestCRF::Label>& labels, int pos, const vector<TestCRF::Input>&) const {
+    if(best_path[pos] == labels[pos].label)
       return -1;
     else
       return rand();
   }
 
-  virtual double operator()(const Label label, int pos, const vector<Input>&) const {
-    if(best_path[pos] == label)
+  virtual double operator()(const TestCRF::Label label, int pos, const vector<TestCRF::Input>&) const {
+    if(best_path[pos] == label.label)
       return -1;
     else
       return rand();
@@ -120,16 +122,23 @@ void testUtils() {
   */
 }
 
-void test_path(TestCRF* crf, const vector<Label>& labels) {
-  ((TestTransFunc*) crf->f[0])->best_path = labels;
-  ((TestStateFunc*) crf->g[0])->best_path = labels;
+vector<int> to_ints(const vector<TestCRF::Label>& labels) {
+  vector<int> result;
+  for(auto it = labels.begin(); it != labels.end(); it++)
+    result.push_back( (*it).label);
+  return result;
+}
+
+void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
+  ((TestTransFunc*) crf->f[0])->best_path = to_ints(labels);
+  ((TestStateFunc*) crf->g[0])->best_path = to_ints(labels);
 
   FunctionalAutomaton<TestCRF> a(crf->label_alphabet);
   a.lambda = crf->lambda;
   a.mu = crf->mu;
   a.f = crf->f;
   a.g = crf->g;
-  a.x = labels;
+  a.x = to_ints(labels);
 
   vector<int> best_path;
 
@@ -147,15 +156,15 @@ void test_path(TestCRF* crf, const vector<Label>& labels) {
 
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {
-    assertEquals(best_path[i], labels[i]);
-    assertEquals(best_path[i] % CLASSES, crf->label_alphabet.fromInt(labels[i]).label % CLASSES);
+    assertEquals(best_path[i], labels[i].label);
+    assertEquals(best_path[i] % CLASSES, labels[i].label % CLASSES);
   }
 }
 
 struct TestFilter {
   TestCRF *crf;
 
-  void operator()(const vector<Label> &labels) {
+  void operator()(const vector<TestCRF::Label>& labels) {
     test_path(crf, labels);
   }
 };
@@ -169,7 +178,7 @@ void testCRF() {
   std::vector<double> mu;
   mu.push_back(1.0);
 
-  vector<Input> x;
+  vector<TestObject> x;
   for(int i = 0; i < crf.label_alphabet.size(); i++)
     x.push_back(i);
 

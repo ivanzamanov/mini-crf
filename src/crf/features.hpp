@@ -5,21 +5,21 @@
 #include"crf.hpp"
 #include"speech_synthesis.hpp"
 
-typedef CRandomField<PhonemeAlphabet> CRF;
+typedef CRandomField<PhonemeAlphabet, PhonemeInstance> CRF;
 
 template<class Evaluate>
 class StateFunction : public CRF::StateFunction {
 public:
-  double operator()(const std::vector<Label>& labels, int pos, const std::vector<Input>& inputs) const {
-    const PhonemeInstance& prev = alphabet->fromInt(labels[pos]);
-    const PhonemeInstance& next = alphabet->fromInt(inputs[pos]);
+  double operator()(const std::vector<CRF::Label>& labels, int pos, const std::vector<CRF::Input>& inputs) const {
+    const PhonemeInstance& prev = labels[pos];
+    const PhonemeInstance& next = inputs[pos];
     Evaluate eval;
     return eval(prev, next);
   }
 
-  double operator()(const Label l1, int pos, const std::vector<Input>& inputs) const {
-    const PhonemeInstance& prev = alphabet->fromInt(l1);
-    const PhonemeInstance& next = alphabet->fromInt(inputs[pos]);
+  double operator()(const CRF::Label l1, int pos, const std::vector<CRF::Input>& inputs) const {
+    const PhonemeInstance& prev = l1;
+    const PhonemeInstance& next = inputs[pos];
     Evaluate eval;
     return eval(prev, next);
   }
@@ -28,16 +28,16 @@ public:
 template<class Evaluate>
 class TransitionFunction : public CRF::TransitionFunction {
 public:
-  double operator()(const std::vector<Label>& labels, int pos, const std::vector<Input>&) const {
-    const PhonemeInstance& prev = alphabet->fromInt(labels[pos] - 1);
-    const PhonemeInstance& next = alphabet->fromInt(labels[pos]);
+  double operator()(const std::vector<CRF::Label>& labels, int pos, const std::vector<CRF::Input>&) const {
+    const PhonemeInstance& prev = labels[pos - 1];
+    const PhonemeInstance& next = labels[pos - 1];
     Evaluate eval;
     return eval(prev, next);
   }
 
-  double operator()(const Label l1, const Label l2, int, const std::vector<Input>&) const {
-    const PhonemeInstance& prev = alphabet->fromInt(l1);
-    const PhonemeInstance& next = alphabet->fromInt(l2);
+  double operator()(const CRF::Label& l1, const CRF::Label& l2, int, const std::vector<CRF::Input>&) const {
+    const PhonemeInstance& prev = l1;
+    const PhonemeInstance& next = l2;
     Evaluate eval;
     return eval(prev, next);
   }

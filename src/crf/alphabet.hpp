@@ -3,13 +3,11 @@
 
 #include"util.hpp"
 
-typedef int Label;
-typedef int Input;
-
 template<class LabelObject>
 struct LabelAlphabet {
   typedef std::vector<int> LabelClass;
   typedef std::vector<LabelClass::const_iterator> Iterators;
+  typedef LabelObject Label;
 
   Array<LabelClass> classes;
   Array<LabelObject> labels;
@@ -19,17 +17,14 @@ struct LabelAlphabet {
     classes.data = new LabelAlphabet::LabelClass[length];
     classes.length = length;
 
-    for(unsigned i = 0; i < labels.length; i++) {
+    for(unsigned i = 0; i < labels.length; i++)
       classes[labels[i].label].push_back(i);
-    }
   }
 
-  unsigned size() const {
-    return labels.length;
-  }
+  unsigned size() const { return labels.length; }
 
-  bool allowedState(int l1, int l2) const {
-    return fromInt(l1).label == fromInt(l2).label;
+  bool allowedState(const LabelObject& l1, const LabelObject& l2) const {
+    return l1.label == l2.label;
   }
 
   LabelObject& fromInt(int i) {
@@ -41,7 +36,7 @@ struct LabelAlphabet {
   }
 
   template<class Filter>
-  void iterate_sequences(const std::vector<Input>& input, Filter& filter) const {
+  void iterate_sequences(const std::vector<Label>& input, Filter& filter) const {
     std::vector<LabelClass::const_iterator> iters(input.size());
     std::vector<int> class_indices(input.size());
 
