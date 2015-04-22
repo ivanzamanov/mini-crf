@@ -67,6 +67,7 @@ PhonemeInstance* parse_file(std::istream& stream, int& size) {
 }
 
 BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
+  str << ph.id;
   str << ph.frames.length;
   for(unsigned i = 0; i < ph.frames.length; i++)
     str << ph.frames[i];
@@ -79,6 +80,7 @@ BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
 
 BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
   unsigned length;
+  str >> ph.id;
   str >> length;
   ph.frames.data = new Frame[length];
   ph.frames.length = length;
@@ -107,6 +109,22 @@ unsigned occurrence_count(char c, const std::string& str) {
   for(unsigned i = 0; i < str.size(); i++)
     result += (str[i] == c);
   return result;
+}
+
+bool operator==(const Frame& f1, const Frame& f2) {
+  bool same = f1.pitch == f2.pitch;
+  
+  for(unsigned i = 0; i < f1.mfcc.length() && same; i++)
+    same &= f1.mfcc[i] == f2.mfcc[i];
+  return same;
+}
+
+bool operator==(const PhonemeInstance& p1, const PhonemeInstance& p2) {
+  bool same = p1.start == p2.start && p1.end == p2.end && p1.label == p2.label && p1.id == p2.id;
+  same &= p1.frames.length == p2.frames.length;
+  for(unsigned i = 0; i < p1.frames.length && same; i++)
+    same &= p1.at(i) == p2.at(i);
+  return same;
 }
 
 static std::string CSV_HEADER("id,duration,pitch");

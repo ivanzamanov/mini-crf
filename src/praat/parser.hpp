@@ -26,6 +26,7 @@ struct PhonemeInstance {
   double start;
   double end;
   char label;
+  unsigned id;
 
   unsigned size() const { return frames.length; }
 
@@ -41,9 +42,10 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream&);
 BinaryWriter& operator<<(BinaryWriter&, const PhonemeInstance&);
 BinaryReader& operator>>(BinaryReader&, PhonemeInstance&);
 
-PhonemeInstance* parse_file(std::istream& stream, int& size);
+PhonemeInstance* parse_file(std::istream&, int&);
 
-bool compare(Frame& p1, Frame& p2);
-bool compare(PhonemeInstance& p1, PhonemeInstance& p2);
+bool compare(Frame&, Frame&);
+bool compare(PhonemeInstance&, PhonemeInstance&);
 
+bool operator==(const PhonemeInstance&, const PhonemeInstance&);
 #endif

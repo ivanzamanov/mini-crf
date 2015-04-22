@@ -4,7 +4,7 @@ static void print_usage(const char* main) {
   std::cout << "Usage: " << main << ": [<input_file>|-] <output_file>\n"; 
 }
 
-Corpus corpus;
+Corpus<PhonemeInstance, PhonemeInstance> corpus;
 PhonemeAlphabet alphabet;
 
 void transfer_data(std::istream& input, std::ofstream *output) {
@@ -31,31 +31,31 @@ void transfer_data(std::istream& input, std::ofstream *output) {
   len = corpus.size();
   w << len;
   for(unsigned i = 0; i < corpus.size(); i++) {
-    vector<Input> input = corpus.input(i);
-    vector<Label> labels = corpus.label(i);
+    vector<PhonemeInstance> input = corpus.input(i);
+    vector<PhonemeInstance> labels = corpus.label(i);
     len = input.size();
     w << len;
     for(unsigned j = 0; j < input.size(); j++)
-      w << input[j];
+      w << input[j].id;
 
     len = labels.size();
     w << len;
     for(unsigned j = 0; j < labels.size(); j++)
-      w << labels[j];
+      w << labels[j].id;
   }
 
   std::cout << "Written " << w.bytes << " bytes" << std::endl;
 }
 
-void compare_corpus(Corpus& c1, Corpus& c2) {
+void compare_corpus(Corpus<PhonemeInstance, PhonemeInstance>& c1, Corpus<PhonemeInstance, PhonemeInstance>& c2) {
   std::cout << "Comparing corpuses\n";
   bool same = c1.size() == c2.size();
   for(unsigned i = 0; i < c1.size(); i++) {
-    vector<Input> i1 = c1.input(i);
-    vector<Input> i2 = c2.input(i);
+    vector<PhonemeInstance> i1 = c1.input(i);
+    vector<PhonemeInstance> i2 = c2.input(i);
 
-    vector<Label> l1 = c1.label(i);
-    vector<Label> l2 = c2.label(i);
+    vector<PhonemeInstance> l1 = c1.label(i);
+    vector<PhonemeInstance> l2 = c2.label(i);
     same &= compare(i1, i2);
     same &= compare(l1, l2);
   }
@@ -72,7 +72,7 @@ void compare_alphabet(PhonemeAlphabet& a1, PhonemeAlphabet& a2) {
 }
 
 void validate_data(std::ifstream& input) {
-  Corpus n_corpus;
+  Corpus<PhonemeInstance, PhonemeInstance> n_corpus;
   PhonemeAlphabet n_alphabet;
 
   std::cout << "Validating data" << std::endl;

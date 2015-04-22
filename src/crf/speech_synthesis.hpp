@@ -98,7 +98,7 @@ struct SynthPrinter {
   }
 };
 
-void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<int, int>* corpus) {
+void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<PhonemeInstance, PhonemeInstance>* corpus) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
@@ -113,16 +113,18 @@ void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<
     list_input >> buffer;
     files_map.push_back(buffer);
 
-    std::vector<int> inputs;
-    std::vector<int> labels;
+    std::vector<PhonemeInstance> inputs;
+    std::vector<PhonemeInstance> labels;
 
     for(int i = 0; i < size; i++) {
       int phoneme_index = phonemes.size();
+      phonemes_from_file[i].id = phoneme_index;
+
       phonemes.push_back(phonemes_from_file[i]);
       file_indices.push_back(files_map.size() - 1);
 
-      inputs.push_back(phoneme_index);
-      labels.push_back(phoneme_index);
+      inputs.push_back(phonemes[phoneme_index]);
+      labels.push_back(phonemes[phoneme_index]);
     }
 
     corpus->add(inputs, labels);
@@ -136,7 +138,7 @@ void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<
   std::cerr << "End building alphabet" << '\n';
 }
 
-void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<int, int>& corpus) {
+void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<PhonemeInstance, PhonemeInstance>& corpus) {
   BinaryReader r(&input);
   unsigned alphabet_size;
   r >> alphabet_size;
@@ -168,14 +170,19 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<int, 
   r >> corpus_size;
   for(unsigned i = 0; i < corpus_size; i++) {
     r >> length;
-    vector<int> input(length);
-    for(unsigned j = 0; j < length; j++)
-      r >> input[j];
+    unsigned phonId;
+    vector<PhonemeInstance> input(length);
+    for(unsigned j = 0; j < length; j++) {
+      r >> phonId;
+      input[j] = alphabet.fromInt(phonId);
+    }
 
     r >> length;
-    vector<int> labels(length);
-    for(unsigned j = 0; j < length; j++)
-      r >> labels[j];
+    vector<PhonemeInstance> labels(length);
+    for(unsigned j = 0; j < length; j++) {
+      r >> phonId;
+      labels[j] = alphabet.fromInt(phonId);
+    }
 
     corpus.add(input, labels);
   }

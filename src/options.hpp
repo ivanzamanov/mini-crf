@@ -19,9 +19,10 @@ struct Options {
   Options(unsigned l, const char** args): length(l), args(args) { }
 
   // Common
-  std::string db;
+  std::string synth_db;
   std::string mode;
   std::string input;
+  std::string test_db;
 
   // Synth
   std::string text_grid;
@@ -37,18 +38,13 @@ struct Options {
   bool has_opt(std::string opt) {
     for(unsigned i = 0; i < length; i++) {
       std::string test(args[i]);
-      if(opt == test) {
+      if(opt == test)
         return true;
-      }
     }
     return false;
   }
 
-  std::string get_opt(std::string opt) {
-    return get_opt(opt, 0);
-  }
-
-  std::string get_opt(std::string opt, bool* found) {
+  std::string get_opt(std::string opt, bool* found=0) {
     if(found) *found = false;
     for(unsigned i = 0; i < length - 1; i++) {
       std::string test(args[i]);
@@ -81,7 +77,8 @@ Options parse_options(unsigned argc, const char** argv) {
   Options opts(argc, argv);
 
   // common
-  opts.db = opts.get_opt("--database");
+  opts.synth_db = opts.get_opt("--synth-database");
+  opts.test_db = opts.get_opt("--input-database");
   opts.mode = opts.get_opt("--mode");
   opts.input = opts.get_opt("--input");
 

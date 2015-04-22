@@ -23,7 +23,7 @@ void print_usage() {
 }
 
 CRF crf(state_functions(), transition_functions());
-Corpus<int, int> corpus;
+Corpus<PhonemeInstance, PhonemeInstance> corpus;
 
 int synthesize(Options& opts) {
   for(unsigned i = 0; i < opts.input.length(); i++)
@@ -72,35 +72,36 @@ void output_csv_columns(std::ostream& out) {
 }
 
 int query(const Options& opts) {
-  std::vector<int> ids;
+  std::vector<PhonemeInstance> ids;
+  std::vector<int> int_ids;
   if(opts.phon_id) {
     std::vector<std::string> id_strings = split_string(opts.input, ',');
     ids.resize(id_strings.size());
-    std::transform(id_strings.begin(), id_strings.end(), ids.begin(), util::parse_int);
-  } else if (opts.sentence) {
+    std::transform(id_strings.begin(), id_strings.end(), int_ids.begin(), util::parse_int);
+  } else {
     int index = util::parse_int(opts.input);
     ids = corpus.input(index);
-  } else return 1;
+  }
   
   FunctionalAutomaton<CRF> a(crf);
   std::ostream& out = std::cout;
   out.precision(10);
   output_csv_columns(out);
   for(unsigned i = 0; i < ids.size(); i++) {
-    const PhonemeInstance& p = crf.label_alphabet.fromInt(ids[i]);
-    out << p.label << "<" << DELIM << ids[i] << DELIM;
+    const PhonemeInstance& p = ids[i];
+    out << p.label << "<" << DELIM << ids[i].id << DELIM;
     output_frame(out, p.first());
     out << '\n';
-    out << p.label << ">" << DELIM << ids[i] << DELIM;
+    out << p.label << ">" << DELIM << ids[i].id << DELIM;
     output_frame(out, p.last());
     out << '\n';
   }
   return 0;
 }
 
-void build_data(const Options& opts, PhonemeAlphabet* alphabet, Corpus<int, int>& corpus) {
-  std::ifstream db(opts.db);
-  build_data_bin(db, *alphabet, corpus);
+void build_data(const Options& opts) {
+  std::ifstream db(opts.synth_db);
+  build_data_bin(db, crf.label_alphabet, corpus);
 }
 
 int main(int argc, const char** argv) {
@@ -111,7 +112,7 @@ int main(int argc, const char** argv) {
   }
 
   Options opts = parse_options(argc, argv);
-  build_data(opts, &crf.label_alphabet, corpus);
+  build_data(opts);
   switch(get_mode(opts.mode)) {
   case Mode::SYNTH:
     return synthesize(opts);

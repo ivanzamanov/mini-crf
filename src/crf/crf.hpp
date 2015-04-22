@@ -159,12 +159,11 @@ struct FunctionalAutomaton {
   FunctionalAutomaton(const CRF& crf): alphabet(crf.label_alphabet), g(crf.g), mu(crf.mu), f(crf.f), lambda(crf.lambda) { }
 
   struct Transition {
-    Transition(const typename CRF::Input* child, int childId, double value):
-      value(value), child(child), childId(childId) { }
+    Transition(int child, double value):
+      value(value), child(child) { }
 
     double value;
-    typename CRF::Input const* child;
-    int childId;
+    int child;
   };
 
   struct MinPathFindFunctions {
@@ -243,7 +242,7 @@ struct FunctionalAutomaton {
   template<bool includeState, bool includeTransition>
   void populate_transitions(vector<Transition>* children, const typename CRF::Label& src, int pos) {
     for(auto it = children->begin(); it != children->end(); it++) {
-      double transition = calculate_value<includeState, includeTransition>(src, *(*it).child, pos);
+      double transition = calculate_value<includeState, includeTransition>(src, alphabet.fromInt((*it).child), pos);
       (*it).value = funcs.concat((*it).value, transition);
     }
   }
@@ -272,7 +271,7 @@ struct FunctionalAutomaton {
     // value of the last "column" of states
     for(int dest = alphabet_length() - 1; dest >= 0; dest--) {
       if(allowedState(alphabet.fromInt(dest), x[pos]))
-        children->push_back(Transition(&(x[pos]), dest, funcs.empty()));
+        children->push_back(Transition(dest, funcs.empty()));
     }
 
     // backwards, for every zero-based position in
@@ -289,12 +288,12 @@ struct FunctionalAutomaton {
           double value;
           aggregate_values(&value, &temp_children);
 
-          next_children->push_back(Transition(&x[pos], srcId, value));
+          next_children->push_back(Transition(srcId, value));
         }
 
         if(max_path) {
           auto max = funcs.pick_best(temp_children);
-          paths[srcId].push_back((*max).childId);
+          paths[srcId].push_back((*max).child);
         }
       }
 
@@ -308,9 +307,9 @@ struct FunctionalAutomaton {
 
     if(max_path) {
       auto max = funcs.pick_best(*children);
-      max_path->push_back((*max).childId);
+      max_path->push_back((*max).child);
 
-      int state = (*max).childId;
+      int state = (*max).child;
       for(int i = x.size() - 2; i >= 0; i--) {
         state = paths[state][i];
         max_path->push_back(state);
