@@ -41,7 +41,7 @@ struct LabelAlphabet {
     std::vector<int> class_indices(input.size());
 
     for(unsigned i = 0; i < input.size(); i++) {
-      int index = labels[input[i]].label;
+      int index = labels[input[i].label].label;
       iters[i] = classes[index].begin();
       class_indices[i] = index;
     }

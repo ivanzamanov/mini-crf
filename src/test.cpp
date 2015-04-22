@@ -11,6 +11,7 @@ struct TestObject {
   TestObject() { };
   TestObject(int l): label(l) { }
   int label = 0;
+  int id = 0;
 };
 
 static const int CLASSES = 3;
@@ -18,8 +19,10 @@ static const int CLASSES = 3;
 struct TestAlphabet : LabelAlphabet<TestObject> {
   TestAlphabet() {
     labels.data = new TestObject[size()];
-    for(int i = 0; i < size(); i++)
+    for(int i = 0; i < size(); i++) {
       labels[i].label = i % CLASSES;
+      labels[i].id = i;
+    }
     labels.length = size();
     build_classes();
   }
@@ -37,47 +40,27 @@ typedef CRandomField<TestAlphabet, int> TestCRF;
 
 class TestTransFunc : public TestCRF::TransitionFunction {
 public:
-  vector<int> best_path;
+  TestTransFunc() { }
 
-  TestTransFunc(): best_path() { }
-  
-  TestTransFunc(vector<int> best_path): best_path(best_path) { }
-
-  virtual double operator()(const vector<TestCRF::Label>& labels, int pos, const vector<TestCRF::Input>&) const {
-    if(best_path[pos - 1] == labels[pos - 1].label && best_path[pos] == labels[pos].label)
+  virtual double operator()(const TestCRF::Label& l1, const TestCRF::Label& l2, int pos, const vector<TestCRF::Input>& input) const {
+    if(input[pos - 1] == l1.id && input[pos] == l2.id)
       return -1;
     else
       return rand();
   }
-
-  virtual double operator()(const TestCRF::Label& l1, const TestCRF::Label l2, const int pos, const vector<TestCRF::Input>&) const {
-    if(best_path[pos - 1] == l1.label && best_path[pos] == l2.label)
-      return -1;
-    else
-      return rand();
-  };
 };
 
 class TestStateFunc : public TestCRF::StateFunction {
 public:
-  vector<int> best_path;
-  
-  TestStateFunc(): best_path() { }
-  TestStateFunc(vector<int> best_path): best_path(best_path) { }
 
-  virtual double operator()(const vector<TestCRF::Label>& labels, int pos, const vector<TestCRF::Input>&) const {
-    if(best_path[pos] == labels[pos].label)
+  TestStateFunc() { }
+
+  virtual double operator()(const TestCRF::Label& label, int pos, const vector<TestCRF::Input>& input) const {
+    if(input[pos] == label.id)
       return -1;
     else
       return rand();
   }
-
-  virtual double operator()(const TestCRF::Label label, int pos, const vector<TestCRF::Input>&) const {
-    if(best_path[pos] == label.label)
-      return -1;
-    else
-      return rand();
-  };
 };
 
 vector<TestCRF::StateFunction*> state_functions() {
@@ -130,9 +113,6 @@ vector<int> to_ints(const vector<TestCRF::Label>& labels) {
 }
 
 void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
-  ((TestTransFunc*) crf->f[0])->best_path = to_ints(labels);
-  ((TestStateFunc*) crf->g[0])->best_path = to_ints(labels);
-
   FunctionalAutomaton<TestCRF> a(crf->label_alphabet);
   a.lambda = crf->lambda;
   a.mu = crf->mu;
@@ -142,17 +122,17 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
 
   vector<int> best_path;
 
-  /*std::cerr << "Input path: ";
+  std::cerr << "Input path: ";
   for(unsigned i = 0; i < labels.size(); i++)
-    std::cerr << labels[i] << " ";
-  std::cerr << std::endl;*/
+    std::cerr << labels[i].label << " ";
+  std::cerr << std::endl;
 
   a.traverse(&best_path);
 
-  /*std::cerr << "Output path: ";
+  std::cerr << "Output path: ";
   for(unsigned i = 0; i < best_path.size(); i++)
     std::cerr << best_path[i] << " ";
-  std::cerr << std::endl;*/
+  std::cerr << std::endl;
 
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {
@@ -210,5 +190,6 @@ int main() {
     std::cout << "All tests passed\n";
   } catch (std::string s) {
     std::cerr << s << std::endl;
+    return 1;
   }
 }

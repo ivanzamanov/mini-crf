@@ -69,10 +69,6 @@ public:
 
   class StateFunction : public BaseFunction {
   public:
-    virtual double operator()(const vector<Label>&, int, const vector<Input>&) const {
-      return 0;
-    }
-
     virtual double operator()(const Label&, int, const vector<Input>&) const {
       return 0;
     };
@@ -80,9 +76,6 @@ public:
 
   class TransitionFunction : public BaseFunction {
   public:
-    virtual double operator()(const vector<Label>&, int, const vector<Input>&) const {
-      return 0;
-    }
     virtual double operator()(const Label&, const Label&, const int, const vector<Input>&) const {
       return 0;
     };
@@ -227,7 +220,7 @@ struct FunctionalAutomaton {
   }
 
   template<bool includeState, bool includeTransition>
-  double calculate_value(const typename CRF::Label& src, const typename CRF::Input& dest, int pos) {
+  double calculate_value(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
     double result = 0;
     if(includeTransition) {
       for (unsigned i = 0; i < lambda.size(); i++) {
@@ -296,7 +289,7 @@ struct FunctionalAutomaton {
           double value;
           aggregate_values(&value, &temp_children);
 
-          next_children->push_back(Transition(x[pos], srcId, value));
+          next_children->push_back(Transition(&x[pos], srcId, value));
         }
 
         if(max_path) {
