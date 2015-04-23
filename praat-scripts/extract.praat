@@ -1,13 +1,12 @@
 form Feature Extraction
      comment I/O file paths
-     sentence soundPath /home/ivo/SpeechSynthesis/corpus/Diana_A.1.1.Un2/Diana_A.1.1.Un2_001.wav
-     sentence textGridPath /home/ivo/SpeechSynthesis/corpus/Diana_A.1.1.Un2/Diana_A_1_1_Un2_001.TextGrid
-     sentence outputFile output.txt
+     sentence soundPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A.1.2.Un1_001.wav
+     sentence textGridPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A_1_2_Un1_001.TextGrid
+     sentence outputFile /home/ivo/praat-output.txt
      comment Generic
      real timeStep 0.005
      comment MFCC extraction parameters
      natural mfccCount 12
-     real mfccWindowLength 0.015
      comment Pitch extraction parameters
 endform
 
@@ -17,13 +16,11 @@ appendInfoLine: "TextGrid file: ", textGridPath$
 appendInfoLine: "Output file: ", outputFile$
 appendInfoLine: "Time step: ", timeStep
 appendInfoLine: "MFCC count: ", mfccCount
-appendInfoLine: "MFCC window length: ", mfccWindowLength
 appendInfoLine: ""
 
 deleteFile: outputFile$
 appendFileLine: outputFile$, "[Config]"
 appendFileLine: outputFile$, "timeStep=", timeStep
-appendFileLine: outputFile$, "mfccWindow=", mfccWindowLength
 appendFileLine: outputFile$, "mfcc=", mfccCount
 
 textGridObj = Read from file... 'textGridPath$'
@@ -43,63 +40,61 @@ Rename... Pitch
 # generate MFCC
 # To MFCC... : <coef count> <window length> <time step>
 selectObject: soundObj
-mfccObj = To MFCC... mfccCount mfccWindowLength timeStep 100 100 0.0
+mfccObj = To MFCC... mfccCount (4*timeStep) timeStep 100 100 0.0
 selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames
 
-procedure toPrecision: toPrecision.value
-    #appendInfoLine: "toPrecision arg ", toPrecision.value
-    procresult = round( toPrecision.value / timeStep) * timeStep
-    #appendInfoLine: "toPrecision ", procresult
+procedure getFrameBoundaries
+    selectObject: pitch
+    startPoint = startPoint
+    startFrame = Get frame number from time... startPoint
+    if startFrame < 1
+        startFrame = 1
+    endif
+
+    startFrame = floor(startFrame)
+    if startFrame == lastFrame
+        startFrame = startFrame + 1
+    endif
+    #appendInfoLine: "S,", startFrame, ",", startPoint
+
+    endPoint = endPoint
+    endFrame = Get frame number from time... endPoint
+    if endFrame > maxMFCCFrameCount
+        endFrame = maxMFCCFrameCount
+    endif
+
+    startFrame = floor(startFrame)
+    endFrame = round(endFrame)
+    #appendInfoLine: "E,", endFrame, ",", endPoint
+    lastFrame = endFrame
 endproc
 
+lastFrame = -1
 for i to intervalCount
     selectObject: textGridObj
     intervalLabel$ = Get label of interval... 1 i
 
-    startPoint = Get start point... 1 i
-    @toPrecision: startPoint
-    startPoint = procresult
-
-    endPoint = Get end point... 1 i
-    @toPrecision: endPoint
-    endPoint = procresult
-
-    timePoint = startPoint + (timeStep / 2)
     appendFileLine: outputFile$, "[Entry]"
     appendFileLine: outputFile$, "label=", intervalLabel$
-    appendFileLine: outputFile$, "start=", timePoint
+
+    startPoint = Get start point... 1 i
+    endPoint = Get end point... 1 i
+    @getFrameBoundaries
+
+    appendFileLine: outputFile$, "start=", startPoint
     appendFileLine: outputFile$, "end=", endPoint
-    pointsCount = 0
-    while timePoint < endPoint
-        pointsCount += 1
-        timePoint = timePoint + timeStep
-    endwhile
-    selectObject: mfccObj
-    timePoint = startPoint + (timeStep / 2)
+    appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
 
-    #appendInfoLine: timePoint, " at ", i
-
-    appendFileLine: outputFile$, "frames=", pointsCount
-    while timePoint < endPoint
-        frame = Get frame number from time... timePoint
-        frame = floor(frame)
-
-        if frame < 1
-           frame = 1
-        endif
-        if frame > maxMFCCFrameCount
-           frame = maxMFCCFrameCount
-        endif
-
+    for frame from startFrame to endFrame
         selectObject: pitch
-        value = Get value at time: timePoint, "Hertz", "Linear"
+        value = Get value in frame: frame, "Hertz"
         appendFileLine: outputFile$, "pitch=", value
         selectObject: mfccObj
         for j to mfccCount
-            value = Get value in frame... frame j
+            value = Get value in frame: frame, j
             appendFileLine: outputFile$, j, "=", value
         endfor
-        timePoint = timePoint + timeStep
-    endwhile
+    endfor
 endfor
+

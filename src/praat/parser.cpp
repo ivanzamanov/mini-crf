@@ -30,7 +30,6 @@ static T value(std::istream& stream, const std::string& check) {
 PhonemeInstance* parse_file(std::istream& stream, int& size) {
   section(stream, "[Config]"); // [Config]
   value<double>(stream, "timeStep"); // timeStep
-  value<double>(stream, "mfccWindow"); // mfccWindow
   int mfcc_count = value<int>(stream, "mfcc");
   size = value<int>(stream, "intervals");
   PhonemeInstance* result = new PhonemeInstance[size];
