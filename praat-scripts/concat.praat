@@ -1,6 +1,6 @@
 form Concatenation
      comment Input file
-     sentence fileName /home/ivo/praat-test
+     sentence fileName D:\cygwin\home\ivo\SpeechSynthesis\concat-test.txt
      comment Output file
      sentence outputPath /home/ivo/concat-output.wav
 endform
@@ -44,9 +44,15 @@ for i to segments
 endfor
 
 concat = Concatenate
+for i to segments
+    selectObject: parts[i]
+    Remove
+endfor
+
+selectObject: concat
 manipulation = To Manipulation... 0.005 75 600
 pitchTier = Extract pitch tier
-Copy...
+pitchCopy = Copy...
 
 for i from 1 to segments-1
     mid1 = (boundaries[i-1] + boundaries[i]) / 2
@@ -69,16 +75,19 @@ for i from 1 to segments-1
         # Actual interpolation needed
         count = p2 - p1
         #appendInfoLine: "Interpolation points ", count
-        anchor = (startPitch + ((endPitch + startPitch) / 2)) / 2
-        appendInfoLine: "Interpolate: ", startPitch, " | ", anchor, " | ", endPitch, " | ", count
+        anchor = (endPitch + ((endPitch + startPitch) / 2)) / 2
+        #appendInfoLine: "Interpolate: ", startPitch, " | ", anchor, " | ", endPitch, " | ", count
 
         for p from 0 to count
             t = p / count
-            v1 = (1 - t) * (1 - t) * startPitch
-            v2 = (1 - t) * t * anchor
-            v3 = t * t * endPitch
-            pitch = v1 + v2 + v3
-            appendInfoLine: v1, " | ", v2, " | ", v3, " | ", pitch, " | ", t
+
+            v1 = (1 - t) * (1 - t)
+            v2 = (1 - t) * t
+            v3 = t * t
+
+            #pitch = v1*startPitch + v2*anchor + v3*endPitch
+            pitch = startPitch + (p/count)*(endPitch - startPitch)
+            #appendInfoLine: v1, " | ", v2, " | ", v3, " | ", pitch, " | ", t
             
             timePoint = (time1 + (time2 - time1) * t)
             Add point... timePoint pitch
@@ -86,5 +95,21 @@ for i from 1 to segments-1
         endfor
     endif
 endfor
+
+selectObject: pitchCopy
+plusObject: manipulation
+Replace pitch tier
+
+selectObject: manipulation
+result = Get resynthesis (overlap-add)
+
+selectObject: manipulation
+Remove
+selectObject: pitchTier
+Remove
+selectObject: pitchCopy
+Remove
+selectObject: strings
+Remove
 
 #Save as WAV file... 'outputPath$'
