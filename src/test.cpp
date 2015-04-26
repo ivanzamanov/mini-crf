@@ -127,13 +127,15 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
     std::cerr << labels[i].label << " ";
   std::cerr << std::endl;
 
-  a.traverse(&best_path);
+  double expected_cost = concat_cost(labels, *crf, crf->lambda, crf->mu, a.x);
+  double cost = a.traverse(&best_path);
 
-  std::cerr << "Output path: ";
+  std::cerr << "Cost = " << cost << ", path = ";
   for(unsigned i = 0; i < best_path.size(); i++)
     std::cerr << best_path[i] << " ";
-  std::cerr << std::endl;
+  std::cerr  << std::endl;
 
+  assertEquals(cost, expected_cost);
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {
     assertEquals(best_path[i], labels[i].label);

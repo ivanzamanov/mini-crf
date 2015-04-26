@@ -64,7 +64,8 @@ struct MFCCDist {
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     double result = 0;
-    for(unsigned i = 0; i < mfcc1.length(); i++) {
+    for (unsigned i = 0; i < mfcc1.length(); i++) {
+      // double diff = ((12 - i) / 12) * (mfcc1[i] - mfcc2[i]);
       double diff = mfcc1[i] - mfcc2[i];
       result += diff * diff;
     }
@@ -74,6 +75,8 @@ struct MFCCDist {
 
 std::vector<CRF::StateFunction*> state_functions() {
   std::vector<CRF::StateFunction*> result;
+  result.push_back(new StateFunction<Duration>());
+  result.push_back(new StateFunction<Pitch>());
   return result;
 }
 

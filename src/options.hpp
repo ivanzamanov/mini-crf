@@ -7,11 +7,12 @@
 
 int MIN_OPTS = 2;
 
-enum Mode { SYNTH, QUERY, INVALID };
+enum Mode { SYNTH, QUERY, RESYNTH, INVALID };
 
 Mode get_mode(std::string str) {
   if(str == "synth") return Mode::SYNTH;
   else if(str == "query") return Mode::QUERY;
+  else if(str == "resynth") return Mode::RESYNTH;
   return Mode::INVALID;
 }
 
@@ -31,6 +32,8 @@ struct Options {
   bool phon_id;
   bool sentence;
   bool concat_cost;
+  bool text_input;
+  bool verbose_query;
 
   unsigned length;
   const char** args;
@@ -89,6 +92,8 @@ Options parse_options(unsigned argc, const char** argv) {
   opts.phon_id = opts.has_opt("--phonid");
   opts.sentence = opts.has_opt("--sentence");
   opts.concat_cost = opts.has_opt("--concat-cost");
+  opts.text_input = opts.has_opt("--text");
+  opts.verbose_query = opts.has_opt("verbose");
 
   return opts;
 }

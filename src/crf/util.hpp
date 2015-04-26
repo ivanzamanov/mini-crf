@@ -68,6 +68,11 @@ struct ArrayIterator : public ArrayIteratorBase<T> {
 
 template<class T>
 struct Array {
+  Array() {
+    length = 0;
+    data = 0;
+  }
+
   unsigned length;
   T* data;
 
@@ -79,12 +84,16 @@ struct Array {
 
   ArrayIterator<T, true> rbegin() { return ArrayIterator<T, true>(data + length); }
   ArrayIterator<T, true> rend() { return ArrayIterator<T, true>(data - 1); }
+
+  void init(unsigned length) {
+    this->length = length;
+    data = new T[length];
+  }
 };
 
 template<class T>
 void singleton_array(Array<T>& result, T el) {
-  result.length = 1;
-  result.data = new T[1];
+  result.init(1);
   result.data[0] = el;
 }
 

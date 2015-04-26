@@ -73,6 +73,14 @@ struct SynthPrinter {
     std::cerr << phonemeIds.str() << std::endl;
   }
 
+  void print_synth_input(std::vector<PhonemeInstance>& path) {
+    for(auto it = path.begin(); it != path.end(); it++) {
+      const PhonemeInstance& phon = *it;
+      std::cerr << phon.id << "=" << phon.label << " ";
+    }
+    std::cerr << '\n';
+  }
+
   void print_textgrid(std::vector<int> &path, const std::string file) {
     std::ofstream out(file);
     print_textgrid(path, out);
@@ -97,6 +105,22 @@ struct SynthPrinter {
     out << grid;
   }
 };
+
+PhonemeInstance to_synth_input(const PhonemeInstance& p) {
+  PhonemeInstance result;
+  result.start = p.start;
+  result.end = p.end;
+  result.label = p.label;
+  Frame frame;
+  double pitch = 0;
+
+  for(unsigned i = 0; i < p.frames.length; i++)
+    pitch += p.at(i).pitch;
+
+  frame.pitch = pitch;
+  singleton_array(result.frames, frame);
+  return result;
+}
 
 void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<PhonemeInstance, PhonemeInstance>* corpus) {
   std::cerr << "Building label alphabet" << '\n';

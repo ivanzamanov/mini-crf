@@ -134,7 +134,10 @@ bool check_csv(std::istream& is) {
   if(buffer[buffer.size() - 1] == '\r') // Windows sh**...
     buffer.pop_back();
 
-  return buffer == CSV_HEADER ? 3 : 0;
+  bool result = buffer == CSV_HEADER ? 3 : 0;
+  if(!result)
+    std::cerr << "Bad header: " << buffer << '\n';
+  return result;
 }
 
 std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {

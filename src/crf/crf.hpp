@@ -214,8 +214,8 @@ struct FunctionalAutomaton {
     return 1 + pos * alphabet_length();
   }
 
-  double concat_cost(int src, int dest) {
-    return calculate_value<false, true>(src, dest, 0);
+  double concat_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
+    return calculate_value<false, true>(src, dest, pos);
   }
 
   template<bool includeState, bool includeTransition>
@@ -322,8 +322,24 @@ struct FunctionalAutomaton {
 };
 
 template<class CRF>
-void max_path(const vector<typename CRF::Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
-  traverse_automaton(x, crf, lambda, mu, max_path);
+double max_path(const vector<typename CRF::Input>& x, CRF& crf, const vector<double>& lambda, const vector<double>& mu, vector<int>* max_path) {
+  return traverse_automaton(x, crf, lambda, mu, max_path);
+}
+
+template<class CRF>
+double concat_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<double>& lambda, const vector<double>& mu, const vector<typename CRF::Input>& inputs) {
+  FunctionalAutomaton<CRF> a(crf.label_alphabet);
+  a.lambda = lambda;
+  a.mu = mu;
+  a.f = crf.f;
+  a.g = crf.g;
+  a.x = inputs;
+
+  double result = 0;
+  for(unsigned i = 1; i < y.size(); i++) {
+    result += a.concat_cost(y[i-1], y[i], i);
+  }
+  return result;
 }
 
 struct NormFactorFunctions {

@@ -12,16 +12,23 @@ static const int MFCC_N = 12;
 typedef FixedArray<double, MFCC_N> MfccArray;
 
 struct Frame {
-  Frame() { }
-  Frame(double pitch): pitch(pitch) {
-    for(unsigned i = 0; i < mfcc.length(); i++) mfcc[i] = 0;
-  }
+  Frame():pitch(0) { init(); }
+  Frame(double pitch): pitch(pitch) { init(); }
 
   MfccArray mfcc;
   double pitch;
+
+private:
+  void init() { for(unsigned i = 0; i < mfcc.length(); i++) mfcc[i] = 0; }
 };
 
 struct PhonemeInstance {
+  PhonemeInstance() {
+    start = 0;
+    end = 0;
+    label = ' ';
+    id = 0;
+  }
   Array<Frame> frames;
   double start;
   double end;

@@ -43,6 +43,7 @@ for i to segments
     plusObject: part
 endfor
 
+appendInfoLine: "Concatenating ", segments, " parts"
 concat = Concatenate
 for i to segments
     selectObject: parts[i]
@@ -112,4 +113,5 @@ Remove
 selectObject: strings
 Remove
 
-#Save as WAV file... 'outputPath$'
+selectObject: result
+Save as WAV file... 'outputPath$'
