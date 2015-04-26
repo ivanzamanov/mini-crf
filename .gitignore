@@ -27,7 +27,18 @@
 *.out
 *.app
 
+# Editors
 *~
 *#
+
+# Binaries and temps
 main
 test
+main-opt
+text2bin
+
+*.bin
+*.csv
+*.TextGrid
+*.wav
+*.txt
