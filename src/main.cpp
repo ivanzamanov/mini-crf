@@ -75,18 +75,21 @@ int synthesize(Options& opts) {
     input_stream = &ifs;
   }
 
+  std::vector<PhonemeInstance> desired_phonemes;
+
   if(opts.phon_id) {
     std::vector<std::string> id_strings = split_string(opts.input, ',');
     path.resize(id_strings.size());
     std::transform(id_strings.begin(), id_strings.end(), path.begin(), util::parse_int);
+    for(auto it = path.begin(); it != path.end(); it++)
+      desired_phonemes.push_back(crf.label_alphabet.fromInt( *it ));
   } else {
-    std::vector<PhonemeInstance> input = parse_synth_input_csv(*input_stream);
-    std::string sentence_string = to_text_string(input);
+    desired_phonemes = parse_synth_input_csv(*input_stream);
+    std::string sentence_string = to_text_string(desired_phonemes);
     std::cerr << "Input: " << sentence_string << '\n';
-    max_path(input, crf, crf.lambda, crf.mu, &path);
+    max_path(desired_phonemes, crf, crf.lambda, crf.mu, &path);
   }
 
-  std::vector<PhonemeInstance> desired_phonemes(path.size());
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path, desired_phonemes);
   sp.print_textgrid(path, opts.text_grid);
