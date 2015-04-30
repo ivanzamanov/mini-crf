@@ -35,7 +35,8 @@ Rename... Sound
 
 pitch = To Pitch... timeStep 75 600
 selectObject: pitch
-Rename... Pitch
+Rename... PitchTier
+pitchTier = Down to PitchTier
 
 # generate MFCC
 # To MFCC... : <coef count> <window length> <time step>
@@ -45,32 +46,31 @@ selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames
 
 procedure getFrameBoundaries
-    selectObject: pitch
-    startPoint = startPoint
-    startFrame = Get frame number from time... startPoint
-    if startFrame < 1
-        startFrame = 1
+    startFrame = lastFrame
+
+    selectObject: pitchTier
+    highPitchPoint = Get low index from time... endPoint
+    highPitchPoint = max(1, highPitchPoint)
+    highPitchPointTime = Get time from index... highPitchPoint
+
+    if abs(highPitchPointTime - endPoint) < timeStep
+        endPoint = highPitchPointTime
     endif
 
-    startFrame = floor(startFrame)
-    if startFrame == lastFrame
-        startFrame = startFrame + 1
-    endif
-    #appendInfoLine: "S,", startFrame, ",", startPoint
-
-    endPoint = endPoint
+    selectObject: mfccObj
     endFrame = Get frame number from time... endPoint
-    if endFrame > maxMFCCFrameCount
-        endFrame = maxMFCCFrameCount
-    endif
+    endFrame = min(endFrame, maxMFCCFrameCount)
 
-    startFrame = floor(startFrame)
     endFrame = round(endFrame)
-    #appendInfoLine: "E,", endFrame, ",", endPoint
+    endFrame = max(endFrame, 1)
+
     lastFrame = endFrame
+
+    startPoint = Get time from frame number... startFrame
+    endPoint = Get time from frame number... endFrame
 endproc
 
-lastFrame = -1
+lastFrame = 1
 for i to intervalCount
     selectObject: textGridObj
     intervalLabel$ = Get label of interval... 1 i
@@ -80,6 +80,7 @@ for i to intervalCount
 
     startPoint = Get start point... 1 i
     endPoint = Get end point... 1 i
+
     @getFrameBoundaries
 
     appendFileLine: outputFile$, "start=", startPoint
@@ -97,4 +98,3 @@ for i to intervalCount
         endfor
     endfor
 endfor
-

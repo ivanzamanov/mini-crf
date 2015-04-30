@@ -55,7 +55,7 @@ int resynthesize(Options& opts) {
   sp.print_synth(path);
   sp.print_synth_input(input);
   sp.print_textgrid(path, opts.text_grid);
-  std::cerr << "Original cost: " << concat_cost(input, crf, crf.lambda, crf.mu) << '\n';
+  std::cerr << "Original cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   return 0;
 }

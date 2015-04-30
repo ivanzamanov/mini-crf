@@ -55,7 +55,7 @@ struct Pitch {
   double operator()(const PhonemeInstance& prev, const PhonemeInstance& next) const {
     double d1 = prev.last().pitch;
     double d2 = next.first().pitch;
-    return std::abs(d1/d2);
+    return std::abs( std::log(d1/d2) );
   }
 };
 

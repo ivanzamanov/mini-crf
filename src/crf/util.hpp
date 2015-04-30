@@ -82,7 +82,7 @@ struct Array {
   ArrayIterator<T> begin() { return ArrayIterator<T>(data); }
   ArrayIterator<T> end() { return ArrayIterator<T>(data + length); }
 
-  ArrayIterator<T, true> rbegin() { return ArrayIterator<T, true>(data + length); }
+  ArrayIterator<T, true> rbegin() { return ArrayIterator<T, true>(data + length - 1); }
   ArrayIterator<T, true> rend() { return ArrayIterator<T, true>(data - 1); }
 
   void init(unsigned length) {
