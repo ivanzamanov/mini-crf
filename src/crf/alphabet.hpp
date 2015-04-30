@@ -54,13 +54,13 @@ struct LabelAlphabet {
   void permute(Iterators& iters, std::vector<int>& class_indices, unsigned index, std::vector<Label>& labels, Filter& filter) const {
     if(index == iters.size() - 1) {
       while(iters[index] != classes[class_indices[index]].end()) {
-        labels[index] = *iters[index];
+        labels[index] = fromInt(*iters[index]);
         filter(labels);
         ++iters[index];
       }
     } else {
       while(iters[index] != classes[class_indices[index]].end()) {
-        labels[index] = *iters[index];
+        labels[index] = fromInt(*iters[index]);
         permute(iters, class_indices, index + 1, labels, filter);
         iters[index + 1] = classes[class_indices[index + 1]].begin();
         ++iters[index];

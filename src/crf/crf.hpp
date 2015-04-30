@@ -218,6 +218,14 @@ struct FunctionalAutomaton {
     return calculate_value<false, true>(src, dest, pos);
   }
 
+  double total_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
+    return calculate_value<true, true>(src, dest, pos);
+  }
+
+  double state_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
+    return calculate_value<true, false>(src, dest, pos);
+  }
+
   template<bool includeState, bool includeTransition>
   double calculate_value(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
     double result = 0;
@@ -339,6 +347,23 @@ double concat_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<
   for(unsigned i = 1; i < y.size(); i++) {
     result += a.concat_cost(y[i-1], y[i], i);
   }
+  return result;
+}
+
+template<class CRF>
+double total_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<double>& lambda, const vector<double>& mu, const vector<typename CRF::Input>& inputs) {
+  FunctionalAutomaton<CRF> a(crf.label_alphabet);
+  a.lambda = lambda;
+  a.mu = mu;
+  a.f = crf.f;
+  a.g = crf.g;
+  a.x = inputs;
+
+  double result = 0;
+  for(unsigned i = 1; i < y.size(); i++) {
+    result += a.total_cost(y[i-1], y[i], i);
+  }
+  result += a.state_cost(y[0], y[0], 0);
   return result;
 }
 

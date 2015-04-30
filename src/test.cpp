@@ -108,7 +108,7 @@ void testUtils() {
 vector<int> to_ints(const vector<TestCRF::Label>& labels) {
   vector<int> result;
   for(auto it = labels.begin(); it != labels.end(); it++)
-    result.push_back( (*it).label);
+    result.push_back( (*it).id);
   return result;
 }
 
@@ -127,18 +127,18 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
     std::cerr << labels[i].label << " ";
   std::cerr << std::endl;
 
-  double expected_cost = concat_cost(labels, *crf, crf->lambda, crf->mu, a.x);
+  double expected_cost = total_cost(labels, *crf, crf->lambda, crf->mu, a.x);
   double cost = a.traverse(&best_path);
 
   std::cerr << "Cost = " << cost << ", path = ";
-  for(unsigned i = 0; i < best_path.size(); i++)
-    std::cerr << best_path[i] << " ";
-  std::cerr  << std::endl;
+  // for(unsigned i = 0; i < best_path.size(); i++)
+  //   std::cerr << best_path[i] << " ";
+  // std::cerr  << std::endl;
 
-  assertEquals(cost, expected_cost);
+  assertEquals(expected_cost, cost);
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {
-    assertEquals(best_path[i], labels[i].label);
+    assertEquals(best_path[i], labels[i].id);
     assertEquals(best_path[i] % CLASSES, labels[i].label % CLASSES);
   }
 }
