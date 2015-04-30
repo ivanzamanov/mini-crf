@@ -43,6 +43,22 @@ struct PhonemeInstance {
   const Frame& last() const { return frames[size() - 1]; }
 };
 
+static const unsigned PITCH_CONTOUR_LENGTH = 1;
+struct PitchContour {
+  unsigned length() { return PITCH_CONTOUR_LENGTH; }
+  double values[PITCH_CONTOUR_LENGTH];
+
+  double diff(const PitchContour& other) {
+    double result = 0;
+    for(unsigned i = 0; i < length(); i++) {
+      result += std::abs( std::log( values[i] / other.values[i] ) );
+    }
+    return result;
+  }
+};
+
+PitchContour to_pitch_contour(const PhonemeInstance&);
+
 void print_synth_input_csv(std::ostream&, std::vector<PhonemeInstance>&);
 std::vector<PhonemeInstance> parse_synth_input_csv(std::istream&);
 

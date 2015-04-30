@@ -49,28 +49,41 @@ struct SynthPrinter {
 
   PhonemeAlphabet& alphabet;
 
-  void print_synth(std::vector<int> &path) {
-    print_synth(path, std::cout);
+  void print_synth(std::vector<int> &path, const std::vector<PhonemeInstance>& desired) {
+    print_synth(path, desired, std::cout);
   }
 
-  void print_synth(std::vector<int> &path, const std::string file) {
+  void print_synth(std::vector<int> &path, const std::vector<PhonemeInstance>& desired, const std::string file) {
     std::ofstream out(file);
-    print_synth(path, out);
+    print_synth(path, desired, out);
   }
 
-  void print_synth(std::vector<int> &path, std::ostream& out) {
+  void print_synth(std::vector<int> &path, const std::vector<PhonemeInstance>& desired, std::ostream& out) {
     std::stringstream phonemeIds;
-    for(auto it = path.begin(); it != path.end(); it++) {
-      const PhonemeInstance& phon = alphabet.fromInt(*it);
-      phonemeIds << *it << "=" << phon.label << " ";
-      std::string file = alphabet.file_of(*it);
+    for(unsigned i = 0; i < path.size(); i++) {
+      int id = path[i];
+      const PhonemeInstance& phon = alphabet.fromInt(id);
+      phonemeIds << id << "=" << phon.label << " ";
+      std::string file = alphabet.file_of(id);
       out << "File=" << file << " ";
       out << "Start=" << phon.start << " ";
       out << "End=" << phon.end << " ";
-      out << "Label=" << phon.label << '\n';
+      out << "Label=" << phon.label << " ";
+      out << "Pitch=" << desired_pitch(desired[i]) << " ";
+      out << "Duration=" << desired[i].duration() << '\n';
     }
 
     std::cerr << phonemeIds.str() << std::endl;
+  }
+
+  const std::string desired_pitch(const PhonemeInstance& p) {
+    std::stringstream str;
+    PitchContour pc = to_pitch_contour(p);
+    str << pc.values[0];
+    for(unsigned i = 1; i < pc.length(); i++) {
+      str << ',' << pc.values[i];
+    }
+    return str.str();
   }
 
   void print_synth_input(std::vector<PhonemeInstance>& path) {

@@ -59,6 +59,14 @@ struct Pitch {
   }
 };
 
+struct PitchState {
+  double operator()(const PhonemeInstance& p1, const PhonemeInstance& p2) const {
+    PitchContour pc1 = to_pitch_contour(p1),
+      pc2 = to_pitch_contour(p2);
+    return pc1.diff(pc2);
+  }
+};
+
 struct MFCCDist {
   double operator()(const PhonemeInstance& prev, const PhonemeInstance& next) const {
     const MfccArray& mfcc1 = prev.last().mfcc;
@@ -76,7 +84,7 @@ struct MFCCDist {
 std::vector<CRF::StateFunction*> state_functions() {
   std::vector<CRF::StateFunction*> result;
   result.push_back(new StateFunction<Duration>());
-  result.push_back(new StateFunction<Pitch>());
+  result.push_back(new StateFunction<PitchState>());
   return result;
 }
 

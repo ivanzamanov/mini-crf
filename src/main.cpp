@@ -52,7 +52,7 @@ int resynthesize(Options& opts) {
   double resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
 
   SynthPrinter sp(crf.label_alphabet);
-  sp.print_synth(path);
+  sp.print_synth(path, input);
   sp.print_synth_input(input);
   sp.print_textgrid(path, opts.text_grid);
   std::cerr << "Original cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
@@ -86,8 +86,9 @@ int synthesize(Options& opts) {
     max_path(input, crf, crf.lambda, crf.mu, &path);
   }
 
+  std::vector<PhonemeInstance> desired_phonemes(path.size());
   SynthPrinter sp(crf.label_alphabet);
-  sp.print_synth(path);
+  sp.print_synth(path, desired_phonemes);
   sp.print_textgrid(path, opts.text_grid);
   return 0;
 }

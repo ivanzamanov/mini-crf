@@ -186,3 +186,9 @@ void print_synth_input_csv(std::ostream& os, std::vector<PhonemeInstance>& phons
     print_synth_input_csv_phoneme(os, *it);
   }
 }
+
+PitchContour to_pitch_contour(const PhonemeInstance& p) {
+  PitchContour result;
+  result.values[0] = mid_pitch(p);
+  return result;
+}
