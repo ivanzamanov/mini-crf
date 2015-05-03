@@ -1,6 +1,7 @@
 #ifndef __OPTIONS_H__
 #define __OPTIONS_H__
 
+#include<iostream>
 #include<sstream>
 #include<vector>
 #include<string>
@@ -41,8 +42,10 @@ struct Options {
   bool has_opt(std::string opt) {
     for(unsigned i = 0; i < length; i++) {
       std::string test(args[i]);
-      if(opt == test)
+      if(opt == test) {
+        std::cerr << opt << " = " << true << std::endl;
         return true;
+      }
     }
     return false;
   }
@@ -52,8 +55,10 @@ struct Options {
     for(unsigned i = 0; i < length - 1; i++) {
       std::string test(args[i]);
       if(opt == test) {
+        std::string result(args[i + 1]);
         if(found) *found = true;
-        return std::string(args[i + 1]);
+        std::cerr << opt << " = " << result << std::endl;
+        return result;
       }
     }
     return std::string("");
@@ -81,7 +86,7 @@ Options parse_options(unsigned argc, const char** argv) {
 
   // common
   opts.synth_db = opts.get_opt("--synth-database");
-  opts.test_db = opts.get_opt("--input-database");
+  opts.test_db = opts.get_opt("--test-database");
   opts.mode = opts.get_opt("--mode");
   opts.input = opts.get_opt("--input");
 
