@@ -28,7 +28,7 @@ Corpus<PhonemeInstance, PhonemeInstance> synth_corpus;
 Corpus<PhonemeInstance, PhonemeInstance> test_corpus;
 
 std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
-  std::string result(vec.size(), ' ');
+  std::string result(1, ' ');
   for(auto it = vec.begin(); it != vec.end(); it++)
     result.push_back( (*it).label);
   return result;
@@ -50,6 +50,7 @@ int resynthesize(Options& opts) {
   std::vector<PhonemeInstance> input = test_corpus.input(index);
 
   std::string sentence_string = to_text_string(input);
+  std::cerr << "Input file: " << test_alphabet.file_of(input[0].id) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
   std::vector<int> path;
