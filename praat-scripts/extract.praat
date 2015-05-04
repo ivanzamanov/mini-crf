@@ -41,6 +41,7 @@ pitchTier = Down to PitchTier
 # generate MFCC
 # To MFCC... : <coef count> <window length> <time step>
 selectObject: soundObj
+soundObj = Filter (pre-emphasis)... 50
 mfccObj = To MFCC... mfccCount (4*timeStep) timeStep 100 100 0.0
 selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames

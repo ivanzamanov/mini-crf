@@ -15,11 +15,22 @@ for i to segments
     fileName$ = extractWord$(line$, "File=")
     startTime = extractNumber(line$, "Start=")
     endTime = extractNumber(line$, "End=")
+    desiredPitch = extractNumber(line$, "Pitch=")
+    desiredDuration = extractNumber(line$, "Duration=")
 
     fileNames$[i] = fileName$
     startTimes[i] = startTime
     endTimes[i] = endTime
+    pitches[i] = desiredPitch
+    durations[i] = desiredDuration
 endfor
+
+procedure modifyDuration
+    currentDuration = Get total duration
+    manip = To Manipulation... 0.01 75 600
+    newDuration = durations[i]
+    Scale times to... 0 newDuration
+endproc
 
 duration = 0
 boundaries[0] = 0
@@ -32,6 +43,7 @@ for i to segments
     part = Extract part... startTimes[i] endTimes[i] rectangular 1.0 0
     parts[i] = part
     boundaries[i] = duration
+    @modifyDuration
 
     selectObject: sound
     Remove
@@ -82,17 +94,11 @@ for i from 1 to segments-1
         for p from 0 to count
             t = p / count
 
-            v1 = (1 - t) * (1 - t)
-            v2 = (1 - t) * t
-            v3 = t * t
-
-            #pitch = v1*startPitch + v2*anchor + v3*endPitch
-            pitch = startPitch + (p/count)*(endPitch - startPitch)
-            #appendInfoLine: v1, " | ", v2, " | ", v3, " | ", pitch, " | ", t
+            newPitch = startPitch + (p/count)*(endPitch - startPitch)
             
             timePoint = (time1 + (time2 - time1) * t)
-            Add point... timePoint pitch
-            #appendInfoLine: "Add point ", timePoint, " ", pitch, " ", t
+            Add point... timePoint newPitch
+            #appendInfoLine: "Add point ", timePoint, " ", newPitch, " ", t
         endfor
     endif
 endfor

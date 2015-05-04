@@ -169,4 +169,18 @@ struct BinaryReader {
   }
 };
 
+struct Progress {
+  Progress(unsigned total): total(total), progress(0) { }
+  unsigned total, progress;
+
+  void update() {
+    std::cerr << '\r' << "Progress: " << progress++ << '/' << total;
+    std::cerr.flush();
+  }
+  
+  void finish() {
+    std::cerr << " Done" << std::endl;
+  }
+};
+
 #endif

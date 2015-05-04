@@ -265,6 +265,7 @@ struct FunctionalAutomaton {
   }
 
   double traverse(vector<int>* max_path) {
+    Progress prog(x.size());
     // Will need for intermediate computations
     vector<Transition>* children = new vector<Transition>();
     vector<Transition>* next_children = new vector<Transition>();
@@ -281,7 +282,8 @@ struct FunctionalAutomaton {
       if(allowedState(alphabet.fromInt(dest), x[pos]))
         children->push_back(Transition(dest, funcs.empty()));
     }
-
+    prog.update();
+    
     // backwards, for every zero-based position in
     // the input sequence except the last one...
     for(pos--; pos >= 0; pos--) {
@@ -307,11 +309,13 @@ struct FunctionalAutomaton {
 
       children->clear();
       std::swap(children, next_children);
+      prog.update();
     }
 
     populate_transitions<true, false>(children, alphabet.fromInt(0), 0);
     double value;
     aggregate_values(&value, children);
+    prog.finish();
 
     if(max_path) {
       auto max = funcs.pick_best(*children);

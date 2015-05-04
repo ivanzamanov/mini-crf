@@ -72,6 +72,9 @@ void compare_alphabet(PhonemeAlphabet& a1, PhonemeAlphabet& a2) {
 }
 
 void validate_data(std::ifstream& input) {
+  std::cout << "Alphabet size: " << alphabet.size() << std::endl;
+  std::cout << "Corpus size: " << corpus.size() << std::endl;
+  
   Corpus<PhonemeInstance, PhonemeInstance> n_corpus;
   PhonemeAlphabet n_alphabet;
 
@@ -80,6 +83,9 @@ void validate_data(std::ifstream& input) {
   build_data_bin(input, n_alphabet, n_corpus);
   compare_corpus(corpus, n_corpus);
   compare_alphabet(alphabet, n_alphabet);
+  
+  std::cout << "Bin alphabet size: " << n_alphabet.size() << std::endl;
+  std::cout << "Bin corpus size: " << n_corpus.size() << std::endl;
 }
 
 int main(int argc, const char** argv) {

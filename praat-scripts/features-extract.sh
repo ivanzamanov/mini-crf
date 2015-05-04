@@ -2,8 +2,16 @@
 set -e
 source $(dirname $0)/functions.sh
 
-CORPUS_PATH="/cygdrive/c/Users/ivo/Desktop/SpeechSynthesis/DianaPregledani"
+CORPUS_PATH="/home/ivo/SpeechSynthesis/corpus-small"
 OUTPUT_PATH="/home/ivo/corpus-features"
+
+if [ -n "$1" ]; then
+        CORPUS_PATH="$1"
+fi
+
+if [ -n "$2" ]; then
+        OUTPUT_PATH="$2"
+fi
 
 PRAAT=praat
 EXTRACTOR_SCRIPT="$(dirname $0)/extractor.sh"
@@ -11,6 +19,7 @@ EXTRACTOR_SCRIPT="$(dirname $0)/extractor.sh"
 mkdir -p $OUTPUT_PATH
 FILES_LIST=$OUTPUT_PATH/files-list
 
+rm -f commands
 WAVS=0
 GRIDS=0
 for WAV in $(find $CORPUS_PATH | grep wav$)
@@ -23,10 +32,13 @@ do
         echo "Extracting from $WAV"
 				OUTPUT=$(os_path $OUTPUT_PATH/"$GRID_NAME.Features")
 				echo "$OUTPUT $WAV" >> $FILES_LIST
-        $EXTRACTOR_SCRIPT "$WAV" "$GRID" "$OUTPUT"
+        echo $EXTRACTOR_SCRIPT "$WAV" "$GRID" "$OUTPUT" >> commands
         GRIDS=`expr $GRIDS + 1`
     fi
 done
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"
+
+echo Starting
+parallel < commands

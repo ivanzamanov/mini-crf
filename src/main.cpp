@@ -86,7 +86,7 @@ int synthesize(Options& opts) {
   } else {
     desired_phonemes = parse_synth_input_csv(*input_stream);
     std::string sentence_string = to_text_string(desired_phonemes);
-    std::cerr << "Input: " << sentence_string << '\n';
+    std::cerr << "Input: " << sentence_string << std::endl;
     max_path(desired_phonemes, crf, crf.lambda, crf.mu, &path);
   }
 
