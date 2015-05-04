@@ -12,21 +12,23 @@
 void print_usage() {
     std::cerr << "Usage: <cmd> <options>\n";
     std::cerr << "--mode [synth|query]\n";
-    std::cerr << "--database <bin_db_file>\n";
+    std::cerr << "--synth-database <bin_db_file>\n";
+    std::cerr << "--test-database <bin_db_file>\n";
     std::cerr << "--input <input_string>\n";
     std::cerr << "--textgrid <textgrid_output>\n";
     std::cerr << "--phonid (query only)\n";
     std::cerr << "--sentence (query only)\n";
     std::cerr << "--concat-cost (query only)\n";
-
     std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
 }
 
 CRF crf(state_functions(), transition_functions());
-Corpus<PhonemeInstance, PhonemeInstance> corpus;
+typename CRF::Alphabet test_alphabet;
+Corpus<PhonemeInstance, PhonemeInstance> synth_corpus;
+Corpus<PhonemeInstance, PhonemeInstance> test_corpus;
 
 std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
-  std::string result(vec.size(), ' ');
+  std::string result(1, ' ');
   for(auto it = vec.begin(); it != vec.end(); it++)
     result.push_back( (*it).label);
   return result;
@@ -43,9 +45,12 @@ std::string to_id_string(const std::vector<PhonemeInstance>& vec) {
 
 int resynthesize(Options& opts) {
   pre_process(crf.label_alphabet);
+  pre_process(test_alphabet);
   unsigned index = util::parse_int(opts.input);
-  std::vector<PhonemeInstance> input = corpus.input(index);
+  std::vector<PhonemeInstance> input = test_corpus.input(index);
+
   std::string sentence_string = to_text_string(input);
+  std::cerr << "Input file: " << test_alphabet.file_of(input[0].id) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
   std::vector<int> path;
@@ -121,12 +126,12 @@ int query(const Options& opts) {
     std::cerr << "Arbitrary text input supported only for --mode synth\n";
   } else if(opts.sentence) {
     int index = util::parse_int(opts.input);
-    input_phonemes = corpus.input(index);
+    input_phonemes = synth_corpus.input(index);
   } else {
     std::cerr << "No input type specified\n";
     return 1;
   }
-  
+
   std::ostream& out = std::cout;
   out.precision(10);
   out << "id,duration,pitch\n";
@@ -143,8 +148,14 @@ int query(const Options& opts) {
 }
 
 void build_data(const Options& opts) {
-  std::ifstream db(opts.synth_db);
-  build_data_bin(db, crf.label_alphabet, corpus);
+  std::cerr << "Synth db: " << opts.synth_db << std::endl;
+  std::ifstream synth_db(opts.synth_db);
+  build_data_bin(synth_db, crf.label_alphabet, synth_corpus);
+  if(opts.test_db != "") {
+    std::cerr << "Test db: " << opts.test_db << std::endl;
+    std::ifstream test_db(opts.test_db);
+    build_data_bin(test_db, test_alphabet, test_corpus);
+  }
 }
 
 int main(int argc, const char** argv) {
@@ -167,6 +178,6 @@ int main(int argc, const char** argv) {
     std::cerr << "Unrecognized mode " << opts.mode << std::endl;
     return 1;
   }
-  //trainGradientDescent<CRF>(crf, corpus);
+  //trainGradientDescent<CRF>(crf, synth_corpus);
   return 0;
 }
