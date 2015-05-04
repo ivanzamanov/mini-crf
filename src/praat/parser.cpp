@@ -40,6 +40,8 @@ PhonemeInstance* parse_file(std::istream& stream, int& size) {
     result[i].start = value<double>(stream, "start");
     result[i].end = value<double>(stream, "end");
     int frames = value<int>(stream, "frames");
+    double duration = value<double>(stream, "duration");
+    result[i].duration = duration;
     result[i].frames.length = frames;
     result[i].frames.data = new Frame[frames];
 
@@ -73,6 +75,7 @@ BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
 
   str << ph.start;
   str << ph.end;
+  str << ph.duration;
   str << ph.label;
   return str;
 }
@@ -88,6 +91,7 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
 
   str >> ph.start;
   str >> ph.end;
+  str >> ph.duration;
   str >> ph.label;
   return str;
 }
@@ -173,7 +177,7 @@ double mid_pitch(const PhonemeInstance& p) {
 
 void print_synth_input_csv_phoneme(std::ostream& os, const PhonemeInstance& p) {
   double pitch = mid_pitch(p);
-  os << p.label << ',' << p.duration() << ',' << pitch;
+  os << p.label << ',' << p.duration << ',' << pitch;
 }
 
 void print_synth_input_csv(std::ostream& os, std::vector<PhonemeInstance>& phons) {

@@ -6,16 +6,14 @@ BASE=$(readlink -f $(dirname $0))
 TEMP_F=$(mktemp)
 SENT="$(echo "$1" | tr ' ' '_')"
 
-SYNTH_DB=~/SpeechSynthesis/db-synth-preemph.bin
-TEST_DB=~/SpeechSynthesis/db-test-preemph.bin
+SYNTH_DB=~/SpeechSynthesis/db-synth-preemph-2.bin
+TEST_DB=~/SpeechSynthesis/db-test-preemph-2.bin
 
 pushd $BASE/../src
 
 SYNTH_TMP=$(mktemp)
-./main --mode query --synth-database $TEST_DB --sentence --input $SENT > $SYNTH_TMP
-echo "Synth temp file: $SYNTH_TMP"
 echo "Concat temp file: $TEMP_F"
-./main-opt --mode synth --synth-database $SYNTH_DB --input - --textgrid $BASE/concat.TextGrid > "$TEMP_F" < $SYNTH_TMP
+./main-opt --mode resynth --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 --textgrid $BASE/concat.TextGrid > "$TEMP_F"
 popd
 
 set +x

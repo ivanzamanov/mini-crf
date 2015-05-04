@@ -27,9 +27,16 @@ endfor
 
 procedure modifyDuration
     currentDuration = Get total duration
-    manip = To Manipulation... 0.01 75 600
+    manip = To Manipulation... 0.01 100 600
     newDuration = durations[i]
     Scale times to... 0 newDuration
+    selectObject: part
+    samplingFrequency = Get sampling frequency
+    Remove
+    selectObject: manip
+    part = Get resynthesis (overlap-add)
+    Override sampling frequency... samplingFrequency
+    #exitScript()
 endproc
 
 duration = 0
@@ -41,9 +48,9 @@ for i to segments
 
     duration = duration + (endTimes[i] - startTimes[i])
     part = Extract part... startTimes[i] endTimes[i] rectangular 1.0 0
+    @modifyDuration
     parts[i] = part
     boundaries[i] = duration
-    @modifyDuration
 
     selectObject: sound
     Remove

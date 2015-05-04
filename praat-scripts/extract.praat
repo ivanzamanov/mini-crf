@@ -67,7 +67,7 @@ procedure getFrameBoundaries
 
     lastFrame = endFrame
 
-    startPoint = Get time from frame number... startFrame
+    startPoint = Get time from frame number... (startFrame + 1)
     endPoint = Get time from frame number... endFrame
 endproc
 
@@ -82,11 +82,14 @@ for i to intervalCount
     startPoint = Get start point... 1 i
     endPoint = Get end point... 1 i
 
+    duration = endPoint - startPoint
+
     @getFrameBoundaries
 
     appendFileLine: outputFile$, "start=", startPoint
     appendFileLine: outputFile$, "end=", endPoint
     appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
+    appendFileLine: outputFile$, "duration=", duration
 
     for frame from startFrame to endFrame
         selectObject: pitch

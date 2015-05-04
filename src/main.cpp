@@ -43,6 +43,12 @@ std::string to_id_string(const std::vector<PhonemeInstance>& vec) {
   return result.str();
 }
 
+double get_total_duration(std::vector<PhonemeInstance> input) {
+  double result = 0;
+  for(unsigned i = 0; i < input.size(); i++) result += input[i].duration;
+  return result;
+}
+
 int resynthesize(Options& opts) {
   pre_process(crf.label_alphabet);
   pre_process(test_alphabet);
@@ -51,6 +57,7 @@ int resynthesize(Options& opts) {
 
   std::string sentence_string = to_text_string(input);
   std::cerr << "Input file: " << test_alphabet.file_of(input[0].id) << std::endl;
+  std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
   std::vector<int> path;
@@ -140,7 +147,7 @@ int query(const Options& opts) {
     const PhonemeInstance& output = input_phonemes[i];
     PhonemeInstance p = to_synth_input(output);
     // out << p.label << DELIM << input_phonemes[i].id << DELIM;
-    out << p.label << DELIM << p.duration() << DELIM << p.first().pitch;
+    out << p.label << DELIM << p.duration << DELIM << p.first().pitch;
     output_frame(out, p.first());
     out << '\n';
   }

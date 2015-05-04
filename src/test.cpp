@@ -175,7 +175,7 @@ void testSynthInputCSV() {
   vector<PhonemeInstance> phons = parse_synth_input_csv(csv_str);
 
   assertEquals('p', phons[0].label);
-  assertEquals(0.5, phons[0].duration());
+  assertEquals(0.5, phons[0].duration);
   assertEquals(251.12, phons[0].first().pitch);
 
   csv_str.seekp(0); csv_str.seekg(0);

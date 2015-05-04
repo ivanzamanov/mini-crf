@@ -70,7 +70,7 @@ struct SynthPrinter {
       out << "End=" << phon.end << " ";
       out << "Label=" << phon.label << " ";
       out << "Pitch=" << desired_pitch(desired[i]) << " ";
-      out << "Duration=" << desired[i].duration() << '\n';
+      out << "Duration=" << desired[i].duration << '\n';
     }
 
     std::cerr << phonemeIds.str() << std::endl;
@@ -107,7 +107,7 @@ struct SynthPrinter {
       const PhonemeInstance& phon = alphabet.fromInt(*it);
 
       grid[i].xmin = time_offset;
-      time_offset += phon.duration();
+      time_offset += phon.duration;
       grid[i].xmax = time_offset;
 
       std::stringstream str;
