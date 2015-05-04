@@ -36,6 +36,7 @@ main
 test
 main-opt
 text2bin
+db-stats
 
 *.bin
 *.csv

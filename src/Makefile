@@ -13,6 +13,9 @@ main: $(MAIN_DEPS)
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test
 
+db-stats: $(MAIN_DEPS) db-stats.cpp
+	$(CMD) -O3 db-stats.cpp $(CPP_FILES) -o db-stats
+
 main-opt: $(MAIN_DEPS) test
 	$(CMD) -O3 main.cpp $(CPP_FILES) -o main-opt
 

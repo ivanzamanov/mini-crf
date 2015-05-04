@@ -77,7 +77,7 @@ struct MFCCDist {
       double diff = mfcc1[i] - mfcc2[i];
       result += diff * diff;
     }
-    return result;
+    return std::sqrt(result);
   }
 };
 
@@ -97,5 +97,4 @@ std::vector<CRF::TransitionFunction*> transition_functions() {
 }
 
 #endif
-
 

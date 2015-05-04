@@ -172,6 +172,11 @@ int main(int argc, const char** argv) {
     return 1;
   }
 
+  crf.mu[0] = 1;
+  crf.mu[1] = 1000;
+  crf.lambda[0] = 1000;
+  crf.lambda[1] = 1;
+
   Options opts = parse_options(argc, argv);
   build_data(opts);
   switch(get_mode(opts.mode)) {

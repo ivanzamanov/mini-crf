@@ -27,7 +27,7 @@ endfor
 
 procedure modifyDuration
     currentDuration = Get total duration
-    manip = To Manipulation... 0.01 100 600
+    manip = To Manipulation... 0.01 150 600
     newDuration = durations[i]
     Scale times to... 0 newDuration
     selectObject: part
@@ -88,8 +88,8 @@ for i from 1 to segments-1
 
     if (time1 >= boundaries[i-1] && time1 <= boundaries[i] && time2 >= boundaries[i] && time2 <= boundaries[i+1])
         #appendInfoLine: "Interpolating between ", time1, " and ", time2
-        startPitch = Get value at index... p1
-        endPitch = Get value at index... p2
+        startPitch = pitches[i]
+        endPitch = pitches[i+1]
 
         Remove points between... time1 time2
         # Actual interpolation needed
