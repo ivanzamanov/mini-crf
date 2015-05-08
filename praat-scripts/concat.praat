@@ -1,10 +1,11 @@
 form Concatenation
      comment Input file
-     sentence fileName D:\cygwin\home\ivo\SpeechSynthesis\concat-test.txt
+     sentence fileName concat-input.txt
      comment Output file
-     sentence outputPath /home/ivo/concat-output.wav
+     sentence outputPath concat-output.wav
 endform
 
+writeInfo: ""
 strings = Read Strings from raw text file... 'fileName$'
 selectObject: strings
 
@@ -25,20 +26,6 @@ for i to segments
     durations[i] = desiredDuration
 endfor
 
-procedure modifyDuration
-    currentDuration = Get total duration
-    manip = To Manipulation... 0.01 150 600
-    newDuration = durations[i]
-    Scale times to... 0 newDuration
-    selectObject: part
-    samplingFrequency = Get sampling frequency
-    Remove
-    selectObject: manip
-    part = Get resynthesis (overlap-add)
-    Override sampling frequency... samplingFrequency
-    #exitScript()
-endproc
-
 duration = 0
 boundaries[0] = 0
 for i to segments
@@ -46,14 +33,19 @@ for i to segments
     sound = Read from file... 'fileName$'
     selectObject: sound
 
-    duration = duration + (endTimes[i] - startTimes[i])
     part = Extract part... startTimes[i] endTimes[i] rectangular 1.0 0
-    @modifyDuration
+    resample = Resample... 24000 50
+    selectObject: part
+    Remove
+    part = resample
+    selectObject: part
+    dur = Get total duration
+    duration += dur
+    selectObject: sound
+    Remove
     parts[i] = part
     boundaries[i] = duration
 
-    selectObject: sound
-    Remove
     selectObject: part
 endfor
 
@@ -71,60 +63,78 @@ endfor
 
 selectObject: concat
 manipulation = To Manipulation... 0.005 75 600
+selectObject: manipulation
 pitchTier = Extract pitch tier
-pitchCopy = Copy...
 
 for i from 1 to segments-1
+    selectObject: pitchTier
     mid1 = (boundaries[i-1] + boundaries[i]) / 2
     mid2 = (boundaries[i] + boundaries[i+1]) / 2
     #appendInfoLine: "Mids ", mid1, " and ", mid2
 
-    p1 = Get nearest index from time... mid1
-    p2 = Get nearest index from time... mid2
+    p1 = Get low index from time... mid1
+    p2 = Get high index from time... mid2
+    if p1 == 0
+         p1 = 1
+    endif
+    totalPoints = Get number of points
+    if p2 >= totalPoints
+        p2 = 1
+    endif
     #appendInfoLine: "Indices ", p1, " and ", p2
 
     time1 = Get time from index... p1
     time2 = Get time from index... p2
 
-    if (time1 >= boundaries[i-1] && time1 <= boundaries[i] && time2 >= boundaries[i] && time2 <= boundaries[i+1])
-        #appendInfoLine: "Interpolating between ", time1, " and ", time2
-        startPitch = pitches[i]
-        endPitch = pitches[i+1]
+    startPitch = pitches[i]
+    endPitch = pitches[i+1]
 
-        Remove points between... time1 time2
-        # Actual interpolation needed
-        count = p2 - p1
-        #appendInfoLine: "Interpolation points ", count
-        anchor = (endPitch + ((endPitch + startPitch) / 2)) / 2
-        #appendInfoLine: "Interpolate: ", startPitch, " | ", anchor, " | ", endPitch, " | ", count
-
-        for p from 0 to count
-            t = p / count
-
-            newPitch = startPitch + (p/count)*(endPitch - startPitch)
-            
-            timePoint = (time1 + (time2 - time1) * t)
-            Add point... timePoint newPitch
-            #appendInfoLine: "Add point ", timePoint, " ", newPitch, " ", t
-        endfor
+    if p1 != p2
+    for point from p1 to p2
+        time = Get time from index... point
+        newPitch = startPitch + (endPitch - startPitch) * (time - time1) / (time2 - time1)
+        Remove point... point
+        Add point... time newPitch
+    endfor
     endif
+
 endfor
 
-selectObject: pitchCopy
+selectObject: manipulation
+durationTier = Create DurationTier... Duration 0 duration
+# Duration
+for i from 1 to segments
+    startTime = startTimes[i]
+    endTime = endTimes[i]
+    oldDuration = (endTime - startTime)
+    newDuration = durations[i]
+    scale = newDuration / oldDuration
+
+    selectObject: durationTier
+    Add point... boundaries[i-1] scale
+    Add point... boundaries[i] scale
+endfor
+
+selectObject: durationTier
 plusObject: manipulation
-Replace pitch tier
+Replace duration tier
+
+selectObject: pitchTier
+plusObject: manipulation
+#Replace pitch tier
 
 selectObject: manipulation
 result = Get resynthesis (overlap-add)
 
+selectObject: concat
+Remove
 selectObject: manipulation
 Remove
 selectObject: pitchTier
-Remove
-selectObject: pitchCopy
 Remove
 selectObject: strings
 Remove
 
 selectObject: result
+Rename... concat-result
 Save as WAV file... 'outputPath$'

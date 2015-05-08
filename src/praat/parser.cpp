@@ -172,7 +172,11 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
 }
 
 double mid_pitch(const PhonemeInstance& p) {
-  return p.frames[p.frames.length / 2].pitch;
+  double max = 0;
+  for(unsigned i = 0; i < p.frames.length; i++)
+      max += p.frames[i].pitch;
+  //return p.frames[p.frames.length / 2].pitch;
+  return max / p.frames.length;
 }
 
 void print_synth_input_csv_phoneme(std::ostream& os, const PhonemeInstance& p) {

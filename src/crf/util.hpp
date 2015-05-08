@@ -89,6 +89,10 @@ struct Array {
     this->length = length;
     data = new T[length];
   }
+  
+  void destroy() {
+    delete[] data;
+  }
 };
 
 template<class T>

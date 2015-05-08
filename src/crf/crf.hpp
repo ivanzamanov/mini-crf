@@ -355,6 +355,22 @@ double concat_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<
 }
 
 template<class CRF>
+double state_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<double>& lambda, const vector<double>& mu, const vector<typename CRF::Input>& inputs) {
+  FunctionalAutomaton<CRF> a(crf.label_alphabet);
+  a.lambda = lambda;
+  a.mu = mu;
+  a.f = crf.f;
+  a.g = crf.g;
+  a.x = inputs;
+
+  double result = 0;
+  for(unsigned i = 0; i < y.size(); i++) {
+    result += a.state_cost(y[i], y[i], i);
+  }
+  return result;
+}
+
+template<class CRF>
 double total_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<double>& lambda, const vector<double>& mu, const vector<typename CRF::Input>& inputs) {
   FunctionalAutomaton<CRF> a(crf.label_alphabet);
   a.lambda = lambda;

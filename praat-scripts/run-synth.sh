@@ -3,7 +3,7 @@ set -x
 source $(dirname $0)/functions.sh
 BASE=$(readlink -f $(dirname $0))
 
-TEMP_F=$(mktemp)
+TEMP_F=concat-input.txt
 SENT="$(echo "$1" | tr ' ' '_')"
 
 SYNTH_DB=~/SpeechSynthesis/db-synth-preemph-2.bin

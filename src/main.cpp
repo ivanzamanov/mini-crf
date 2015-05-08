@@ -66,9 +66,10 @@ int resynthesize(Options& opts) {
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path, input);
   sp.print_synth_input(input);
-  sp.print_textgrid(path, opts.text_grid);
+  sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Original cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
+  std::cerr << "State cost: " << state_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   return 0;
 }
 
@@ -104,7 +105,7 @@ int synthesize(Options& opts) {
 
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path, desired_phonemes);
-  sp.print_textgrid(path, opts.text_grid);
+  sp.print_textgrid(path, desired_phonemes, opts.text_grid);
   return 0;
 }
 
@@ -172,8 +173,8 @@ int main(int argc, const char** argv) {
     return 1;
   }
 
-  crf.mu[0] = 1;
-  crf.mu[1] = 1000;
+  crf.mu[0] = 1000;
+  crf.mu[1] = 1;
   crf.lambda[0] = 1000;
   crf.lambda[1] = 1;
 

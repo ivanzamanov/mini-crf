@@ -42,15 +42,18 @@ pitchTier = Down to PitchTier
 # To MFCC... : <coef count> <window length> <time step>
 selectObject: soundObj
 soundObj = Filter (pre-emphasis)... 50
+totalDuration = Get total duration
 mfccObj = To MFCC... mfccCount (4*timeStep) timeStep 100 100 0.0
 selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames
 
-procedure getFrameBoundaries
-    startFrame = lastFrame
+#textGrid = Create TextGrid... 0 totalDuration phonemes ""
 
+lastTime = 0
+lastFrame = 1
+procedure getFrameBoundaries
     selectObject: pitchTier
-    highPitchPoint = Get low index from time... endPoint
+    highPitchPoint = Get nearest index from time... endPoint
     highPitchPoint = max(1, highPitchPoint)
     highPitchPointTime = Get time from index... highPitchPoint
 
@@ -58,20 +61,36 @@ procedure getFrameBoundaries
         endPoint = highPitchPointTime
     endif
 
+    startPoint = lastTime
+
+    #if highPitchPointTime <= startPoint
+    #    endPoint = Get time from frame number... endFrame
+    #else
+    #    endPoint = highPitchPointTime
+    #endif
+
+    selectObject: soundObj
+    #appendInfoLine: startPoint, " ", endPoint
+    #Extract part for overlap... startPoint endPoint 0.1
+
     selectObject: mfccObj
+    startFrame = Get frame number from time... startPoint
+    startFrame = max(1, startFrame)
     endFrame = Get frame number from time... endPoint
-    endFrame = min(endFrame, maxMFCCFrameCount)
 
-    endFrame = round(endFrame)
-    endFrame = max(endFrame, 1)
-
+    startFrame = floor(startFrame)
+    endFrame = ceiling(endFrame)
+    if startFrame == lastFrame
+        startFrame += 1
+    endif
     lastFrame = endFrame
 
-    startPoint = Get time from frame number... (startFrame + 1)
-    endPoint = Get time from frame number... endFrame
+    lastTime = endPoint
+    #Insert boundary... 1 startPoint
+    #selectObject: textGrid
+    #Insert boundary... 1 endPoint
 endproc
 
-lastFrame = 1
 for i to intervalCount
     selectObject: textGridObj
     intervalLabel$ = Get label of interval... 1 i
@@ -91,6 +110,7 @@ for i to intervalCount
     appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
     appendFileLine: outputFile$, "duration=", duration
 
+    #appendInfoLine: "Frames ", (endFrame - startFrame + 1)
     for frame from startFrame to endFrame
         selectObject: pitch
         value = Get value in frame: frame, "Hertz"
@@ -102,3 +122,4 @@ for i to intervalCount
         endfor
     endfor
 endfor
+appendInfoLine: "Done"

@@ -94,26 +94,26 @@ struct SynthPrinter {
     std::cerr << '\n';
   }
 
-  void print_textgrid(std::vector<int> &path, const std::string file) {
+  void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, const std::string file) {
     std::ofstream out(file);
-    print_textgrid(path, out);
+    print_textgrid(path, input, out);
   }
 
-  void print_textgrid(std::vector<int> &path, std::ostream& out) {
+  void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, std::ostream& out) {
     TextGrid grid(path.size());
     unsigned i = 0;
     double time_offset = 0;
-    for(auto it = path.begin(); it != path.end(); it++) {
-      const PhonemeInstance& phon = alphabet.fromInt(*it);
+    for(i = 0; i < path.size(); i++) {
+      const PhonemeInstance& phon = alphabet.fromInt(path[i]);
+      const PhonemeInstance& desired = input[i];
 
       grid[i].xmin = time_offset;
-      time_offset += phon.duration;
+      time_offset += desired.duration;
       grid[i].xmax = time_offset;
 
       std::stringstream str;
-      str << phon.label << "= " << *it << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch;
+      str << phon.label << "= " << path[i] << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch << ", dp=" << desired_pitch(input[i]);
       grid[i].text = str.str();
-      i++;
     }
     out << grid;
   }

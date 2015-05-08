@@ -19,7 +19,6 @@ EXTRACTOR_SCRIPT="$(dirname $0)/extractor.sh"
 mkdir -p $OUTPUT_PATH
 FILES_LIST=$OUTPUT_PATH/files-list
 
-rm -f commands
 WAVS=0
 GRIDS=0
 for WAV in $(find $CORPUS_PATH | grep wav$)
@@ -32,13 +31,10 @@ do
         echo "Extracting from $WAV"
 				OUTPUT=$(os_path $OUTPUT_PATH/"$GRID_NAME.Features")
 				echo "$OUTPUT $WAV" >> $FILES_LIST
-        echo $EXTRACTOR_SCRIPT "$WAV" "$GRID" "$OUTPUT" >> commands
+        $EXTRACTOR_SCRIPT "$WAV" "$GRID" "$OUTPUT" >> commands
         GRIDS=`expr $GRIDS + 1`
     fi
 done
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"
-
-echo Starting
-parallel < commands
