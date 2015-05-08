@@ -90,19 +90,18 @@ for i from 1 to segments-1
     endPitch = pitches[i+1]
 
     if p1 != p2
-    for point from p1 to p2
-        time = Get time from index... point
-        newPitch = startPitch + (endPitch - startPitch) * (time - time1) / (time2 - time1)
-        Remove point... point
-        Add point... time newPitch
-    endfor
+        for point from p1 to p2
+            time = Get time from index... point
+            newPitch = startPitch + (endPitch - startPitch) * (time - time1) / (time2 - time1)
+            Remove point... point
+            Add point... time newPitch
+        endfor
     endif
-
 endfor
 
+# Duration
 selectObject: manipulation
 durationTier = Create DurationTier... Duration 0 duration
-# Duration
 for i from 1 to segments
     startTime = startTimes[i]
     endTime = endTimes[i]
@@ -111,8 +110,10 @@ for i from 1 to segments
     scale = newDuration / oldDuration
 
     selectObject: durationTier
-    Add point... boundaries[i-1] scale
-    Add point... boundaries[i] scale
+    point1 = boundaries[i-1] + 0.0001
+    point2 = boundaries[i] - 0.0001
+    Add point... point1 scale
+    Add point... point2 scale
 endfor
 
 selectObject: durationTier
