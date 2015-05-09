@@ -84,25 +84,10 @@ selectObject: manipulation
 pitchTier = Extract pitch tier
 blankPitch = Create PitchTier... NewPitchTier 0 duration
 
+selectObject: pitchTier
 for i from 1 to segments-1
-    selectObject: pitchTier
     mid1 = (boundaries[i-1] + boundaries[i]) / 2
     mid2 = (boundaries[i] + boundaries[i+1]) / 2
-    #appendInfoLine: "Mids ", mid1, " and ", mid2
-
-    p1 = Get nearest index from time... mid1
-    p2 = Get nearest index from time... mid2
-    if p1 == 0
-         p1 = 1
-    endif
-    totalPoints = Get number of points
-    if p2 >= totalPoints
-        p2 = 1
-    endif
-    #appendInfoLine: "Indices ", p1, " and ", p2
-
-    time1 = Get time from index... p1
-    time2 = Get time from index... p2
 
     startPitch = pitches[i]
     endPitch = pitches[i+1]
