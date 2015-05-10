@@ -160,4 +160,4 @@ Remove
 
 selectObject: result
 Rename... Concatenation
-#Save as WAV file... 'outputPath$'
+Save as WAV file... 'outputPath$'

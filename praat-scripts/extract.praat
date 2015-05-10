@@ -63,12 +63,6 @@ procedure getFrameBoundaries
 
     startPoint = lastTime
 
-    #if highPitchPointTime <= startPoint
-    #    endPoint = Get time from frame number... endFrame
-    #else
-    #    endPoint = highPitchPointTime
-    #endif
-
     selectObject: soundObj
     #appendInfoLine: startPoint, " ", endPoint
     #Extract part for overlap... startPoint endPoint 0.1
@@ -80,12 +74,16 @@ procedure getFrameBoundaries
 
     startFrame = floor(startFrame)
     endFrame = ceiling(endFrame)
-    if startFrame == lastFrame
-        startFrame += 1
-    endif
+
+    startFrame = max(startFrame, lastFrame)
+    endFrame = max(endFrame, startFrame + 1)
+
     lastFrame = endFrame
 
     lastTime = endPoint
+
+    #appendInfoLine: "Frames ", (endFrame - startFrame + 1), " ", startFrame, " ", endFrame
+
     #Insert boundary... 1 startPoint
     #selectObject: textGrid
     #Insert boundary... 1 endPoint
@@ -110,7 +108,6 @@ for i to intervalCount
     appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
     appendFileLine: outputFile$, "duration=", duration
 
-    #appendInfoLine: "Frames ", (endFrame - startFrame + 1)
     for frame from startFrame to endFrame
         selectObject: pitch
         value = Get value in frame: frame, "Hertz"
