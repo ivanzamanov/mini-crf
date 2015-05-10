@@ -166,6 +166,7 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
     p.label = id;
     p.start = 0;
     p.end = duration;
+	p.duration = duration;
     singleton_array(p.frames, Frame(pitch));
     result.push_back(p);
   }

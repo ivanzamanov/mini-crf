@@ -87,7 +87,7 @@ static const std::string PHONETIC_LABELS[] = {
     "*",
     " "
   };
-static unsigned int count = 0;
+
 struct PhoneticLabelUtil {
   static std::string fromInt(unsigned i) {
     return PHONETIC_LABELS[i];

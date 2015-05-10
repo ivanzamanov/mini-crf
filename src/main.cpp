@@ -63,16 +63,20 @@ int resynthesize(Options& opts) {
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
+  std::cerr << "Original trans cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
+  std::cerr << "Original state cost: " << state_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   std::vector<int> path;
   double resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
+
+  std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
 
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path, input);
   sp.print_synth_input(input);
   sp.print_textgrid(path, input, opts.text_grid);
-  std::cerr << "Original cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
-  std::cerr << "State cost: " << state_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
+  std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
+  std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
   return 0;
 }
 

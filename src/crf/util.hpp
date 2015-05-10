@@ -3,6 +3,7 @@
 
 #include<iostream>
 #include<cmath>
+#include<cstring>
 #include<limits>
 #include<vector>
 
@@ -45,29 +46,31 @@ struct FixedArray {
   }
 };
 
-template<class T>
+template<class T, class Constr>
 struct ArrayIteratorBase {
   ArrayIteratorBase(T* data): data(data) { }
   T* data;
 
   T& operator*() { return *data; }
 
-  void increment() { data++; }
-  void decrement() { data--; }
+  Constr increment() { return Constr(++data); }
+  Constr decrement() { return Constr(--data); }
 
-  bool operator==(const ArrayIteratorBase<T>& o) const { return data == o.data; }
-  bool operator!=(const ArrayIteratorBase<T>& o) const { return data != o.data; }
+  bool operator==(const Constr& o) const { return data == o.data; }
+  bool operator!=(const Constr& o) const { return data != o.data; }
 };
 
 template<class T, bool reverse = false>
-struct ArrayIterator : public ArrayIteratorBase<T> {
-  ArrayIterator(T* data): ArrayIteratorBase<T>(data) { }
+struct ArrayIterator : public ArrayIteratorBase<T, ArrayIterator<T, reverse>> {
+  ArrayIterator(T* data): ArrayIteratorBase<T, ArrayIterator<T, reverse>>(data) { }
 
-  void operator++() { if(reverse) ArrayIteratorBase<T>::decrement(); else ArrayIteratorBase<T>::increment(); }
+  ArrayIterator<T, reverse> operator++() { if(reverse) return ArrayIteratorBase<T, ArrayIterator<T, reverse>>::decrement(); else return ArrayIteratorBase<T, ArrayIterator<T, reverse>>::increment(); }
 };
 
 template<class T>
 struct Array {
+  typedef ArrayIterator<T> iterator;
+  typedef ArrayIterator<T, true> reverse_iterator;
   Array() {
     length = 0;
     data = 0;
@@ -79,11 +82,11 @@ struct Array {
   T& operator[](int n) { return data[n]; };
   const T& operator[](int n) const { return data[n]; };
 
-  ArrayIterator<T> begin() { return ArrayIterator<T>(data); }
-  ArrayIterator<T> end() { return ArrayIterator<T>(data + length); }
+  iterator begin() { return ArrayIterator<T>(data); }
+  iterator end() { return ArrayIterator<T>(data + length); }
 
-  ArrayIterator<T, true> rbegin() { return ArrayIterator<T, true>(data + length - 1); }
-  ArrayIterator<T, true> rend() { return ArrayIterator<T, true>(data - 1); }
+  reverse_iterator rbegin() { return ArrayIterator<T, true>(data + length - 1); }
+  reverse_iterator rend() { return ArrayIterator<T, true>(data - 1); }
 
   void init(unsigned length) {
     this->length = length;
@@ -92,6 +95,11 @@ struct Array {
   
   void destroy() {
     delete[] data;
+  }
+
+  void copy_from(Array<T>& other) {
+    length = other.length;
+    memcpy(data, other.data, length * sizeof(T));
   }
 };
 

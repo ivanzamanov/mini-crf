@@ -69,16 +69,12 @@ public:
 
   class StateFunction : public BaseFunction {
   public:
-    virtual double operator()(const Label&, int, const vector<Input>&) const {
-      return 0;
-    };
+    virtual double operator()(const Label&, int, const vector<Input>&) const = 0;
   };
 
   class TransitionFunction : public BaseFunction {
   public:
-    virtual double operator()(const Label&, const Label&, const int, const vector<Input>&) const {
-      return 0;
-    };
+    virtual double operator()(const Label&, const Label&, const int, const vector<Input>&) const = 0;
   };
 
   CRandomField(): g(), mu(), f(), lambda() { };
@@ -159,6 +155,7 @@ struct FunctionalAutomaton {
   FunctionalAutomaton(const CRF& crf): alphabet(crf.label_alphabet), g(crf.g), mu(crf.mu), f(crf.f), lambda(crf.lambda) { }
 
   struct Transition {
+    Transition() { }
     Transition(int child, double value):
       value(value), child(child) { }
 
@@ -179,7 +176,7 @@ struct FunctionalAutomaton {
     }
 
     // Return an iterator to the value of the best next child
-    typename vector<Transition>::const_iterator pick_best(vector<Transition>& children) {
+    ArrayIterator<Transition> pick_best(Array<Transition>& children) {
       return std::min_element(children.begin(), children.end(), compare);
     }
 
@@ -248,18 +245,18 @@ struct FunctionalAutomaton {
   }
 
   template<bool includeState, bool includeTransition>
-  void populate_transitions(vector<Transition>* children, const typename CRF::Label& src, int pos) {
-    for(auto it = children->begin(); it != children->end(); it++) {
+  void populate_transitions(Array<Transition> children, const typename CRF::Label& src, int pos) {
+    for(auto it = children.begin(); it != children.end(); ++it) {
       double transition = calculate_value<includeState, includeTransition>(src, alphabet.fromInt((*it).child), pos);
       (*it).value = funcs.concat((*it).value, transition);
     }
   }
 
-  void aggregate_values(double* aggregate_destination, vector<Transition>* children) {
+  void aggregate_values(double* aggregate_destination, Array<Transition> children) {
     double &agg = *aggregate_destination;
-    auto it = children->begin();
+    auto it = children.begin();
     agg = (*it).value;
-    for(++it; it != children->end(); it++) {
+    for(++it; it != children.end(); ++it) {
       agg = funcs.aggregate((*it).value, agg);
     }
   }
@@ -267,8 +264,15 @@ struct FunctionalAutomaton {
   double traverse(vector<int>* max_path) {
     Progress prog(x.size());
     // Will need for intermediate computations
-    vector<Transition>* children = new vector<Transition>();
-    vector<Transition>* next_children = new vector<Transition>();
+    Array<Transition> children, next_children;
+    children.init(alphabet_length());
+    children.length = 0;
+    next_children.init(alphabet_length());
+    next_children.length = 0;
+    
+    Array<Transition> temp_children;
+    temp_children.init(alphabet_length());
+    temp_children.length = 0;
 
     int pos = x.size() - 1;
 
@@ -280,25 +284,25 @@ struct FunctionalAutomaton {
     // value of the last "column" of states
     for(int dest = alphabet_length() - 1; dest >= 0; dest--) {
       if(allowedState(alphabet.fromInt(dest), x[pos]))
-        children->push_back(Transition(dest, funcs.empty()));
+        children[children.length++] = Transition(dest, funcs.empty());
     }
     prog.update();
-    
+
     // backwards, for every zero-based position in
     // the input sequence except the last one...
     for(pos--; pos >= 0; pos--) {
       // for every possible label...
       for(int srcId = alphabet_length() - 1; srcId >= 0; srcId--) {
         // Short-circuit if different phoneme types
-        vector<Transition> temp_children = *children;
+        temp_children.copy_from(children);
         const typename CRF::Label& src = alphabet.fromInt(srcId);
         if(allowedState(src, x[pos])) {
           // Obtain transition values to all children
-          populate_transitions<true, true>(&temp_children, src, pos + 1);
+          populate_transitions<true, true>(temp_children, src, pos + 1);
           double value;
-          aggregate_values(&value, &temp_children);
+          aggregate_values(&value, temp_children);
 
-          next_children->push_back(Transition(srcId, value));
+          next_children[next_children.length++] = Transition(srcId, value);
         }
 
         if(max_path) {
@@ -307,7 +311,7 @@ struct FunctionalAutomaton {
         }
       }
 
-      children->clear();
+      children.length = 0;
       std::swap(children, next_children);
       prog.update();
     }
@@ -318,7 +322,7 @@ struct FunctionalAutomaton {
     prog.finish();
 
     if(max_path) {
-      auto max = funcs.pick_best(*children);
+      auto max = funcs.pick_best(children);
       max_path->push_back((*max).child);
 
       int state = (*max).child;

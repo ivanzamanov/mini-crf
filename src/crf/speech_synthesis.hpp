@@ -34,6 +34,13 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
     return result;
   }
 
+  std::vector<PhonemeInstance> to_phonemes(const std::vector<int>& ids) {
+    std::vector<PhonemeInstance> result;
+    for(auto it = ids.begin(); it != ids.end(); it++)
+      result.push_back(fromInt(*it));
+    return result;
+  }
+
   std::vector<int> phonemes_of_file(int file_index) {
     std::vector<int> result;
     for(unsigned i = 0; i < file_indices.length && (file_indices[i] <= file_index); i++) {

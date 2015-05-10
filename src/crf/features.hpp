@@ -17,7 +17,7 @@ public:
     return eval(prev, next);
   }
 
-  double operator()(const CRF::Label l1, int pos, const std::vector<CRF::Input>& inputs) const {
+  double operator()(const CRF::Label& l1, int pos, const std::vector<CRF::Input>& inputs) const {
     const PhonemeInstance& prev = l1;
     const PhonemeInstance& next = inputs[pos];
     Evaluate eval;
