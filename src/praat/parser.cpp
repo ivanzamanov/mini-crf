@@ -34,15 +34,17 @@ PhonemeInstance* parse_file(std::istream& stream, int& size) {
   size = value<int>(stream, "intervals");
   PhonemeInstance* result = new PhonemeInstance[size];
 
-  for(int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++) {
     section(stream, "[Entry]");
-    result[i].label = value<char>(stream, "label");
+    result[i].label = PhoneticLabelUtil::fromString(value<std::string>(stream, "label"));
     result[i].start = value<double>(stream, "start");
     result[i].end = value<double>(stream, "end");
     int frames = value<int>(stream, "frames");
     double duration = value<double>(stream, "duration");
     result[i].duration = duration;
     result[i].frames.length = frames;
+    if(frames < 0)
+      std::cerr << "Error at " << stream.tellg() << std::endl;
     result[i].frames.data = new Frame[frames];
 
     for(int frame = 0; frame < frames; frame++) {

@@ -29,8 +29,11 @@ Corpus<PhonemeInstance, PhonemeInstance> test_corpus;
 
 std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
   std::string result(1, ' ');
-  for(auto it = vec.begin(); it != vec.end(); it++)
-    result.push_back( (*it).label);
+  for(auto it = vec.begin(); it != vec.end(); it++) {
+    result.push_back('|');
+    result.append( PhoneticLabelUtil::fromInt((*it).label) );
+    result.push_back('|');
+  }
   return result;
 }
 

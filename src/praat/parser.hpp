@@ -3,6 +3,7 @@
 
 #include<iostream>
 #include<vector>
+#include<string>
 
 #include"../praat/matrix.hpp"
 #include"../crf/util.hpp"
@@ -10,6 +11,111 @@
 static const int MFCC_N = 12;
 
 typedef FixedArray<double, MFCC_N> MfccArray;
+
+static const std::string PHONETIC_LABELS[] = {
+    "A",
+    "a",
+    "O",
+    "o",
+    "U",
+    "u",
+    "Y",
+    "y",
+    "E",
+    "e",
+    "I",
+    "i",
+    "ja",
+    "jA",
+    "jy",
+    "jY",
+    "ju",
+    "jU",
+    "je",
+    "jE",
+    "b",
+    "b,",
+    "v",
+    "v,",
+    "g",
+    "g,",
+    "d",
+    "d,",
+    "w",
+    "z",
+    "z,",
+    "%",
+    "q",
+    "q,",
+    "k",
+    "k,",
+    "l",
+    "l,",
+    "l1",
+    "l1,",
+    "l2",
+    "l2,",
+    "m",
+    "m,",
+    "n",
+    "n,",
+    "p",
+    "p,",
+    "r",
+    "r,",
+    "r1",
+    "r2",
+    "r1,",
+    "r2,",
+    "s",
+    "s,",
+    "t",
+    "t,",
+    "f",
+    "f,",
+    "h",
+    "h,",
+    "c",
+    "c,",
+    "x",
+    "ch",
+    "sh",
+    "j",
+    "_",
+    "$",
+    ":",
+    "*",
+    " "
+  };
+static unsigned int count = 0;
+struct PhoneticLabelUtil {
+  static std::string fromInt(unsigned i) {
+    return PHONETIC_LABELS[i];
+  }
+
+  static void removeObsoletes(std::string& str) {
+    std::string result;
+    for(auto it = str.begin(); it != str.end(); it++) {
+      char c = *it;
+      if(!(c == '\"' || c == '~' || c == ':' || c == '\''))
+        result.push_back(c);
+    }
+    str = result;
+  }
+
+  static unsigned fromString(std::string str) {
+    removeObsoletes(str);
+    const std::string* label = PHONETIC_LABELS;
+    unsigned i = 0;
+    while(*label != " " && *label != str) {
+      i++; label++;
+    }
+    if(*label == " ")
+      std::cerr << "Invalid label " << str << std::endl;
+    //std::cerr << "From string " << count++ << " " << str << " = " << i << std::endl;
+    return i;
+  }
+};
 
 struct Frame {
   Frame():pitch(0) { init(); }
@@ -22,6 +128,8 @@ private:
   void init() { for(unsigned i = 0; i < mfcc.length(); i++) mfcc[i] = 0; }
 };
 
+typedef unsigned int PhoneticLabel;
+
 struct PhonemeInstance {
   PhonemeInstance() {
     start = 0;
@@ -33,8 +141,8 @@ struct PhonemeInstance {
   double start;
   double end;
   double duration;
-  char label;
   unsigned id;
+  PhoneticLabel label;
 
   unsigned size() const { return frames.length; }
 
