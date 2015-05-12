@@ -3,11 +3,31 @@
 #include<algorithm>
 
 static void print_usage(const char* main) {
-  std::cout << "Usage: " << main << ": <input_file>";
+  std::cout << "Usage: " << main << ": <input_file>" << std::endl;
 }
 
 Corpus<PhonemeInstance, PhonemeInstance> corpus;
 PhonemeAlphabet alphabet;
+
+void print_min_sent() {
+  unsigned min = 0, minSize = corpus.input(0).size();
+  for(unsigned i = 0; i < corpus.size(); i++)
+    if(corpus.input(i).size() < minSize) {
+      min = i;
+      minSize = corpus.input(i).size();
+    }
+  std::cout << "Shortest sentence: " << min << std::endl;
+}
+
+void print_max_sent() {
+  unsigned max = 0, maxSize = corpus.input(0).size();
+  for(unsigned i = 0; i < corpus.size(); i++)
+    if(corpus.input(i).size() > maxSize) {
+      max = i;
+      maxSize = corpus.input(i).size();
+    }
+  std::cout << "Longest sentence: " << max << std::endl;
+}
 
 template<class Func>
 void print_function_stats(const PhonemeAlphabet& alphabet, const char* name) {
@@ -50,7 +70,9 @@ int main(int argc, const char** argv) {
   std::ifstream input(input_path);
   build_data_bin(input, alphabet, corpus);
   pre_process(alphabet);
-  
+
+  print_min_sent();
+  print_max_sent();
   print_function_stats<MFCCDist>(alphabet, "MFCC");
   print_function_stats<Pitch>(alphabet, "Pitch");
   return 0;

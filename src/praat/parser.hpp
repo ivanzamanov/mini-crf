@@ -128,6 +128,20 @@ private:
   void init() { for(unsigned i = 0; i < mfcc.length(); i++) mfcc[i] = 0; }
 };
 
+static const unsigned PITCH_CONTOUR_LENGTH = 1;
+struct PitchContour {
+  unsigned length() const { return PITCH_CONTOUR_LENGTH; }
+  double values[PITCH_CONTOUR_LENGTH];
+
+  double diff(const PitchContour& other) const {
+    double result = 0;
+    for(unsigned i = 0; i < length(); i++) {
+      result += std::abs( std::log( values[i] / other.values[i] ) );
+    }
+    return result;
+  }
+};
+
 typedef unsigned int PhoneticLabel;
 
 struct PhonemeInstance {
@@ -138,6 +152,7 @@ struct PhonemeInstance {
     id = 0;
   }
   Array<Frame> frames;
+  PitchContour pitch_contour;
   double start;
   double end;
   double duration;
@@ -149,20 +164,6 @@ struct PhonemeInstance {
   const Frame& at(unsigned index) const { return frames[index]; }
   const Frame& first() const { return frames[0]; }
   const Frame& last() const { return frames[size() - 1]; }
-};
-
-static const unsigned PITCH_CONTOUR_LENGTH = 1;
-struct PitchContour {
-  unsigned length() { return PITCH_CONTOUR_LENGTH; }
-  double values[PITCH_CONTOUR_LENGTH];
-
-  double diff(const PitchContour& other) {
-    double result = 0;
-    for(unsigned i = 0; i < length(); i++) {
-      result += std::abs( std::log( values[i] / other.values[i] ) );
-    }
-    return result;
-  }
 };
 
 PitchContour to_pitch_contour(const PhonemeInstance&);

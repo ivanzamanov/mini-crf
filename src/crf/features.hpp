@@ -61,9 +61,7 @@ struct Pitch {
 
 struct PitchState {
   double operator()(const PhonemeInstance& p1, const PhonemeInstance& p2) const {
-    PitchContour pc1 = to_pitch_contour(p1),
-      pc2 = to_pitch_contour(p2);
-    return pc1.diff(pc2);
+    return p1.pitch_contour.diff(p2.pitch_contour);
   }
 };
 

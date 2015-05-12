@@ -253,20 +253,20 @@ struct FunctionalAutomaton {
 
   template<bool includeState, bool includeTransition>
   double traverse_transitions(Array<Transition> children, const typename CRF::Label& src, int pos) {
-    auto it = children.begin();
+    unsigned m = 0;
 
-    auto child = alphabet.fromInt((*it).child);
+    auto child = alphabet.fromInt(children[m].child);
     double transition = calculate_value<includeState, includeTransition>(src, child, pos);
-    (*it).value = funcs.concat((*it).base_value, transition);
+    children[m].value = funcs.concat(children[m].base_value, transition);
 
     double agg;
-    agg = (*it).value;
-    for(++it; it != children.end(); ++it) {
-      child = alphabet.fromInt((*it).child);
+    agg = children[m].value;
+    for(++m; m < children.length; ++m) {
+      child = alphabet.fromInt(children[m].child);
       transition = calculate_value<includeState, includeTransition>(src, child, pos);
-      (*it).value = funcs.concat((*it).base_value, transition);
+      children[m].value = funcs.concat(children[m].base_value, transition);
 
-      agg = funcs.aggregate((*it).value, agg);
+      agg = funcs.aggregate(children[m].value, agg);
     }
 
     return agg;
@@ -304,8 +304,8 @@ struct FunctionalAutomaton {
       // for every possible label...
       const typename CRF::Alphabet::LabelClass& allowed = alphabet.get_class(x[pos]);
       options.push_back(allowed.size());
-      for(auto it = allowed.begin(); it != allowed.end() ; it++) {
-        auto srcId = *it;
+      for(unsigned m = 0; m < allowed.size(); m++) {
+        auto srcId = allowed[m];
 
         const typename CRF::Label& src = alphabet.fromInt(srcId);
         double value = traverse_transitions<true, true>(children, src, pos + 1);

@@ -272,6 +272,9 @@ void pre_process(PhonemeAlphabet& alphabet) {
       }
     }
   }
+
+  for(unsigned i = 0; i < alphabet.labels.length; i++)
+    alphabet.labels[i].pitch_contour = to_pitch_contour(alphabet.labels[i]);
 }
 
 #endif
