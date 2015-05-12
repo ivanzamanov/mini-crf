@@ -5,7 +5,7 @@
 #include<vector>
 #include<string>
 
-#include"../praat/matrix.hpp"
+#include"../crf/matrix.hpp"
 #include"../crf/util.hpp"
 
 static const int MFCC_N = 12;

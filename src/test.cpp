@@ -26,6 +26,10 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
     build_classes();
   }
 
+  const LabelClass& get_class(unsigned int integer) const {
+    return classes[integer % CLASSES];
+  }
+
   bool allowedState(const Label& l1, const Label& l2) const {
     return l1.label % CLASSES == l2.label % CLASSES;
   }
@@ -123,7 +127,7 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
 
   std::cerr << "Input path: ";
   for(unsigned i = 0; i < labels.size(); i++)
-    std::cerr << labels[i].label << " ";
+    std::cerr << a.x[i] << " ";
   std::cerr << std::endl;
 
   double expected_cost = total_cost(labels, *crf, crf->lambda, crf->mu, a.x);

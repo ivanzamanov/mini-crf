@@ -11,7 +11,7 @@ struct LabelAlphabet {
 
   Array<LabelClass> classes;
   Array<LabelObject> labels;
-  
+
   void build_classes() {
     const int length = 256;
     classes.data = new LabelAlphabet::LabelClass[length];

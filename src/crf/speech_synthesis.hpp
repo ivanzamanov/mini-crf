@@ -13,6 +13,10 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
   Array<std::string> files;
   Array<int> file_indices;
 
+  const LabelAlphabet<PhonemeInstance>::LabelClass& get_class(const PhonemeInstance& phon) const {
+    return classes[phon.label];
+  }
+
   std::string file_of(int phonId) {
     return files[file_indices[phonId]];
   }
