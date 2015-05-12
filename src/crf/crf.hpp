@@ -157,8 +157,9 @@ struct FunctionalAutomaton {
   struct Transition {
     Transition() { }
     Transition(int child, double value):
-      value(value), child(child) { }
+      base_value(value), child(child) { }
 
+    double base_value;
     double value;
     int child;
   };
@@ -248,7 +249,7 @@ struct FunctionalAutomaton {
   void populate_transitions(Array<Transition> children, const typename CRF::Label& src, int pos) {
     for(auto it = children.begin(); it != children.end(); ++it) {
       double transition = calculate_value<includeState, includeTransition>(src, alphabet.fromInt((*it).child), pos);
-      (*it).value = funcs.concat((*it).value, transition);
+      (*it).value = funcs.concat((*it).base_value, transition);
     }
   }
 
@@ -270,9 +271,9 @@ struct FunctionalAutomaton {
     next_children.init(alphabet_length());
     next_children.length = 0;
     
-    Array<Transition> temp_children;
+    /*Array<Transition> temp_children;
     temp_children.init(alphabet_length());
-    temp_children.length = 0;
+    temp_children.length = 0;*/
 
     int pos = x.size() - 1;
 
@@ -294,19 +295,19 @@ struct FunctionalAutomaton {
       // for every possible label...
       for(int srcId = alphabet_length() - 1; srcId >= 0; srcId--) {
         // Short-circuit if different phoneme types
-        temp_children.copy_from(children);
+        //temp_children.copy_from(children);
         const typename CRF::Label& src = alphabet.fromInt(srcId);
         if(allowedState(src, x[pos])) {
           // Obtain transition values to all children
-          populate_transitions<true, true>(temp_children, src, pos + 1);
+          populate_transitions<true, true>(children, src, pos + 1);
           double value;
-          aggregate_values(&value, temp_children);
+          aggregate_values(&value, children);
 
           next_children[next_children.length++] = Transition(srcId, value);
         }
 
         if(max_path) {
-          auto max = funcs.pick_best(temp_children);
+          auto max = funcs.pick_best(children);
           paths[srcId].push_back((*max).child);
         }
       }
