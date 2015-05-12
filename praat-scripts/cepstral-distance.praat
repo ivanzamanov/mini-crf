@@ -1,53 +1,87 @@
 form Cepstral Distance
      comment File Paths
-     sentence sound_path_1 .
-     sentence sound_path_2 .
+     sentence sound_path_1 D:\cygwin\home\ivo\SpeechSynthesis\mini-crf\praat-scripts\concat-output.wav
+     sentence sound_path_2 D:\cygwin\home\ivo\SpeechSynthesis\corpus-test\Diana_A.1.1.Un2\Diana_A.1.1.Un2.wav
 endform
 
 sounds[1] = Read from file... 'sound_path_1$'
 sounds[2] = Read from file... 'sound_path_2$'
 
-@create_cepstrums
+@create_cepstra
 
-@diff_matrices
+appendInfoLine: result
 
-procedure create_cepstrums
-    for i to 2
-        sound = sounds[i]
-        selectObject: sound
+procedure create_cepstra
+    selectObject: sounds[1]
+    duration1 = Get total duration
+    selectObject: sounds[2]
+    duration2 = Get total duration
 
-        spectrum = To Spectrum... false
-        cepstrum = To PowerCepstrum
-        matrix = To Matrix
+    frameWidth = 0.005
+    totalDuration = min(duration1, duration2)
+    frameCount = totalDuration / frameWidth
+    for index to frameCount
+        for i to 2
+            sound = sounds[i]
+            selectObject: sound
 
-        matrices[i] = matrix
+            @create_single_cepstrum
 
-        selectObject: cepstrum
-        Remove
-        selectObject: spectrum
-        Remove
-        #selectObject: sound
-        #Remove
+            selectObject: sound
+            Remove
+        endfor
+
+        @diff_cepstra
+
+        for i to 2
+            selectObject: cepstra[i]
+            Remove
+        endfor
     endfor
 endproc
 
-procedure diff_matrices
-    selectObject: matrices[1]
+procedure create_single_cepstrum
+    spectrum = To Spectrum... false
+    startTime = (index - 1) * frameWidth
+    endTime = index * frameWidth
+    selectObject: sound
+    frame = Extract part for overlap... startTime endTime 0.01
+    spectrum = To Spectrum... false
+    cepstrum = To PowerCepstrum
+    cepstra[i] = To Matrix
+
+    selectObject: spectrum
+    Remove
+    selectObject: cepstrum
+    Remove
+endproc
+
+procedure diff_cepstra
+    selectObject: cepstra[1]
     xMax1 = Get number of columns
-    selectObject: matrices[2]
+    yMax1 = Get number of rows
+    selectObject: cepstra[2]
     xMax2 = Get number of columns
+    yMax2 = Get number of rows
 
     xMax = min(xMax1, xMax2)
+    if yMax1 != yMax2
+        exitScript: "Cepstrum y-max differ: ", yMax1, " ", yMax2
+    endif
+
+    yMax = yMax1
+
     result = 0
     for i to xMax
-        selectObject: matrices[1]
-        y1 = Get value in cell... 1 i
+        dist = 0
+        for j to yMax
+            selectObject: matrices[1]
+            y1 = Get value in cell... 1 i
 
-        selectObject: matrices[2]
-        y2 = Get value in cell... 1 i
-
-        result = result + (y1 - y2) * (y1 - y2)
+            selectObject: matrices[2]
+            y2 = Get value in cell... 1 i
+            dist = dist + (y1 - y2) * (y1 - y2)
+        endfor
+        result = result + dist
     endfor
-
-    appendInfoLine: result
 endproc
