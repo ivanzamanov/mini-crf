@@ -7,39 +7,47 @@
 
 typedef CRandomField<PhonemeAlphabet, PhonemeInstance> CRF;
 
+enum FunctionId {
+  pitch = 0,
+  mfcc = 1
+};
+
+struct FeatureValues {
+  static const unsigned COUNT = 2;
+  double values[COUNT];
+
+  int diff(const FeatureValues& o) const {
+    for(unsigned i = 0; i < COUNT; i++) {
+      if(values[i] != o.values[i])
+        return (int) i;
+    }
+    return -1;
+  }
+
+  unsigned size() const { return COUNT; }
+};
+
+template<class Eval>
+double feature_value(const PhonemeInstance& p1, const PhonemeInstance& p2) {
+  Eval eval;
+  return eval(p1, p2);
+}
+
 template<class Evaluate>
 class StateFunction : public CRF::StateFunction {
 public:
-  double operator()(const std::vector<CRF::Label>& labels, int pos, const std::vector<CRF::Input>& inputs) const {
-    const PhonemeInstance& prev = labels[pos];
-    const PhonemeInstance& next = inputs[pos];
-    Evaluate eval;
-    return eval(prev, next);
-  }
-
   double operator()(const CRF::Label& l1, int pos, const std::vector<CRF::Input>& inputs) const {
-    const PhonemeInstance& prev = l1;
-    const PhonemeInstance& next = inputs[pos];
-    Evaluate eval;
-    return eval(prev, next);
+    return feature_value<Evaluate>(l1, inputs[pos]);
   }
 };
 
-template<class Evaluate>
+template<class Evaluate, FunctionId id>
 class TransitionFunction : public CRF::TransitionFunction {
 public:
-  double operator()(const std::vector<CRF::Label>& labels, int pos, const std::vector<CRF::Input>&) const {
-    const PhonemeInstance& prev = labels[pos - 1];
-    const PhonemeInstance& next = labels[pos - 1];
-    Evaluate eval;
-    return eval(prev, next);
-  }
+  TransitionFunction() { this->id = id; }
 
   double operator()(const CRF::Label& l1, const CRF::Label& l2, int, const std::vector<CRF::Input>&) const {
-    const PhonemeInstance& prev = l1;
-    const PhonemeInstance& next = l2;
-    Evaluate eval;
-    return eval(prev, next);
+    return feature_value<Evaluate>(l1, l2);
   }
 };
 
@@ -86,11 +94,17 @@ std::vector<CRF::StateFunction*> state_functions() {
   return result;
 }
 
+FeatureValues get_feature_values(const PhonemeInstance& p1, const PhonemeInstance& p2) {
+  FeatureValues result;
+  result.values[FunctionId::pitch] = feature_value<Pitch>(p1, p2);
+  result.values[FunctionId::mfcc] = feature_value<MFCCDist>(p1, p2);
+  return result;
+}
+
 std::vector<CRF::TransitionFunction*> transition_functions() {
   std::vector<CRF::TransitionFunction*> result;
-  //result[0] = new TransitionFunction<Duration>();
-  result.push_back(new TransitionFunction<Pitch>());
-  result.push_back(new TransitionFunction<MFCCDist>());
+  result.push_back(new TransitionFunction<Pitch, FunctionId::pitch>());
+  result.push_back(new TransitionFunction<MFCCDist, FunctionId::mfcc>());
   return result;
 }
 

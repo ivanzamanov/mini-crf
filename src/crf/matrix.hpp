@@ -1,6 +1,10 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
+#include<string>
+#include<iostream>
+#include<fstream>
+
 class Matrix {
 public:
   Matrix(int rows, int cols): r(rows), c(cols) {
@@ -32,6 +36,42 @@ public:
   double* data;
 
   double xmin, xmax, dx, x1, ymin, ymax, dy, y1;
+};
+
+template<class T>
+// Square matrix only
+class FileMatrixReader {
+public:
+  FileMatrixReader(std::string file_name, unsigned long side): stream(file_name), side(side) { }
+
+  std::ifstream stream;
+  unsigned long side;
+
+  T get(unsigned row, unsigned col) {
+    T result;
+    stream.seekg((row * side + col) * sizeof(result));
+    stream.read((char*) &result, sizeof(result));
+    return result;
+  }
+
+  ~FileMatrixReader() { stream.close(); }
+};
+
+template<class T>
+// Square matrix only
+class FileMatrixWriter {
+public:
+  FileMatrixWriter(std::string file_name, unsigned long side): stream(file_name), side(side) { }
+
+  std::ofstream stream;
+  unsigned long side;
+
+  void put(unsigned row, unsigned col, const T& val) {
+    stream.seekp((row * side + col) * sizeof(val));
+    stream.write((char*) &val, sizeof(val));
+  }
+
+  ~FileMatrixWriter() { stream.flush(); stream.close(); }
 };
 
 #endif

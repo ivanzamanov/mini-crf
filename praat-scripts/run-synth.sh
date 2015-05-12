@@ -12,7 +12,7 @@ TEST_DB=~/SpeechSynthesis/db-test.bin
 pushd $BASE/../src
 
 echo "Concat temp file: $TEMP_F"
-./main-opt --mode resynth --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 --textgrid $BASE/concat.TextGrid > "$TEMP_F"
+time ./main-opt --mode resynth --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 --textgrid $BASE/concat.TextGrid > "$TEMP_F"
 popd
 
 set +x

@@ -1,7 +1,8 @@
 #include"crf/speech_synthesis.hpp"
+#include"crf/features.hpp"
 
 static void print_usage(const char* main) {
-  std::cout << "Usage: " << main << ": [<input_file>|-] <output_file>\n"; 
+  std::cout << "Usage: " << main << ": <input_file>|- <output_file> [<function_value_cache>]\n";
 }
 
 Corpus<PhonemeInstance, PhonemeInstance> corpus;
@@ -88,6 +89,61 @@ void validate_data(std::ifstream& input) {
   std::cout << "Bin corpus size: " << n_corpus.size() << std::endl;
 }
 
+std::ostream& operator<<(std::ostream& str, const FeatureValues& fv) {
+  str << "(";
+  str << fv.values[0];
+  for(unsigned i = 1; i < fv.size(); i++)
+    str << ", " << fv.values[i];
+  str << ")";
+  return str;
+}
+
+void validate_cache(std::string path) {
+  std::cout << "Validating value cache" << std::endl;
+  unsigned long size = alphabet.size();
+  Progress prog(size);
+  FileMatrixReader<FeatureValues> r(path, size);
+  for(unsigned i = 0; i < size; i++) {
+    const PhonemeInstance& p1 = alphabet.labels[i];
+
+    for(unsigned j = 0; j < size; j++) {
+      const PhonemeInstance& p2 = alphabet.labels[j];
+
+      FeatureValues v1 = get_feature_values(p1, p2);
+      FeatureValues v2 = r.get(i, j);
+
+      int diff = v1.diff(v2);
+      if(diff >= 0) {
+        std::cerr << "Bad cache at [" << i << "," << j << "," << diff << "]: ";
+        std::cerr << v1 << " and " << v2 << std::endl;
+      }
+    }
+    prog.update();
+  }
+  prog.finish();
+}
+
+void output_cache(std::string path) {
+  pre_process(alphabet);
+  std::cout << "Writing value cache" << std::endl;
+  unsigned long size = alphabet.size();
+  Progress prog(size);
+  std::cout << "Expected size: " << size * size * sizeof(FeatureValues) << " bytes" << std::endl;
+  FileMatrixWriter<FeatureValues> w(path, size);
+  for(unsigned i = 0; i < size; i++) {
+    const PhonemeInstance& p1 = alphabet.labels[i];
+
+    for(unsigned j = 0; j < size; j++) {
+      const PhonemeInstance& p2 = alphabet.labels[j];
+
+      FeatureValues values = get_feature_values(p1, p2);
+      w.put(i, j, values);
+    }
+    prog.update();
+  }
+  prog.finish();
+}
+
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
 
@@ -113,6 +169,12 @@ int main(int argc, const char** argv) {
   std::ifstream bin_input(output_path);
   validate_data(bin_input);
 
-  if(is_stdin)
+  if(argc > 3) {
+    std::string value_cache(argv[3]);
+    output_cache(value_cache);
+    validate_cache(value_cache);
+  }
+
+  if(!is_stdin)
     delete input;
 }

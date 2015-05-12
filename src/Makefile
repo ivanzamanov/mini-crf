@@ -1,6 +1,6 @@
 
 CC = g++
-CFLAGS = -std=c++11 -Wall -g -I.
+CFLAGS = -std=c++11 -Wall -pg -g -I.
 OBJ_DIR = bin
 OBJ = crf.o
 CMD = $(CC) $(CFLAGS)
@@ -22,7 +22,10 @@ main-opt: $(MAIN_DEPS) test
 text2bin: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) text2bin.cpp $(CPP_FILES) -o text2bin
 
-all: clean main test main-opt text2bin
+text2bin-opt: $(MAIN_DEPS) text2bin.cpp
+	$(CMD) -O3 text2bin.cpp $(CPP_FILES) -o text2bin-opt
+
+all: clean main test main-opt text2bin text2bin-opt
   
 
 clean:

@@ -75,6 +75,7 @@ public:
 
   class TransitionFunction : public BaseFunction {
   public:
+    unsigned short id;
     virtual double operator()(const Label&, const Label&, const int, const vector<Input>&) const = 0;
   };
 
