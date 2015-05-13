@@ -9,6 +9,7 @@ sounds[2] = Read from file... 'sound_path_2$'
 
 @create_cepstra
 
+writeInfo: ""
 appendInfoLine: result
 
 procedure create_cepstra
@@ -20,15 +21,15 @@ procedure create_cepstra
     frameWidth = 0.005
     totalDuration = min(duration1, duration2)
     frameCount = totalDuration / frameWidth
+    appendInfoLine: "Frames: ", frameCount
     for index to frameCount
+        startTime = (index - 1) * frameWidth
+        endTime = index * frameWidth
         for i to 2
             sound = sounds[i]
             selectObject: sound
 
             @create_single_cepstrum
-
-            selectObject: sound
-            Remove
         endfor
 
         @diff_cepstra
@@ -41,10 +42,6 @@ procedure create_cepstra
 endproc
 
 procedure create_single_cepstrum
-    spectrum = To Spectrum... false
-    startTime = (index - 1) * frameWidth
-    endTime = index * frameWidth
-    selectObject: sound
     frame = Extract part for overlap... startTime endTime 0.01
     spectrum = To Spectrum... false
     cepstrum = To PowerCepstrum
@@ -54,34 +51,27 @@ procedure create_single_cepstrum
     Remove
     selectObject: cepstrum
     Remove
+    selectObject: frame
+    Remove
 endproc
 
 procedure diff_cepstra
     selectObject: cepstra[1]
     xMax1 = Get number of columns
-    yMax1 = Get number of rows
     selectObject: cepstra[2]
     xMax2 = Get number of columns
-    yMax2 = Get number of rows
 
     xMax = min(xMax1, xMax2)
-    if yMax1 != yMax2
-        exitScript: "Cepstrum y-max differ: ", yMax1, " ", yMax2
-    endif
-
-    yMax = yMax1
 
     result = 0
     for i to xMax
         dist = 0
-        for j to yMax
-            selectObject: matrices[1]
-            y1 = Get value in cell... 1 i
+        selectObject: cepstra[1]
+        y1 = Get value in cell... 1 i
 
-            selectObject: matrices[2]
-            y2 = Get value in cell... 1 i
-            dist = dist + (y1 - y2) * (y1 - y2)
-        endfor
+        selectObject: cepstra[2]
+        y2 = Get value in cell... 1 i
+        dist = dist + (y1 - y2) * (y1 - y2)
         result = result + dist
     endfor
 endproc
