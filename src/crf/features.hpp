@@ -89,8 +89,8 @@ struct MFCCDist {
 
 std::vector<CRF::StateFunction*> state_functions() {
   std::vector<CRF::StateFunction*> result;
-  result.push_back(new StateFunction<Duration>());
   result.push_back(new StateFunction<PitchState>());
+  result.push_back(new StateFunction<Duration>());
   return result;
 }
 

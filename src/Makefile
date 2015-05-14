@@ -29,7 +29,7 @@ all: clean main test main-opt text2bin text2bin-opt
   
 
 clean:
-	rm -f $(wildcard *.exe) main test text2bin
+	rm -f $(wildcard *.exe) main main-opt db-stats test text2bin text2bin-opt
 
 # %.o : %.cpp %.hpp
 # 	mkdir -p $(OBJ_DIR)

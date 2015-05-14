@@ -162,6 +162,41 @@ int query(const Options& opts) {
   return 0;
 }
 
+void resynth_index(int index) {
+  std::vector<PhonemeInstance> input = test_corpus.input(index);
+  std::string sentence_string = to_text_string(input);
+  std::string input_file = test_alphabet.file_of(input[0].id);
+  std::vector<int> path;
+
+  std::cout << input_file << std::endl;
+  return;
+  max_path(input, crf, crf.lambda, crf.mu, &path);
+  std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
+
+  SynthPrinter sp(crf.label_alphabet);
+  sp.print_synth(path, input);
+}
+
+int train(const Options& opts) {
+  pre_process(crf.label_alphabet);
+  pre_process(test_alphabet);
+
+  PlainStreamConfig conf(std::cin);
+
+  double val;
+  crf.mu[0] = conf.get("state-pitch", val);
+  crf.mu[1] = conf.get("state-duration", val);
+  crf.lambda[0] = conf.get("trans-pitch", val);
+  crf.lambda[1] = conf.get("trans-mfcc", val);
+
+  for(unsigned i = 0; i < test_corpus.size(); i++) {
+    std::cout << "----------";
+    resynth_index(i);
+  }
+
+  return 0;
+}
+
 void build_data(const Options& opts) {
   std::cerr << "Synth db: " << opts.synth_db << std::endl;
   std::ifstream synth_db(opts.synth_db);
@@ -194,6 +229,8 @@ int main(int argc, const char** argv) {
     return query(opts);
   case Mode::RESYNTH:
     return resynthesize(opts);
+  case Mode::TRAIN:
+    return train(opts);
   default:
     std::cerr << "Unrecognized mode " << opts.mode << std::endl;
     return 1;

@@ -32,6 +32,7 @@
 *#
 
 # Binaries and temps
+node_modules
 main
 test
 main-opt

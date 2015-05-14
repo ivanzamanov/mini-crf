@@ -8,14 +8,47 @@
 
 int MIN_OPTS = 2;
 
-enum Mode { SYNTH, QUERY, RESYNTH, INVALID };
+enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, INVALID };
 
 Mode get_mode(std::string str) {
   if(str == "synth") return Mode::SYNTH;
   else if(str == "query") return Mode::QUERY;
   else if(str == "resynth") return Mode::RESYNTH;
+  else if(str == "train") return Mode::TRAIN;
   return Mode::INVALID;
 }
+
+struct PlainStreamConfig {
+  struct ConfigValue {
+    std::string key, value;
+
+    template<class T>
+    void get(T& val) {
+      std::stringstream sstream(value);
+      sstream >> val;
+    }
+  };
+
+  PlainStreamConfig(std::istream& str) {
+    std::string buffer;
+    while(str >> buffer) {
+      ConfigValue v;
+      int index = buffer.find_first_of('=');
+      v.key = buffer.substr(0, index);
+      v.value = buffer.substr(index + 1);
+      values.push_back(v);
+    }
+  }
+
+  std::vector<ConfigValue> values;
+
+  template<class T>
+  T& get(std::string key, T& val) {
+    for(auto it = values.begin(); it != values.end(); it++)
+      if( (*it).key == key) { (*it).get(val); break; }
+    return val;
+  }
+};
 
 struct Options {
   Options(unsigned l, const char** args): length(l), args(args) { }
