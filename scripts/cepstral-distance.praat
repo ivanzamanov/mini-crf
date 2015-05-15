@@ -21,7 +21,7 @@ procedure create_cepstra
     frameWidth = 0.005
     totalDuration = min(duration1, duration2)
     frameCount = totalDuration / frameWidth
-    appendInfoLine: "Frames: ", frameCount
+    #appendInfoLine: "Frames: ", frameCount
     for index to frameCount
         startTime = (index - 1) * frameWidth
         endTime = index * frameWidth

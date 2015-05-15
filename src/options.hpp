@@ -6,7 +6,7 @@
 #include<vector>
 #include<string>
 
-int MIN_OPTS = 2;
+unsigned MIN_OPTS = 2;
 
 enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, INVALID };
 

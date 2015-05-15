@@ -78,8 +78,8 @@ struct MFCCDist {
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     double result = 0;
-    for (unsigned i = 0; i < mfcc1.length(); i++) {
-      // double diff = ((12 - i) / 12) * (mfcc1[i] - mfcc2[i]);
+	unsigned LIMIT = 5;
+    for (unsigned i = 0; i < LIMIT; i++) {
       double diff = mfcc1[i] - mfcc2[i];
       result += diff * diff;
     }

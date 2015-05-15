@@ -12,116 +12,156 @@ function parseArguments() {
 	var args = minimist(process.argv.slice(2), opts);
 }
 
-var tmpDir = '.'
-var synthDBPath = '/home/ivo/SpeechSynthesis/db-synth.bin';
-var testDBPath = '/home/ivo/SpeechSynthesis/db-test-single.bin';
-var childArguments = ['--mode', 'train', '--synth-database', synthDBPath, '--test-database', testDBPath ];
-var commandPath = '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt';
-
-function getTrainingProcess() {
-	return require('child_process').spawn(commandPath, childArguments);
-}
-
-function getComparisonProcess(originalSound, concatInputFile) {
-	
-}
-
 function isEmpty(line) {
 	return !line;
 }
 
 var tempFileIndex = 0;
 function getTempFile() {
-	return 'tempFile' + ++tempFileIndex + '.txt';
+	return path.normalize(path.join(tmpDir, 'tempFile' + ++tempFileIndex + '.tmp'));
 }
 
-function onTrainingFinished(runConfig, output) {
+function runCommand(command, input, callback) {
+	var output = "";
+
+	console.log('Running: ');
+	console.log(command);
+	if(input)
+		console.log('With input: ' + input);
+
+	callback = _.once(callback);
+	var child = require('child_process').spawn(command[0], command.slice(1), { cwd: tmpDir });
+	child.stderr.pipe(process.stderr);
+
+	child.stdout.on('data', function (data) {
+		output += data.toString('UTF-8');
+	});
+	child.on('error', callback);
+	child.on('exit', function(code) { if(code != 0) callback(code); else callback(null); });
+	child.stdout.on('end', function() {
+		callback(null, output);
+	});
+
+	child.stdin.end(input);
+	return child;
+}
+
+var tmpDir = '/tmp/';
+var synthDBPath = '/home/ivo/SpeechSynthesis/db-synth.bin';
+var testDBPath = '/home/ivo/SpeechSynthesis/db-test-single.bin';
+var trainingArguments = ['--mode', 'train', '--synth-database', synthDBPath, '--test-database', testDBPath ];
+var trainingCommand = '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt';
+
+var PRAAT = 'praat',
+	SYNTH_SCRIPT = '/home/ivo/SpeechSynthesis/mini-crf/scripts/concat.praat',
+	COMPARE_SCRIPT = '/home/ivo/SpeechSynthesis/mini-crf/scripts/cepstral-distance.praat';
+
+function getTrainingCommand() {
+	return [trainingCommand].concat(trainingArguments);
+}
+
+function getSynthCommand(synthInputPath, synthOutputPath) {
+	return [PRAAT, SYNTH_SCRIPT, synthInputPath, synthOutputPath];
+}
+
+function getComparisonCommand(sound1, sound2) {
+	return [PRAAT, COMPARE_SCRIPT, sound1, sound2];
+}
+
+function runTraining(runConfig, callback) {
+	var coefs = runConfig.coefs,
+		input = "",
+		output = "";
+
+	_.forOwn(coefs, function(value, key) { input += (key + "=" + value + "\n") });
+
+	runCommand(getTrainingCommand(), input, function(error, result) {
+		if(error) {
+			callback(error);
+			return;
+		}
+		runConfig.trainingOutput = result;
+		console.log('Training finished');
+		callback(null, runConfig);
+	});
+}
+
+function synthesize(synthInputPath, callback) {
+	var synthesizedSound = getTempFile();
+	var synthCommand = getSynthCommand(synthInputPath, synthesizedSound);
+	runCommand(synthCommand, '', function(err, output) {
+		console.log(output);
+		callback(null, synthesizedSound);
+	});
+}
+
+function runComparison(originalSound, synthesizedSound, callback) {
+	runCommand(getComparisonCommand(originalSound, synthesizedSound), '', callback);
+}
+
+function runSynthesis(runConfig, runSynthesisCallback) {
 	runConfig.comparisonResults = [];
-	var comparisonConfigs = []
-	var synthOutputs = output.split('----------');
+	var comparisonConfigs = [];
+	var synthOutputs = runConfig.trainingOutput.split('----------');
 	_.remove(synthOutputs, isEmpty);
-	_.forEach(synthOutputs, function (synthOutput) {
+
+	async.eachLimit(synthOutputs, 1, function (synthOutput, callback) {
 		var lines = synthOutput.split('\n');
-		
+
 		_.remove(lines, isEmpty);
 		var originalSound = lines[0];
-		lines = lines.splice(0, 1);
-		
+
+		lines.splice(0, 1);
 		var tempFile = getTempFile();
 		fs.writeFileSync(tempFile, lines.join('\n'));
-		
-		comparisonConfigs.push({ original: originalSound, synthInput: tempFile });
-	});
-	
-	async.eachSeries(comparisonConfigs, 1, runComparison.bind(null, runConfig), function() {
-		var sum = 0;
-		_.forEach(runConfig.comparisonResults, function(val) { sum += val; });
-		runConfig.result = sum;
-		runConfig.finished();
-	});
-}
 
-function runComparison(runConfig, originalSound, concatInputFile, callback) {
-	var originalSound = comparisonConfig.originalSound;
-	var concatInputFile = comparisonConfig.synthInput;
-	
-	var child1 = getConcatenationProcess(originalSound, concatInputFile);
-	var comparisonOutput = '';
-	
-	child.stdout.on('data', function(chunk) {
-		comparisonOutput += chunk.toString();
-	});
-	child.stdout.on('end', function() {
-		runConfig.comparisonResults.push(parseDouble(comparisonOutput));
-		callback();
-	});
+		async.waterfall([
+			synthesize.bind(null, tempFile),
+			runComparison.bind(null, originalSound),
+			function(comparisonResult, callback) {
+				debugger;
+				runConfig.result += parseFloat(comparisonResult.trim());
+				callback();
+			}],
+			callback);
+	}, runSynthesisCallback);
 }
 
 var allRunConfigs = [];
 function trainWithCoefficients(coefs, callback) {
 	var runConfig = {
+		result: 0,
 		coefs: coefs,
 		finished: callback
 	};
 	allRunConfigs.push(runConfig);
 	console.log('training started');
-	
-	var child = getTrainingProcess(),
-		output = "";
-	
-	child.stderr.pipe(process.stderr);
-	
-	_.forOwn(coefs, function(value, key) { child.stdin.write(key + "=" + value + "\n") });
-	child.stdin.end();
-	
-	child.stdout.on('data', function (data) {
-		output += data.toString();
-	});
-	child.stdout.on('end', function() {
-		onTrainingFinished(runConfig, output);
-		console.log('training finished');
-	});
+
+	async.waterfall([
+		runTraining.bind(null, runConfig),
+		runSynthesis
+	], callback);
 }
 
 function mkRange(featureName, start, end, count) {
 	if(!count) count = end - start;
-	
+
 	var result = {
 		name: featureName,
 		values: []
 	}, step = (end - start) / count, i;
-	
+
 	for(i = 0; i < count; i++)
 		result.values.push(start + step * i);
-	
+
 	return result;
 }
 
 var ranges = [
-	mkRange('trans-mfcc', 1, 10),
-	mkRange('trans-pitch', 990, 1010),
-	mkRange('state-pitch', 990, 1010),
-	mkRange('state-duration', 990, 1010)
+	mkRange('trans-mfcc', 1, 2),
+	mkRange('trans-pitch', 999, 1000),
+	mkRange('state-pitch', 999, 1000),
+	mkRange('state-duration', 999, 1000)
 ];
 
 function generateCoefficients(ranges, index, coefs, callback) {
@@ -129,7 +169,7 @@ function generateCoefficients(ranges, index, coefs, callback) {
 		callback(coefs);
 		return;
 	}
-	
+
 	var range = ranges[index];
 	_.forEach(range.values, function(value) {
 		coefs[range.name] = value;
@@ -145,6 +185,7 @@ function trainAll() {
 }
 
 function onAllFinished() {
+	debugger;
 	console.log('All done');
 	var min;
 	_.forEach(allRunConfigs, function (config) {
@@ -152,6 +193,7 @@ function onAllFinished() {
 			min = config;
 	});
 	console.log('Best:');
+	delete min.trainingOutput;
 	console.log(min);
 }
 

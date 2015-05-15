@@ -169,7 +169,6 @@ void resynth_index(int index) {
   std::vector<int> path;
 
   std::cout << input_file << std::endl;
-  return;
   max_path(input, crf, crf.lambda, crf.mu, &path);
   std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
 
@@ -210,7 +209,7 @@ void build_data(const Options& opts) {
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  if(argc < MIN_OPTS) {
+  if(argc < (int) MIN_OPTS) {
     print_usage();
     return 1;
   }
@@ -219,6 +218,11 @@ int main(int argc, const char** argv) {
   crf.mu[1] = 1;
   crf.lambda[0] = 1000;
   crf.lambda[1] = 1;
+
+  for(int i = 0; i < argc; i++)
+	std::cerr << argv[i] << " ";
+
+  std::cerr << std::endl;
 
   Options opts = parse_options(argc, argv);
   build_data(opts);

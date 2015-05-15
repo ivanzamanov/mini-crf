@@ -275,7 +275,7 @@ struct FunctionalAutomaton {
 
   double traverse(vector<int>* max_path_ptr) {
     Progress prog(x.size());
-    
+
     vector<int> max_path;
     // Will need for intermediate computations
     Array<Transition> children, next_children;
