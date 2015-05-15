@@ -16,7 +16,7 @@ test: $(MAIN_DEPS) test.cpp
 db-stats: $(MAIN_DEPS) db-stats.cpp
 	$(CMD) -O3 db-stats.cpp $(CPP_FILES) -o db-stats
 
-main-opt: $(MAIN_DEPS) test
+main-opt: $(MAIN_DEPS)
 	$(CMD) -O3 main.cpp $(CPP_FILES) -o main-opt
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
@@ -26,7 +26,7 @@ text2bin-opt: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) -O3 text2bin.cpp $(CPP_FILES) -o text2bin-opt
 
 all: clean main test main-opt text2bin text2bin-opt
-  
+
 
 clean:
 	rm -f $(wildcard *.exe) main main-opt db-stats test text2bin text2bin-opt
@@ -34,6 +34,6 @@ clean:
 # %.o : %.cpp %.hpp
 # 	mkdir -p $(OBJ_DIR)
 # 	$(CC) -c $< -o $(OBJ_DIR)/$@
-# 
+#
 # crf.so: $(OBJ)
 # 	$(CC) -shared -fPIC bin/$^ -o $@

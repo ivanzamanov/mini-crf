@@ -100,7 +100,6 @@ function runComparison(originalSound, synthesizedSound, callback) {
 }
 
 function runSynthesis(runConfig, runSynthesisCallback) {
-	runConfig.comparisonResults = [];
 	var comparisonConfigs = [];
 	var synthOutputs = runConfig.trainingOutput.split('----------');
 	_.remove(synthOutputs, isEmpty);
@@ -131,8 +130,7 @@ var allRunConfigs = [];
 function trainWithCoefficients(coefs, callback) {
 	var runConfig = {
 		result: 0,
-		coefs: coefs,
-		finished: callback
+		coefs: coefs
 	};
 	allRunConfigs.push(runConfig);
 	console.log('training started');
@@ -198,3 +196,8 @@ function onAllFinished() {
 }
 
 trainAll();
+
+process.on('uncaughtException', function(err) {
+	console.log('Uncaught exception:');
+	console.log(err);
+});

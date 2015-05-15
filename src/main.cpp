@@ -169,8 +169,10 @@ void resynth_index(int index) {
   std::vector<int> path;
 
   std::cout << input_file << std::endl;
-  max_path(input, crf, crf.lambda, crf.mu, &path);
+  double cost = max_path(input, crf, crf.lambda, crf.mu, &path);
   std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
+
+  std::cerr << "Cost: " << cost << std::endl;
 
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path, input);
