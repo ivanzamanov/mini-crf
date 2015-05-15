@@ -273,8 +273,26 @@ void pre_process(PhonemeAlphabet& alphabet) {
     }
   }
 
-  for(unsigned i = 0; i < alphabet.labels.length; i++)
+  for(unsigned i = 0; i < alphabet.labels.length; i++) {
     alphabet.labels[i].pitch_contour = to_pitch_contour(alphabet.labels[i]);
+    if(alphabet.labels[i].id == 113)
+      continue;
+  }
+}
+
+void pre_process(PhonemeAlphabet& alphabet, std::vector<PhonemeInstance>& v) {
+  for(auto it = v.begin(); it != v.end(); it++) {
+    *it = alphabet.fromInt((*it).id);
+    if((*it).id == 113)
+      continue;
+  }
+}
+
+void pre_process(PhonemeAlphabet& alphabet, Corpus<PhonemeInstance, PhonemeInstance>& corpus) {
+  for(unsigned i = 0; i < corpus.size(); i++) {
+    pre_process(alphabet, corpus.input(i));
+    pre_process(alphabet, corpus.label(i));
+  }
 }
 
 #endif

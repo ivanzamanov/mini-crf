@@ -16,11 +16,11 @@ const double TRAINING_RATIO = 0.3;
 template<class Input, class Label>
 class Corpus {
 public:
-  const vector<Label>& label(int i) {
+  vector<Label>& label(int i) {
     return labels[i];
   };
 
-  const vector<Input>& input(int i) {
+  vector<Input>& input(int i) {
     return inputs[i];
   };
 
@@ -265,8 +265,6 @@ struct FunctionalAutomaton {
     for(++m; m < children.length; ++m) {
       child = alphabet.fromInt(children[m].child);
       transition = calculate_value<includeState, includeTransition>(src, child, pos);
-      if(std::isinf(transition))
-        std::cerr << "found\n"; 
       children[m].value = funcs.concat(children[m].base_value, transition);
 
       agg = funcs.aggregate(children[m].value, agg);
@@ -314,8 +312,6 @@ struct FunctionalAutomaton {
         double value = traverse_transitions<true, true>(children, src, pos + 1);
         next_children[next_children.length++].set(srcId, value);
 
-        if(std::isinf(value))
-          std::cerr << "Found\n";
         auto max = funcs.pick_best(children);
         paths(srcId, pos) = (*max).child;
       }

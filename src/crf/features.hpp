@@ -63,9 +63,7 @@ struct Pitch {
   double operator()(const PhonemeInstance& prev, const PhonemeInstance& next) const {
     double d1 = prev.last().pitch;
     double d2 = next.first().pitch;
-	double result = std::abs( std::log(d1/d2) );
-	if(std::isinf(result))
-		std::cerr << "Found\n";
+    double result = std::abs( std::log(d1/d2) );
     return result;
   }
 };
@@ -85,8 +83,6 @@ struct MFCCDist {
       double diff = mfcc1[i] - mfcc2[i];
       result += diff * diff;
     }
-	if(std::isinf(result))
-		std::cerr << "Found\n";
     return std::sqrt(result);
   }
 };

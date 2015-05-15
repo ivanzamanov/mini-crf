@@ -53,8 +53,6 @@ double get_total_duration(std::vector<PhonemeInstance> input) {
 }
 
 int resynthesize(Options& opts) {
-  pre_process(crf.label_alphabet);
-  pre_process(test_alphabet);
   unsigned index = util::parse_int(opts.input);
   std::vector<PhonemeInstance> input = test_corpus.input(index);
 
@@ -85,7 +83,6 @@ int synthesize(Options& opts) {
     if(opts.input[i] == ' ') opts.input.at(i) = '_';
 
   std::vector<int> path;
-  pre_process(crf.label_alphabet);
 
   std::istream* input_stream;
   if(opts.input == "-")
@@ -179,9 +176,6 @@ void resynth_index(int index) {
 }
 
 int train(const Options& opts) {
-  pre_process(crf.label_alphabet);
-  pre_process(test_alphabet);
-
   PlainStreamConfig conf(std::cin);
 
   double val;
@@ -228,6 +222,12 @@ int main(int argc, const char** argv) {
 
   Options opts = parse_options(argc, argv);
   build_data(opts);
+
+  pre_process(crf.label_alphabet);
+  pre_process(crf.label_alphabet, synth_corpus);
+  pre_process(test_alphabet);
+  pre_process(test_alphabet, test_corpus);
+
   switch(get_mode(opts.mode)) {
   case Mode::SYNTH:
     return synthesize(opts);

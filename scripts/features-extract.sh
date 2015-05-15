@@ -35,7 +35,7 @@ do
         echo "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
     fi
-done | xargs -P 4 -n 3 -t $EXTRACTOR_SCRIPT
+done | xargs -P 8 -n 3 -t $EXTRACTOR_SCRIPT
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"
