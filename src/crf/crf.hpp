@@ -182,14 +182,9 @@ struct FunctionalAutomaton {
     double aggregate(double d1, double d2) {
       return std::min(d1, d2);
     }
-
-    // Return an iterator to the value of the best next child
-    ArrayIterator<Transition> pick_best(Array<Transition>& children) {
-      return std::min_element(children.begin(), children.end(), compare);
-    }
-
-    static bool compare(const Transition& t1, const Transition& t2) {
-      return t1.value < t2.value;
+    
+    bool is_better(double t1, double t2) {
+      return t1 < t2;
     }
 
     // Value of a transition from a last state, corresponding to a position
@@ -253,20 +248,27 @@ struct FunctionalAutomaton {
   }
 
   template<bool includeState, bool includeTransition>
-  double traverse_transitions(Array<Transition> children, const typename CRF::Label& src, int pos) {
+  double traverse_transitions(Array<Transition> children, const typename CRF::Label& src, int pos, unsigned& max_child) {
     unsigned m = 0;
+    max_child = m;
 
     auto child = alphabet.fromInt(children[m].child);
     double transition = calculate_value<includeState, includeTransition>(src, child, pos);
     children[m].value = funcs.concat(children[m].base_value, transition);
+    double prev_value = children[m].value;
 
     double agg;
     agg = children[m].value;
     for(++m; m < children.length; ++m) {
       child = alphabet.fromInt(children[m].child);
       transition = calculate_value<includeState, includeTransition>(src, child, pos);
-      children[m].value = funcs.concat(children[m].base_value, transition);
-
+      double child_value = funcs.concat(children[m].base_value, transition); 
+      if(funcs.is_better(prev_value, child_value)) {
+        max_child = m;
+        prev_value = child_value;
+      }
+      
+      children[m].value = child_value;
       agg = funcs.aggregate(children[m].value, agg);
     }
 
@@ -309,11 +311,11 @@ struct FunctionalAutomaton {
         auto srcId = allowed[m];
 
         const typename CRF::Label& src = alphabet.fromInt(srcId);
-        double value = traverse_transitions<true, true>(children, src, pos + 1);
+        unsigned max_child;
+        double value = traverse_transitions<true, true>(children, src, pos + 1, max_child);
         next_children[next_children.length++].set(srcId, value);
 
-        auto max = funcs.pick_best(children);
-        paths(srcId, pos) = (*max).child;
+        paths(srcId, pos) = max_child;
       }
 
       children.length = 0;
@@ -321,21 +323,14 @@ struct FunctionalAutomaton {
       prog.update();
     }
 
-    double value = traverse_transitions<true, false>(children, alphabet.fromInt(0), 0);
+    unsigned max_child;
+    double value = traverse_transitions<true, false>(children, alphabet.fromInt(0), 0, max_child);
     prog.finish();
 
-    std::cerr << "Possibilities count: ";
-    for(auto it = options.rbegin(); it != options.rend(); it++)
-      std::cerr << *it << " ";
-    std::cerr << std::endl;
-
-    auto max = funcs.pick_best(children);
-    int state = (*max).child;
-    max_path.push_back(state);
-
+    max_path.push_back(max_child);
     for(unsigned i = 0; i <= x.size() - 2; i++) {
-      state = paths(state, i);
-      max_path.push_back(state);
+      max_child = paths(max_child, i);
+      max_path.push_back(max_child);
     }
 
     if(max_path_ptr)
