@@ -29,23 +29,6 @@ namespace util {
   int parse_int(const std::string& str);
 };
 
-template<class T, int _length>
-struct FixedArray {
-  T values[_length];
-
-  T& operator[](int n) {
-    return values[n];
-  };
-
-  const T& operator[](int n) const {
-    return values[n];
-  };
-
-  unsigned length() const {
-    return _length;
-  }
-};
-
 template<class T, class Constr>
 struct ArrayIteratorBase {
   ArrayIteratorBase(T* data): data(data) { }

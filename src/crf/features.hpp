@@ -26,10 +26,7 @@ struct FeatureValues {
 };
 
 double Pitch(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  double d1 = prev.last().pitch;
-  double d2 = next.first().pitch;
-  double result = std::abs( std::log(d1/d2) );
-  return result;
+  return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
 }
 
 double PitchState(const PhonemeInstance& p1, int pos, const vector<PhonemeInstance>& x) {
@@ -41,7 +38,7 @@ double MFCCDist(const PhonemeInstance& prev, const PhonemeInstance& next, int, c
   const MfccArray& mfcc1 = prev.last().mfcc;
   const MfccArray& mfcc2 = next.first().mfcc;
   double result = 0;
-  for (unsigned i = 0; i < mfcc1.length(); i++) {
+  for (unsigned i = 0; i < mfcc1.size(); i++) {
     double diff = mfcc1[i] - mfcc2[i];
     result += diff * diff;
   }

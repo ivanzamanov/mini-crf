@@ -100,7 +100,7 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
 
 bool compare(Frame& p1, Frame& p2) {
   bool same = p1.pitch == p2.pitch;
-  for(unsigned i = 0; i < p1.mfcc.length(); i++)
+  for(unsigned i = 0; i < p1.mfcc.size(); i++)
     same = same && p1.mfcc[i] == p2.mfcc[i];
   return same;
 }
@@ -119,7 +119,7 @@ unsigned occurrence_count(char c, const std::string& str) {
 bool operator==(const Frame& f1, const Frame& f2) {
   bool same = f1.pitch == f2.pitch;
   
-  for(unsigned i = 0; i < f1.mfcc.length() && same; i++)
+  for(unsigned i = 0; i < f1.mfcc.size() && same; i++)
     same &= f1.mfcc[i] == f2.mfcc[i];
   return same;
 }
@@ -166,7 +166,7 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
     p.label = id;
     p.start = 0;
     p.end = duration;
-	p.duration = duration;
+    p.duration = duration;
     singleton_array(p.frames, Frame(pitch));
     result.push_back(p);
   }
@@ -174,16 +174,8 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
   return result;
 }
 
-double mid_pitch(const PhonemeInstance& p) {
-  double max = 0;
-  for(unsigned i = 0; i < p.frames.length; i++)
-      max += p.frames[i].pitch;
-  //return p.frames[p.frames.length / 2].pitch;
-  return max / p.frames.length;
-}
-
 void print_synth_input_csv_phoneme(std::ostream& os, const PhonemeInstance& p) {
-  double pitch = mid_pitch(p);
+  double pitch = to_pitch_contour<false>(p)[0];
   os << p.label << ',' << p.duration << ',' << pitch;
 }
 
@@ -196,10 +188,4 @@ void print_synth_input_csv(std::ostream& os, std::vector<PhonemeInstance>& phons
     os << '\n';
     print_synth_input_csv_phoneme(os, *it);
   }
-}
-
-PitchContour to_pitch_contour(const PhonemeInstance& p) {
-  PitchContour result;
-  result.values[0] = mid_pitch(p);
-  return result;
 }

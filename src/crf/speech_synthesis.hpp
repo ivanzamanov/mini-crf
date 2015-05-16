@@ -89,11 +89,11 @@ struct SynthPrinter {
 
   const std::string desired_pitch(const PhonemeInstance& p) {
     std::stringstream str;
-    PitchContour pc = to_pitch_contour(p);
-    str << pc.values[0];
-    for(unsigned i = 1; i < pc.length(); i++) {
-      str << ',' << pc.values[i];
-    }
+    double mid = 0;
+    for(unsigned i = 0; i < p.frames.length; i++)
+      mid += p.frames[i].pitch;
+    mid = mid / p.frames.length;
+    str << mid;
     return str.str();
   }
 
@@ -273,19 +273,13 @@ void pre_process(PhonemeAlphabet& alphabet) {
     }
   }
 
-  for(unsigned i = 0; i < alphabet.labels.length; i++) {
-    alphabet.labels[i].pitch_contour = to_pitch_contour(alphabet.labels[i]);
-    if(alphabet.labels[i].id == 113)
-      continue;
-  }
+  for(unsigned i = 0; i < alphabet.labels.length; i++)
+    alphabet.labels[i].pitch_contour = to_pitch_contour<true>(alphabet.labels[i]);
 }
 
 void pre_process(PhonemeAlphabet& alphabet, std::vector<PhonemeInstance>& v) {
-  for(auto it = v.begin(); it != v.end(); it++) {
+  for(auto it = v.begin(); it != v.end(); it++)
     *it = alphabet.fromInt((*it).id);
-    if((*it).id == 113)
-      continue;
-  }
 }
 
 void pre_process(PhonemeAlphabet& alphabet, Corpus<PhonemeInstance, PhonemeInstance>& corpus) {

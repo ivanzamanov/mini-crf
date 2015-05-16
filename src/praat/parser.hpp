@@ -4,13 +4,14 @@
 #include<iostream>
 #include<vector>
 #include<string>
+#include<array>
 
 #include"../crf/matrix.hpp"
 #include"../crf/util.hpp"
 
 static const int MFCC_N = 12;
 
-typedef FixedArray<double, MFCC_N> MfccArray;
+typedef std::array<double, MFCC_N> MfccArray;
 
 static const std::string PHONETIC_LABELS[] = {
     "A",
@@ -125,18 +126,15 @@ struct Frame {
   double pitch;
 
 private:
-  void init() { for(unsigned i = 0; i < mfcc.length(); i++) mfcc[i] = 0; }
+  void init() { mfcc.fill(0); }
 };
 
-static const unsigned PITCH_CONTOUR_LENGTH = 1;
-struct PitchContour {
-  unsigned length() const { return PITCH_CONTOUR_LENGTH; }
-  double values[PITCH_CONTOUR_LENGTH];
-
+static const unsigned PITCH_CONTOUR_LENGTH = 2;
+struct PitchContour : std::array<double, PITCH_CONTOUR_LENGTH> {
   double diff(const PitchContour& other) const {
     double result = 0;
-    for(unsigned i = 0; i < length(); i++) {
-      result += std::abs( std::log( values[i] / other.values[i] ) );
+    for(unsigned i = 0; i < size(); i++) {
+      result += std::abs( (*this)[i] - other[i] );
     }
     return result;
   }
@@ -166,7 +164,18 @@ struct PhonemeInstance {
   const Frame& last() const { return frames[size() - 1]; }
 };
 
-PitchContour to_pitch_contour(const PhonemeInstance&);
+template<bool _log>
+PitchContour to_pitch_contour(const PhonemeInstance& p) {
+  PitchContour result;
+  if(_log) {
+    result[0] = std::log(p.first().pitch);
+    result[1] = std::log(p.last().pitch);
+  } else {
+    result[0] = p.first().pitch;
+    result[1] = p.last().pitch;
+  }
+  return result;
+}
 
 void print_synth_input_csv(std::ostream&, std::vector<PhonemeInstance>&);
 std::vector<PhonemeInstance> parse_synth_input_csv(std::istream&);
