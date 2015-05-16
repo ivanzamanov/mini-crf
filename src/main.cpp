@@ -22,7 +22,7 @@ void print_usage() {
     std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
 }
 
-CRF crf(state_functions(), transition_functions());
+CRF crf;
 typename CRF::Alphabet test_alphabet;
 Corpus<PhonemeInstance, PhonemeInstance> synth_corpus;
 Corpus<PhonemeInstance, PhonemeInstance> test_corpus;

@@ -39,44 +39,30 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
   }
 };
 
-typedef CRandomField<TestAlphabet, int> TestCRF;
-
-class TestTransFunc : public TestCRF::TransitionFunction {
-public:
-  TestTransFunc() { }
-
-  virtual double operator()(const TestCRF::Label& l1, const TestCRF::Label& l2, int pos, const vector<TestCRF::Input>& input) const {
-    if(input[pos - 1] == l1.id && input[pos] == l2.id)
-      return -1;
-    else
-      return rand();
-  }
-};
-
-class TestStateFunc : public TestCRF::StateFunction {
-public:
-
-  TestStateFunc() { }
-
-  virtual double operator()(const TestCRF::Label& label, int pos, const vector<TestCRF::Input>& input) const {
-    if(input[pos] == label.id)
-      return -1;
-    else
-      return rand();
-  }
-};
-
-vector<TestCRF::StateFunction*> state_functions() {
-  vector<TestCRF::StateFunction*> result;
-  result.push_back(new TestStateFunc());
-  return result;
+double TestTransFunc(const TestObject& l1, const TestObject& l2, int pos, const vector<int>& input) {
+  if(input[pos - 1] == l1.id && input[pos] == l2.id)
+    return -1;
+  else
+    return rand();
 }
 
-vector<TestCRF::TransitionFunction*> transition_functions() {
-  vector<TestCRF::TransitionFunction*> result;
-  result.push_back(new TestTransFunc());
-  return result;
+double TestStateFunc(const TestObject& label, int pos, const vector<int>& input) {
+  if(input[pos] == label.id)
+    return -1;
+  else
+    return rand();
 }
+
+struct TestFeatures;
+typedef CRandomField<TestAlphabet, int, TestFeatures> TestCRF;
+
+struct TestFeatures {
+  typedef double (*EdgeFeature)(const TestObject&, const TestObject&, int, const vector<int>&);
+  typedef double (*VertexFeature)(const TestObject&, int, const vector<int>&);
+
+  const EdgeFeature f[1] = { TestTransFunc };
+  const VertexFeature g[1] = { TestStateFunc } ;
+};
 
 template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
@@ -116,11 +102,9 @@ vector<int> to_ints(const vector<TestCRF::Label>& labels) {
 }
 
 void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
-  FunctionalAutomaton<TestCRF> a(crf->label_alphabet);
+  FunctionalAutomaton<TestCRF> a(*crf);
   a.lambda = crf->lambda;
   a.mu = crf->mu;
-  a.f = crf->f;
-  a.g = crf->g;
   a.x = to_ints(labels);
 
   vector<int> best_path;
@@ -136,7 +120,7 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
   std::cerr << "Cost = " << cost << ", path = ";
   // for(unsigned i = 0; i < best_path.size(); i++)
   //   std::cerr << best_path[i] << " ";
-  // std::cerr  << std::endl;
+  std::cerr  << std::endl;
 
   assertEquals(expected_cost, cost);
   assertEquals(labels.size(), best_path.size());
@@ -157,11 +141,14 @@ struct TestFilter {
 void testCRF() {
   srand(5);
 
-  TestCRF crf(state_functions(), transition_functions());
+  TestCRF crf;
   std::vector<double> lambda;
   lambda.push_back(1.0);
   std::vector<double> mu;
   mu.push_back(1.0);
+
+  crf.lambda = lambda;
+  crf.mu = mu;
 
   vector<TestObject> x;
   for(int i = 0; i < crf.label_alphabet.size(); i++)
