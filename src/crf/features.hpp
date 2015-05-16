@@ -45,6 +45,17 @@ double MFCCDist(const PhonemeInstance& prev, const PhonemeInstance& next, int, c
   return std::sqrt(result);
 }
 
+double MFCCDistL1(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
+  const MfccArray& mfcc1 = prev.last().mfcc;
+  const MfccArray& mfcc2 = next.first().mfcc;
+  double result = 0;
+  for (unsigned i = 0; i < mfcc1.size(); i++) {
+    double diff = mfcc1[i] - mfcc2[i];
+    result += std::abs(diff);
+  }
+  return result;
+}
+
 double Duration(const PhonemeInstance& prev, int pos, const vector<PhonemeInstance>& x) {
   const PhonemeInstance& next = x[pos];
   double d1 = prev.end - prev.start;
