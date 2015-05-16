@@ -182,7 +182,7 @@ struct FunctionalAutomaton {
     double aggregate(double d1, double d2) {
       return std::min(d1, d2);
     }
-    
+
     bool is_better(double t1, double t2) {
       return t1 < t2;
     }
@@ -250,11 +250,11 @@ struct FunctionalAutomaton {
   template<bool includeState, bool includeTransition>
   double traverse_transitions(Array<Transition> children, const typename CRF::Label& src, int pos, unsigned& max_child) {
     unsigned m = 0;
-    max_child = m;
 
     auto child = alphabet.fromInt(children[m].child);
     double transition = calculate_value<includeState, includeTransition>(src, child, pos);
     children[m].value = funcs.concat(children[m].base_value, transition);
+    max_child = children[m].child;
     double prev_value = children[m].value;
 
     double agg;
@@ -262,12 +262,12 @@ struct FunctionalAutomaton {
     for(++m; m < children.length; ++m) {
       child = alphabet.fromInt(children[m].child);
       transition = calculate_value<includeState, includeTransition>(src, child, pos);
-      double child_value = funcs.concat(children[m].base_value, transition); 
-      if(funcs.is_better(prev_value, child_value)) {
-        max_child = m;
+      double child_value = funcs.concat(children[m].base_value, transition);
+      if(funcs.is_better(child_value, prev_value)) {
+        max_child = children[m].child;
         prev_value = child_value;
       }
-      
+
       children[m].value = child_value;
       agg = funcs.aggregate(children[m].value, agg);
     }
