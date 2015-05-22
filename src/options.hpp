@@ -72,7 +72,7 @@ struct Options {
   unsigned length;
   const char** args;
 
-  bool has_opt(std::string opt) {
+  bool has_opt(std::string opt) const {
     for(unsigned i = 0; i < length; i++) {
       std::string test(args[i]);
       if(opt == test) {

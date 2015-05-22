@@ -159,20 +159,20 @@ int query(const Options& opts) {
   return 0;
 }
 
-void resynth_index(int index) {
+void resynth_index(int index, std::ostream& outputStream) {
   std::vector<PhonemeInstance> input = test_corpus.input(index);
   std::string sentence_string = to_text_string(input);
   std::string input_file = test_alphabet.file_of(input[0].id);
   std::vector<int> path;
 
-  std::cout << input_file << std::endl;
+  outputStream << input_file << std::endl;
   double cost = max_path(input, crf, crf.lambda, crf.mu, &path);
   std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
 
   std::cerr << "Cost: " << cost << std::endl;
 
   SynthPrinter sp(crf.label_alphabet);
-  sp.print_synth(path, input);
+  sp.print_synth(path, input, outputStream);
 }
 
 int train(const Options& opts) {
@@ -184,11 +184,24 @@ int train(const Options& opts) {
   crf.lambda[0] = conf.get("trans-pitch", val);
   crf.lambda[1] = conf.get("trans-mfcc", val);
 
-  for(unsigned i = 0; i < test_corpus.size(); i++) {
-    std::cout << "----------";
-    resynth_index(i);
+  unsigned count = test_corpus.size();
+  std::stringstream *streams = new std::stringstream[count];
+  if(!opts.has_opt("--disable-multithreading")) {
+	#pragma omp parallel for
+	for(unsigned i = 0; i < count; i++)
+		resynth_index(i, streams[i]);
+  } else {
+	for(unsigned i = 0; i < count; i++)
+		resynth_index(i, streams[i]);
   }
 
+  const std::string delim = "----------";
+  std::cout << streams[0].str() << std::endl;
+  for(unsigned i = 0; i < count; i++) {
+	std::cout << delim << streams[i].str() << std::endl;
+  }
+
+  delete[] streams;
   return 0;
 }
 

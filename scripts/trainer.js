@@ -46,6 +46,8 @@ function runCommand(command, input, callback) {
 	return child;
 }
 
+var PARALLEL_PROCESSES = 1;
+
 var tmpDir = '/tmp/';
 var synthDBPath = '/home/ivo/SpeechSynthesis/db-synth.bin';
 var testDBPath = '/home/ivo/SpeechSynthesis/db-test-single.bin';
@@ -179,11 +181,10 @@ function trainAll() {
 	var allCoefficients = [];
 	generateCoefficients(ranges, 0, {}, function(coef) { allCoefficients.push(coef) });
 	console.log('Combinations: ' + allCoefficients.length);
-	async.eachLimit([ allCoefficients[0] ], 1, trainWithCoefficients, onAllFinished);
+	async.eachLimit([ allCoefficients[0] ], PARALLEL_PROCESSES, trainWithCoefficients, onAllFinished);
 }
 
 function onAllFinished() {
-	debugger;
 	console.log('All done');
 	var min;
 	_.forEach(allRunConfigs, function (config) {
