@@ -84,7 +84,7 @@ struct SynthPrinter {
       out << "Duration=" << desired[i].duration << '\n';
     }
 
-    std::cerr << phonemeIds.str() << std::endl;
+    //std::cerr << phonemeIds.str() << std::endl;
   }
 
   const std::string desired_pitch(const PhonemeInstance& p) {

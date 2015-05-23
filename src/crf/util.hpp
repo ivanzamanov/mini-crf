@@ -169,12 +169,12 @@ struct Progress {
   unsigned total, progress;
 
   void update() {
-    std::cerr << '\r' << "Progress: " << progress++ << '/' << total;
-    std::cerr.flush();
+    //std::cerr << '\r' << "Progress: " << progress++ << '/' << total;
+    //std::cerr.flush();
   }
   
   void finish() {
-    std::cerr << " Done" << std::endl;
+    //std::cerr << " Done" << std::endl;
   }
 };
 

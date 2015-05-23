@@ -40,6 +40,7 @@ text2bin
 text2bin-opt
 db-stats
 benchmark
+cygwin1.dll
 
 *.bin
 *.csv

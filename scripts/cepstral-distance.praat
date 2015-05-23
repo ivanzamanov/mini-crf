@@ -9,7 +9,6 @@ sounds[2] = Read from file... 'sound_path_2$'
 
 @create_cepstra
 
-writeInfo: ""
 appendInfoLine: result
 
 procedure create_cepstra

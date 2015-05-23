@@ -187,18 +187,18 @@ int train(const Options& opts) {
   unsigned count = test_corpus.size();
   std::stringstream *streams = new std::stringstream[count];
   if(!opts.has_opt("--disable-multithreading")) {
-	#pragma omp parallel for
-	for(unsigned i = 0; i < count; i++)
-		resynth_index(i, streams[i]);
+  #pragma omp parallel for
+  for(unsigned i = 0; i < count; i++)
+    resynth_index(i, streams[i]);
   } else {
-	for(unsigned i = 0; i < count; i++)
-		resynth_index(i, streams[i]);
+  for(unsigned i = 0; i < count; i++)
+    resynth_index(i, streams[i]);
   }
 
   const std::string delim = "----------";
   std::cout << streams[0].str() << std::endl;
   for(unsigned i = 0; i < count; i++) {
-	std::cout << delim << streams[i].str() << std::endl;
+    std::cout << delim << streams[i].str() << std::endl;
   }
 
   delete[] streams;

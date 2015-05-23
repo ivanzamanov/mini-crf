@@ -1,32 +1,8 @@
 var async = require('async'),
 	_ = require('lodash'),
 	printf = require('sprintf-js').sprintf;
-
-var count = 100;
-var arr = [];
-var R = 0.61803
-var MAX = count * 2/3;
-for(var i = 0; i < count; i++) {
-	arr.push(MAX - Math.abs(MAX - i) );
-}
-
-function arrFunc(x) {
-	return arr[Math.floor(x)];
-}
-
-function goldenSearch(low, high, func) {
-	goldenSearchHelper(low, high, low + R * (high - low), func);
-}
-
-function goldenSearchHelper(a, b, c, func) {
-	// Order is a < b < c
-	if(Math.abs(b - a) < 1) {
-		console.log('Optimum in (' + a + ', ' + b + ')');
-		return;
-	} else {
-		goldenSearchStep(a, b, c, func, goldenSearchHelper);
-	}
-}
+  
+var R = 0.61803;
 
 function goldenSearchStep(a, b, c, func, callback) {
 	var x;
@@ -50,28 +26,6 @@ function goldenSearchStep(a, b, c, func, callback) {
 			}
 		}
 	});
-}
-
-function wrapper(func) {
-	return function(x, callback) {
-		process.nextTick(function() {
-			callback(null, func(x));
-		});
-	};
-}
-
-function mkRange(featureName, start, end, count) {
-	if(!count) count = end - start;
-
-	var result = {
-		name: featureName,
-		values: []
-	}, step = (end - start) / count, i;
-
-	for(i = 0; i < count; i++)
-		result.values.push(start + step * i);
-
-	return result;
 }
 
 function MultiParamFunction(reevaluate) {
