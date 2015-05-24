@@ -3,7 +3,8 @@ var path = require('path'),
   fs = require('fs'),
   async = require('async'),
   minimist = require('minimist'),
-  _ = require('lodash');
+  _ = require('lodash'),
+  search = require('./search');
 
 var linuxConfig = {
   parallelProcesses: 1,
@@ -45,17 +46,14 @@ function isEmpty(line) {
 }
 
 var tempFileIndex = 0;
-function getTempFile() {
-  return path.normalize(path.join(config.tempDir, 'tempFile' + ++tempFileIndex + '.tmp'));
+function getTempFile(ext) {
+  if(!ext)
+    ext = 'txt';
+  return path.normalize(path.join(config.tempDir, 'tempFile' + ++tempFileIndex + '.' + ext));
 }
 
 function runCommand(command, input, callback) {
   var output = "";
-
-  /*console.log('Running: ');
-  console.log(command);
-  if(input)
-    console.log('With input: ' + input);*/
 
   callback = _.once(callback);
   var child;
@@ -65,13 +63,25 @@ function runCommand(command, input, callback) {
   } else {
     child = require('child_process').spawn(command[0], command.slice(1), { cwd: config.tempDir });
   }
-  child.stderr.pipe(process.stderr);
+  /*var logFile = getTempFile('log');
+  console.log('Log ' + command[0] + ' in ' + logFile);
+  child.stderr.pipe(fs.createWriteStream(logFile));*/
 
   child.stdout.on('data', function (data) {
     output += data.toString('UTF-8');
   });
-  child.on('error', function(err) { console.log(error); callback(err) });
-  child.on('exit', function(code) { if(code != 0) callback(code); else callback(null); });
+
+  child.on('error', function(err) {
+    console.log(err);
+    process.exit(1);
+  });
+  child.on('exit', function(code) {
+    if(code != 0) {
+      process.exit(code);
+    } else
+      callback(null);
+  });
+
   child.stdout.on('end', function() {
     callback(null, output);
   });
@@ -111,10 +121,9 @@ function runTraining(runConfig, callback) {
 }
 
 function synthesize(synthInputPath, callback) {
-  var synthesizedSound = getTempFile();
+  var synthesizedSound = getTempFile('wav');
   var synthCommand = getSynthCommand(synthInputPath, synthesizedSound);
   runCommand(synthCommand, '', function(err, output) {
-    console.log(output);
     callback(null, synthesizedSound);
   });
 }
@@ -124,7 +133,7 @@ function runComparison(originalSound, synthesizedSound, callback) {
     originalSound = originalSound.replace('/', '\\');
     originalSound = 'D:\\cygwin' + originalSound;
   }
-  runCommand(getComparisonCommand(originalSound, synthesizedSound), '', callback);
+  runCommand(getComparisonCommand(originalSound.trim(), synthesizedSound), '', callback);
 }
 
 function runSynthesis(runConfig, runSynthesisCallback) {
@@ -139,15 +148,17 @@ function runSynthesis(runConfig, runSynthesisCallback) {
     var originalSound = lines[0];
 
     lines.splice(0, 1);
-    var tempFile = getTempFile();
+    var tempFile = getTempFile('synthin');
     fs.writeFileSync(tempFile, lines.join('\n'));
 
     async.waterfall([
       synthesize.bind(null, tempFile),
       runComparison.bind(null, originalSound),
       function(comparisonResult, callback) {
-        console.log(originalSound + '/' + tempFile + ": " + comparisonResult.trim());
+        console.log(originalSound + ' diff: ' + comparisonResult.trim());
         runConfig.result += parseFloat(comparisonResult.trim());
+        if(isNaN(runConfig.result))
+          runConfig.result = Number.POSITIVE_INFINITY;
         callback();
       }],
       synthCallback);
@@ -156,12 +167,14 @@ function runSynthesis(runConfig, runSynthesisCallback) {
 
 var allRunConfigs = [];
 function trainWithCoefficients(coefs, callback) {
+  debugger;
   var runConfig = {
     result: 0,
     coefs: coefs
   };
   allRunConfigs.push(runConfig);
-  console.log('training started');
+  console.log('Training started: ');
+  console.log(coefs);
 
   async.waterfall([
     runTraining.bind(null, runConfig),
@@ -212,7 +225,7 @@ function trainAll() {
   var allCoefficients = [];
   generateCoefficients(ranges, 0, {}, function(coef) { allCoefficients.push(coef) });
   console.log('Combinations: ' + allCoefficients.length);
-  async.eachLimit([ allCoefficients[0] ], config.parallelProcesses, trainWithCoefficients, onAllFinished);
+  async.eachLimit(allCoefficients, config.parallelProcesses, trainWithCoefficients, onAllFinished);
 }
 
 function onAllFinished() {
@@ -227,9 +240,60 @@ function onAllFinished() {
   console.log(min);
 }
 
-trainAll();
+function goldenRange(from, to) {
+  return [from, from + search.R * (to - from), to];
+}
 
-/*process.on('uncaughtException', function(err) {
-  console.log('Uncaught exception:');
-  console.log(err);
-});*/
+function trainGoldenSearch() {
+  var ranges = [
+    { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
+    { name: 'trans-pitch', values: goldenRange(-1000, 1000) },
+    { name: 'state-pitch', values: goldenRange(-1000, 1000) },
+    { name: 'state-duration', values: goldenRange(-1000, 1000) }
+  ];
+  var dimension = 0;
+  var iterations = 100;
+  var multiParamFunc = search.MultiParamFunction(trainWithCoefficients);
+
+  var func = function(x, callback) {
+    var args = [];
+    _.forEach(ranges, function(range) {
+      // The mid
+      args.push({name: range.name, value: range.values[1]});
+    });
+    args[dimension] = x;
+    multiParamFunc(args, function(err, value) {
+      callback(null, value);
+    });
+  };
+
+  function stepCallback(a, b, c) {
+    // Order is a < b < c
+    iterations--;
+    console.log('Iteration: ' + (100 - iterations));
+    var valueDiff = Math.abs(allRunConfigs[allRunConfigs.length - 1].value - allRunConfigs[allRunConfigs.length - 2].value);
+    console.log('Value diff: ' + valueDiff);
+    if(iterations === 0 || (c - a) < 0.5) {
+      console.log('Optimum at ' + search.dimensionsToString(ranges));
+      return;
+    } else {
+      ranges[dimension].values = [a, b, c];
+      dimension = (dimension + 1) % ranges.length;
+
+      var values = ranges[dimension].values;
+      console.log('Searching in ' + search.dimensionsToString(ranges) + ' trying ' + dimension);
+      search.goldenSearchStep(values[0], values[1], values[2], func, stepCallback);
+    }
+  }
+
+  var values = ranges[dimension].values;
+  console.log('Searching in ' + search.dimensionsToString(ranges));
+  search.goldenSearchStep(values[0], values[1], values[2], func, stepCallback);
+}
+
+var bruteForce = false;
+if(bruteForce) {
+  trainAll();
+} else {
+  trainGoldenSearch();
+}

@@ -199,7 +199,7 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<Phone
   for(unsigned i = 0; i < alphabet.size(); i++)
     r >> alphabet.labels[i] >> alphabet.file_indices[i];
 
-  std::cerr << "Read " << alphabet.size() << " phonemes, " << r.bytes << " bytes\n";
+  DEBUG(std::cerr << "Read " << alphabet.size() << " phonemes, " << r.bytes << " bytes\n";)
 
   unsigned count;
   r >> count;
@@ -213,7 +213,7 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<Phone
       r >> str[j];
     alphabet.files[i] = str;
   }
-  std::cerr << "Read " << alphabet.files.length << " file names, " << r.bytes << " bytes" << std::endl;
+  DEBUG(std::cerr << "Read " << alphabet.files.length << " file names, " << r.bytes << " bytes" << std::endl;)
 
   unsigned corpus_size;
   r >> corpus_size;
@@ -236,11 +236,11 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<Phone
     corpus.add(input, labels);
   }
 
-  std::cerr << "Read corpus " << corpus.size() << " instances, " << r.bytes << " bytes" << std::endl;
+  DEBUG(std::cerr << "Read corpus " << corpus.size() << " instances, " << r.bytes << " bytes" << std::endl;)
 
   alphabet.build_classes();
 
-  std::cerr << "Read " << r.bytes << " bytes" << std::endl;
+  DEBUG(std::cerr << "Read " << r.bytes << " bytes" << std::endl;)
 }
 
 void pre_process(PhonemeAlphabet& alphabet) {

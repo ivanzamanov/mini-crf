@@ -11,8 +11,9 @@ function goldenSearchStep(a, b, c, func, callback) {
 	else
 		x = b - R * (b - a);
 
-	async.map([x, b], func, function(err, values) {
-		if (values[0] > values[1]) {
+	async.mapLimit([x, b], 1, func, function(err, values) {
+    var xVal = values[0], bVal = values[1];
+		if (xVal < bVal) {
 			if (c - b > b - a) {
 				callback(b, x, c, func);
 			} else {
@@ -34,7 +35,7 @@ function MultiParamFunction(reevaluate) {
 	return function (args, callback) {
 		var result;
 		_.forEach(values, function(valuesEntry) {
-			if(_.isEqual(args, values.args))
+			if(_.isEqual(args, valuesEntry.args))
 				result = values.value;
 		});
 
@@ -42,75 +43,63 @@ function MultiParamFunction(reevaluate) {
 			reevaluate(args, function(value) {
 				values.push({
 					value: value,
-					args: args.slice(0)
+					args: _.cloneDeep(args)
 				});
 				callback(null, value);
 			});
-		}
-		// Value found, yey
-		callback(null, result);
+		} else {
+      // Value found, yey
+      callback(null, result);
+    }
 	};
 }
 
-var matrixSize = 11;
-var matrix = Array(matrixSize);
-matrix = _.map(matrix, function() { return Array(matrixSize); });
-var maxX = 5, maxY = 5;
-_.forEach(matrix, function(row, rowNumber) {
-	_.forEach(row, function(cell, colNumber) {
-		var dist = (maxX - colNumber) * (maxX - colNumber) + (maxY - rowNumber) * (maxY - rowNumber);
-		row[colNumber] = dist;
-	});
-});
-
+var matrixSize = 100;
 var ranges = [
 	{name: 'dim1', values: [0, R * matrixSize, matrixSize]},
 	{name: 'dim2', values: [0, R * matrixSize, matrixSize]}
 ];
 
-function matrixFunc(args) {
-	debugger;
-	return matrix[Math.round(args[0])][Math.round(args[1])];
+var maxX = 5, maxY = 5;
+function matrixFunc(args, callback) {
+  var dist = (maxX - args[1]) * (maxX - args[1]) + (maxY - args[0]) * (maxY - args[0]);
+  debugger;
+  callback(dist);
 }
 
-_.forEach(matrix, function(row, rowNumber) {
-	_.forEach(row, function(cell, colNumber) {
-		process.stdout.write(printf('%2d ', cell));
-	});
-	process.stdout.write('\n');
-});
-
-function matrixGoldenSearch() {
+function matrixGoldenSearch(toEval) {
 	var dimension = 0;
-	var multiParamFunc = MultiParamFunction(matrixFunc);
+	var multiParamFunc = MultiParamFunction(toEval);
 
 	var func = function(x, callback) {
-		debugger;
 		var args = [];
 		_.forEach(ranges, function(range) {
 			// The mid
 			args.push(range.values[1]);
 		});
-		multiParamFunc(args, function(err, value) { callback(value) });
+    args[dimension] = x;
+    console.log(args, dimension);
+		multiParamFunc(args, function(err, value) {
+      callback(null, value);
+    });
 	};
 
 	function stepCallback(a, b, c) {
 		// Order is a < b < c
-		if(Math.abs(b - a) < 1) {
-			console.log('Optimum at ' + dimensionsToString(ranges));
+		if(Math.abs(c - a) < 1) {
+			console.log(ranges);
 			return;
 		} else {
 			ranges[dimension].values = [a, b, c];
 			dimension = (dimension + 1) % ranges.length;
 
-			var values = ranges[dimension].values;
+			var nextValues = ranges[dimension].values;
 			console.log('Searching in ' + dimensionsToString(ranges) + ' trying ' + dimension);
-			goldenSearchStep(values[0], values[1], values[2], func, stepCallback);
+			goldenSearchStep(nextValues[0], nextValues[1], nextValues[2], func, stepCallback);
 		}
 	}
 	var values = ranges[dimension].values;
-	console.log('Searching in ' + dimensionsToString(ranges));
-	goldenSearchStep(values[0], values[1], values[2], func, stepCallback);
+	stepCallback(values[0], values[1], values[2]);
 }
 
 function dimensionsToString(ranges) {
@@ -122,4 +111,7 @@ function dimensionsToString(ranges) {
 	return result;
 }
 
-matrixGoldenSearch();
+module.exports.dimensionsToString = dimensionsToString;
+module.exports.MultiParamFunction = MultiParamFunction;
+module.exports.goldenSearchStep = goldenSearchStep;
+module.exports.R = R;

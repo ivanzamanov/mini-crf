@@ -7,7 +7,7 @@
 #include<limits>
 #include<vector>
 
-#define DEBUG(x) x
+#define DEBUG(x)
 #define MY_E 2.71828182845904523536028747135266250 // e
 
 template<class Key, class Value>

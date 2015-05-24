@@ -300,11 +300,6 @@ struct FunctionalAutomaton {
       max_path.push_back(max_child);
     }
 
-    long steps = 1;
-    for(unsigned i = 1; i < options.size(); i++)
-      steps += options[i-1] * options[i];
-    std::cerr << "Steps: " << steps << std::endl;
-
     if(max_path_ptr)
       *max_path_ptr = max_path;
     return value;

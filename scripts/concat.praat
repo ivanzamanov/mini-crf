@@ -160,4 +160,5 @@ Remove
 
 selectObject: result
 Rename... Concatenation
+Scale peak... 0.99
 Save as WAV file... 'outputPath$'
