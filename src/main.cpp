@@ -197,7 +197,7 @@ int train(const Options& opts) {
 
   const std::string delim = "----------";
   std::cout << streams[0].str() << std::endl;
-  for(unsigned i = 0; i < count; i++) {
+  for(unsigned i = 1; i < count; i++) {
     std::cout << delim << streams[i].str() << std::endl;
   }
 

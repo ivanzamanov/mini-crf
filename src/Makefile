@@ -17,7 +17,7 @@ db-stats: $(MAIN_DEPS) db-stats.cpp
 	$(CMD) -O3 db-stats.cpp $(CPP_FILES) -o db-stats
 
 main-opt: $(MAIN_DEPS)
-	$(CC) -static -std=c++11 -Wall -I. -O3 main.cpp -fopenmp $(CPP_FILES) -o main-opt
+	$(CC) -static -std=c++11 -Wall -I. -O3 -mtune=native main.cpp -fopenmp $(CPP_FILES) -o main-opt
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) text2bin.cpp $(CPP_FILES) -o text2bin
