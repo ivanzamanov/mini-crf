@@ -11,11 +11,12 @@ var linuxConfig = {
   parallelComparisons: 4,
   tempDir: '/tmp/',
   synthDB: '/home/ivo/SpeechSynthesis/db-synth.bin',
-  testDB: '/home/ivo/SpeechSynthesis/db-test-single.bin',
+  testDB: '/home/ivo/SpeechSynthesis/db-test.bin',
   trainingCommand: '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt',
   praatCommand: 'praat',
   synthScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/concat.praat',
-  compareScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/cepstral-distance.praat'
+  compareScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/cepstral-distance.praat',
+  valueCachePath: '/home/ivo/SpeechSynthesis/values-cache.json'
 };
 
 var winConfig = {
@@ -27,7 +28,8 @@ var winConfig = {
   trainingCommand: '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt',
   praatCommand: '/usr/local/bin/praat-js',
   synthScript: 'D:\\cygwin\\home\\ivo\\SpeechSynthesis\\mini-crf\\scripts\\concat.praat',
-  compareScript: 'D:\\cygwin\\home\\ivo\\SpeechSynthesis\\mini-crf\\scripts\\cepstral-distance.praat'
+  compareScript: 'D:\\cygwin\\home\\ivo\\SpeechSynthesis\\mini-crf\\scripts\\cepstral-distance.praat',
+  valueCachePath: 'D:\\cygwin\\home\\ivo\\SpeechSynthesis\\values-cache.json'
 };
 
 var isWindows = require('os').platform() == 'win32';
@@ -56,13 +58,15 @@ function runCommand(command, input, callback) {
   var output = "";
 
   callback = _.once(callback);
+  debugger;
   var child;
   if(isWindows) {
     command = ['D:\\cygwin\\bin\\bash.exe', 'D:\\cygwin\\home\\ivo\\bin\\stdin-wrap.sh', config.tempDir, command.join(' ')];
     child = require('child_process').spawn(command[0], command.slice(1), { cwd: 'D:\\cygwin\\bin\\' });
   } else {
-    child = require('child_process').spawn(command[0], command.slice(1), { cwd: config.tempDir });
+    child = require('child_process').spawn(command[0], command.slice(1));
   }
+  console.log(command.join(' '));
   /*var logFile = getTempFile('log');
   console.log('Log ' + command[0] + ' in ' + logFile);
   child.stderr.pipe(fs.createWriteStream(logFile));*/
@@ -72,11 +76,13 @@ function runCommand(command, input, callback) {
   });
 
   child.on('error', function(err) {
+    console.log('Child bad exit: ');
     console.log(err);
     process.exit(1);
   });
   child.on('exit', function(code) {
     if(code != 0) {
+      console.log('Child bad exit:', code);
       process.exit(code);
     } else
       callback(null);
@@ -107,7 +113,7 @@ function runTraining(runConfig, callback) {
     input = "",
     output = "";
 
-  _.forOwn(coefs, function(value, key) { input += (key + "=" + value + "\n") });
+    _.forEach(coefs, function(coef) { input += (coef.name + "=" + coef.value + "\n") });
 
   runCommand(getTrainingCommand(), input, function(error, result) {
     if(error) {
@@ -167,7 +173,6 @@ function runSynthesis(runConfig, runSynthesisCallback) {
 
 var allRunConfigs = [];
 function trainWithCoefficients(coefs, callback) {
-  debugger;
   var runConfig = {
     result: 0,
     coefs: coefs
@@ -253,7 +258,7 @@ function trainGoldenSearch() {
   ];
   var dimension = 0;
   var iterations = 100;
-  var multiParamFunc = search.MultiParamFunction(trainWithCoefficients);
+  var multiParamFunc = search.MultiParamFunction(trainWithCoefficients, config.valueCachePath);
 
   var func = function(x, callback) {
     var args = [];
@@ -261,7 +266,7 @@ function trainGoldenSearch() {
       // The mid
       args.push({name: range.name, value: range.values[1]});
     });
-    args[dimension] = x;
+    args[dimension].value = x;
     multiParamFunc(args, function(err, value) {
       callback(null, value);
     });

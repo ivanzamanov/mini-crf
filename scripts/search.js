@@ -1,7 +1,8 @@
-var async = require('async'),
+var fs = require('fs'),
+    async = require('async'),
 	_ = require('lodash'),
 	printf = require('sprintf-js').sprintf;
-  
+
 var R = 0.61803;
 
 function goldenSearchStep(a, b, c, func, callback) {
@@ -29,10 +30,17 @@ function goldenSearchStep(a, b, c, func, callback) {
 	});
 }
 
-function MultiParamFunction(reevaluate) {
-	var values = [];
+function MultiParamFunction(reevaluate, valuesFilePath) {
+	var values;
+    debugger;
+    if(fs.existsSync(valuesFilePath)) {
+      values = JSON.parse(fs.readFileSync(valuesFilePath));
+    } else {
+      values = [];
+    }
 
 	return function (args, callback) {
+      debugger;
 		var result;
 		_.forEach(values, function(valuesEntry) {
 			if(_.isEqual(args, valuesEntry.args))
@@ -41,6 +49,7 @@ function MultiParamFunction(reevaluate) {
 
 		if(result == undefined) {
 			reevaluate(args, function(value) {
+                fs.writeFileSync(valuesFilePath, JSON.stringify(values));
 				values.push({
 					value: value,
 					args: _.cloneDeep(args)
