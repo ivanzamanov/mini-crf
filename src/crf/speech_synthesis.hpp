@@ -79,7 +79,7 @@ struct SynthPrinter {
       out << "File=" << file << " ";
       out << "Start=" << phon.start << " ";
       out << "End=" << phon.end << " ";
-      out << "Label=" << phon.label << " ";
+      out << "Label=" << PhoneticLabelUtil::fromInt(phon.label) << " ";
       out << "Pitch=" << desired_pitch(desired[i]) << " ";
       out << "Duration=" << desired[i].duration << '\n';
     }
@@ -100,7 +100,7 @@ struct SynthPrinter {
   void print_synth_input(std::vector<PhonemeInstance>& path) {
     for(auto it = path.begin(); it != path.end(); it++) {
       const PhonemeInstance& phon = *it;
-      std::cerr << phon.id << "=" << phon.label << " ";
+      std::cerr << phon.id << "=" << PhoneticLabelUtil::fromInt(phon.label) << " ";
     }
     std::cerr << '\n';
   }

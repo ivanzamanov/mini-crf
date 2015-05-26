@@ -57,20 +57,25 @@ endproc
 procedure diff_cepstra
     selectObject: cepstra[1]
     xMax1 = Get number of columns
+    yMax1 = Get number of rows
     selectObject: cepstra[2]
     xMax2 = Get number of columns
+    yMax2 = Get number of rows
 
     xMax = min(xMax1, xMax2)
+    yMax = min(yMax1, yMax2)
 
     result = 0
     for i to xMax
         dist = 0
-        selectObject: cepstra[1]
-        y1 = Get value in cell... 1 i
+		for j to yMax
+			selectObject: cepstra[1]
+			y1 = Get value in cell... j i
 
-        selectObject: cepstra[2]
-        y2 = Get value in cell... 1 i
-        dist = dist + (y1 - y2) * (y1 - y2)
+			selectObject: cepstra[2]
+			y2 = Get value in cell... j i
+			dist = dist + (y1 - y2) * (y1 - y2)
+        endfor
         result = result + dist
     endfor
 endproc

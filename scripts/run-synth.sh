@@ -18,4 +18,4 @@ popd
 set +x
 fix_synth_output "$TEMP_F"
 set -x
-praat "$(os_path $BASE/concat.praat)" "$(os_path $TEMP_F)" concat-output.wav
+time praat "$(os_path $BASE/concat.praat)" "$(os_path $TEMP_F)" concat-output.wav
