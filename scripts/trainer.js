@@ -7,10 +7,10 @@ var path = require('path'),
 
 var linuxConfig = {
     parallelProcesses: 1,
-    parallelComparisons: 4,
+    parallelComparisons: 10,
     tempDir: '/tmp/',
     synthDB: '/home/ivo/SpeechSynthesis/db-synth.bin',
-    testDB: '/home/ivo/SpeechSynthesis/db-test-1.bin',
+    testDB: '/home/ivo/SpeechSynthesis/db-test.bin',
     trainingCommand: '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt',
     praatCommand: 'praat',
     synthScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/concat.praat',
@@ -275,7 +275,7 @@ function trainGoldenSearch() {
         // Order is a < b < c
         iterations--;
         console.log('Iteration: ' + (1000 - iterations));
-        if(iterations === 0 || (c - a) < 0.5) {
+        if(iterations === 0 || isConverged(ranges)) {
             console.log('Optimum at ' + search.dimensionsToString(ranges));
             return;
         } else {
@@ -291,6 +291,14 @@ function trainGoldenSearch() {
     var values = ranges[dimension].values;
     console.log('Searching in ' + search.dimensionsToString(ranges));
     search.goldenSearchStep(values[0], values[1], values[2], func, stepCallback);
+}
+
+function isConverged(ranges) {
+  var result = true;
+  _.forEach(ranges, function(range) {
+    result = result && (range.values[2] - range.values[0]) < 0.1;
+  });
+  return result;
 }
 
 var bruteForce = false;

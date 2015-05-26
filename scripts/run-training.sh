@@ -1,3 +1,3 @@
 mkdir -p logs
-LOG=logs/$(date +%M-%d-%H-%m).log
+LOG=logs/$(date +%m-%d-%H-%M).log
 nodejs trainer.js | tee "$LOG"
