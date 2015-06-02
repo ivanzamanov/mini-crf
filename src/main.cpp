@@ -53,6 +53,13 @@ double get_total_duration(std::vector<PhonemeInstance> input) {
 }
 
 int resynthesize(Options& opts) {
+  PlainStreamConfig conf(std::cin);
+  double val;
+  crf.mu[0] = conf.get("state-pitch", val);
+  crf.mu[1] = conf.get("state-duration", val);
+  crf.lambda[0] = conf.get("trans-pitch", val);
+  crf.lambda[1] = conf.get("trans-mfcc", val);
+
   unsigned index = util::parse_int(opts.input);
   std::vector<PhonemeInstance> input = test_corpus.input(index);
 
@@ -175,7 +182,7 @@ void resynth_index(int index, std::ostream& outputStream) {
   sp.print_synth(path, input, outputStream);
 }
 
-int train(const Options& opts) {
+int train(const Options&) {
   PlainStreamConfig conf(std::cin);
 
   double val;
@@ -186,14 +193,8 @@ int train(const Options& opts) {
 
   unsigned count = test_corpus.size();
   std::stringstream *streams = new std::stringstream[count];
-  if(!opts.has_opt("--disable-multithreading")) {
-  #pragma omp parallel for
   for(unsigned i = 0; i < count; i++)
     resynth_index(i, streams[i]);
-  } else {
-  for(unsigned i = 0; i < count; i++)
-    resynth_index(i, streams[i]);
-  }
 
   const std::string delim = "----------";
   std::cout << streams[0].str() << std::endl;

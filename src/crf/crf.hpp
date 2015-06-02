@@ -135,7 +135,6 @@ struct FunctionalAutomaton {
     }
 
     double base_value;
-    double value;
     int child;
   };
 
@@ -215,28 +214,27 @@ struct FunctionalAutomaton {
   }
 
   template<bool includeState, bool includeTransition>
-  double traverse_transitions(Array<Transition> children, const typename CRF::Label& src, int pos, unsigned& max_child) {
+  double traverse_transitions(const Array<Transition> children, const typename CRF::Label& src, int pos, unsigned& max_child) {
     unsigned m = 0;
 
     auto child = alphabet.fromInt(children[m].child);
     double transition = calculate_value<includeState, includeTransition>(src, child, pos);
-    children[m].value = funcs.concat(children[m].base_value, transition);
+    double child_value = funcs.concat(children[m].base_value, transition);
     max_child = children[m].child;
-    double prev_value = children[m].value;
+    double prev_value = child_value;
 
     double agg;
-    agg = children[m].value;
+    agg = child_value;
     for(++m; m < children.length; ++m) {
       child = alphabet.fromInt(children[m].child);
       transition = calculate_value<includeState, includeTransition>(src, child, pos);
-      double child_value = funcs.concat(children[m].base_value, transition);
+      child_value = funcs.concat(children[m].base_value, transition);
       if(funcs.is_better(child_value, prev_value)) {
         max_child = children[m].child;
         prev_value = child_value;
       }
 
-      children[m].value = child_value;
-      agg = funcs.aggregate(children[m].value, agg);
+      agg = funcs.aggregate(child_value, agg);
     }
 
     return agg;
@@ -274,13 +272,16 @@ struct FunctionalAutomaton {
       // for every possible label...
       const typename CRF::Alphabet::LabelClass& allowed = alphabet.get_class(x[pos]);
       options.push_back(allowed.size());
+
+      next_children.length = allowed.size();
+#pragma omp parallel for
       for(unsigned m = 0; m < allowed.size(); m++) {
         auto srcId = allowed[m];
 
         const typename CRF::Label& src = alphabet.fromInt(srcId);
         unsigned max_child;
         double value = traverse_transitions<true, true>(children, src, pos + 1, max_child);
-        next_children[next_children.length++].set(srcId, value);
+        next_children[m].set(srcId, value);
 
         paths(srcId, pos) = max_child;
       }

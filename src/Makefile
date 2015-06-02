@@ -1,6 +1,6 @@
 
 CC = g++
-CFLAGS = -std=c++11 -Wall -I. -pg -g
+CFLAGS = -std=c++11 -Wall -I.
 OBJ_DIR = bin
 OBJ = crf.o
 CMD = $(CC) $(CFLAGS)
@@ -8,13 +8,13 @@ MAIN_DEPS = $(wildcard */*.hpp */*.cpp *.hpp) main.cpp
 CPP_FILES = $(wildcard */*.cpp)
 
 main: $(MAIN_DEPS)
-	$(CMD) main.cpp $(CPP_FILES) -o main
+	$(CMD) -pg -g main.cpp $(CPP_FILES) -o main
 
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test
 
 db-stats: $(MAIN_DEPS) db-stats.cpp
-	$(CMD) -O3 db-stats.cpp $(CPP_FILES) -o db-stats
+	$(CMD) -Ofast -mtune=native -fopenmp db-stats.cpp $(CPP_FILES) -o db-stats
 
 main-opt: $(MAIN_DEPS)
 	$(CC) -static -std=c++11 -Wall -I. -Ofast -mtune=native main.cpp -fopenmp $(CPP_FILES) -o main-opt

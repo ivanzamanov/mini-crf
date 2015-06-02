@@ -29,33 +29,50 @@ void print_max_sent() {
   std::cout << "Longest sentence: " << max << std::endl;
 }
 
-template<class Func>
-void print_function_stats(const PhonemeAlphabet& alphabet, const char* name) {
+void print_function_stats(const PhonemeAlphabet& alphabet, const std::string name,
+                          double (*func)(const PhonemeInstance&, const PhonemeInstance&,
+                                         int, const vector<PhonemeInstance>&)) {
+  vector<PhonemeInstance> dummy;
 
-  Progress prog(alphabet.size() * (alphabet.size() - 1) / 10000);
   unsigned k = 0;
   double expect = 0;
   for(unsigned i = 0; i < alphabet.size(); i++) {
     const PhonemeInstance& p1 = alphabet.fromInt(i);
 
+#pragma omp parallel for
     for(unsigned j = 0; j < alphabet.size(); j++) {
       if(i == j) continue;
 
       const PhonemeInstance& p2 = alphabet.fromInt(i);
 
-      Func f;
-      double value = f(p1, p2);
-      
-      k++;
-      expect += (value - expect) / k;
-      if(k % 10000 == 0)
-      prog.update();
+      double value = func(p1, p2, 0, dummy);
+        k++;
+        expect += (value - expect) / k;
     }
   }
-  prog.finish();
 
-  //std::cout << name << " mean = " << mean << std::endl;
-  std::cout << name << " expc = " << expect << std::endl;
+  std::cout << name << " expectation = " << expect << std::endl;
+
+  k = 0;
+  double dev = 0;
+  for(unsigned i = 0; i < alphabet.size(); i++) {
+    const PhonemeInstance& p1 = alphabet.fromInt(i);
+
+#pragma omp parallel for
+    for(unsigned j = 0; j < alphabet.size(); j++) {
+      if(i == j) continue;
+
+      const PhonemeInstance& p2 = alphabet.fromInt(i);
+
+      double value = func(p1, p2, 0, dummy);
+#pragma omp critical
+      {
+        k++;
+        dev += (value - expect) * (value - expect);
+      }
+    }
+  }
+  std::cout << name << " deviation = " << std::sqrt(dev) * alphabet.size() << std::endl;
 }
 
 int main(int argc, const char** argv) {
@@ -73,7 +90,7 @@ int main(int argc, const char** argv) {
 
   print_min_sent();
   print_max_sent();
-  print_function_stats<MFCCDist>(alphabet, "MFCC");
-  print_function_stats<Pitch>(alphabet, "Pitch");
+  print_function_stats(alphabet, "Pitch", Pitch);
+  print_function_stats(alphabet, "MFCC Transition", MFCCDist);
   return 0;
 }

@@ -27,10 +27,9 @@ selectObject: soundObj2
 mfccObj = To MFCC... mfccCount (4*timeStep) timeStep 100 100 0.0
 cepstra[2] = To Matrix
 
-appendInfoLine: "Diffing"
 @diff_cepstra
 
-appendInfoLine: result
+writeInfoLine: result
 
 procedure diff_cepstra
     selectObject: cepstra[1]

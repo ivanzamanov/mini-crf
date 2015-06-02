@@ -57,7 +57,6 @@ function runCommand(command, input, callback) {
     var output = "";
 
     callback = _.once(callback);
-    debugger;
     var child;
     if(isWindows) {
         command = ['D:\\cygwin\\bin\\bash.exe', 'D:\\cygwin\\home\\ivo\\bin\\stdin-wrap.sh', config.tempDir, command.join(' ')];
@@ -83,8 +82,7 @@ function runCommand(command, input, callback) {
         if(code != 0) {
             console.log('Child bad exit:', code);
             process.exit(code);
-        } else
-            callback(null, output);
+        }
     });
 
     child.stdout.on('end', function() {
@@ -145,10 +143,8 @@ function runSynthesis(runConfig, runSynthesisCallback) {
     var comparisonConfigs = [];
     var synthOutputs = runConfig.trainingOutput.split('----------');
     _.remove(synthOutputs, isEmpty);
-    debugger;
     async.eachLimit(synthOutputs, config.parallelComparisons, function (synthOutput, synthCallback) {
         var lines = synthOutput.split('\n');
-        debugger;
         _.remove(lines, isEmpty);
         var originalSound = lines[0];
 

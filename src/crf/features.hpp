@@ -70,8 +70,8 @@ struct PhoneticFeatures {
   typedef double (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef double (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
-  _EdgeFeature f[2] = { Pitch, MFCCDist };
-  _VertexFeature g[2] = { Duration, PitchState };
+  const _EdgeFeature f[2] = { Pitch, MFCCDist };
+  const _VertexFeature g[2] = { Duration, PitchState };
 };
 
 template<class Eval>
