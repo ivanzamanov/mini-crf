@@ -20,7 +20,7 @@ main-opt: $(MAIN_DEPS)
 	$(CC) -static -std=c++11 -Wall -I. -Ofast -mtune=native main.cpp -fopenmp $(CPP_FILES) -o main-opt
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
-	$(CMD) text2bin.cpp $(CPP_FILES) -o text2bin
+	$(CMD) text2bin.cpp -g $(CPP_FILES) -o text2bin
 
 text2bin-opt: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) -O3 text2bin.cpp $(CPP_FILES) -o text2bin-opt
