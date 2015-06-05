@@ -48,6 +48,12 @@ struct PlainStreamConfig {
       if( (*it).key == key) { (*it).get(val); break; }
     return val;
   }
+
+  bool has(std::string key) {
+    for(auto it = values.begin(); it != values.end(); it++)
+      if( (*it).key == key) { return true; }
+    return false;
+  }
 };
 
 struct Options {

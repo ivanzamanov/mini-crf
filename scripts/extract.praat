@@ -52,20 +52,11 @@ mfccObj = To MFCC... mfccCount (4*timeStep) timeStep 100 100 0.0
 selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames
 
-textGridSegmented = Create TextGrid... 0 totalDuration phonemes ""
+textGridSegmented = Create TextGrid... 0 totalDuration phonemes phonemes
 
 lastTime = 0
 lastFrame = 1
 procedure getFrameBoundaries
-  selectObject: pitchTier
-  highPitchPoint = Get nearest index from time... endPoint
-  highPitchPoint = max(1, highPitchPoint)
-  highPitchPointTime = Get time from index... highPitchPoint
-
-  if abs(highPitchPointTime - endPoint) < timeStep
-  endPoint = highPitchPointTime
-  endif
-
   startPoint = lastTime
 
   selectObject: soundObj
@@ -97,9 +88,13 @@ procedure getPulseBoundaries
    startPoint = Get time from index... startIndex
    endPoint = Get time from index... endIndex
 
-  selectObject: textGridSegmented
-  Insert boundary... 1 startPoint
-  Insert boundary... 1 endPoint
+   selectObject: textGridSegmented
+   Insert point... 1 startPoint
+   intervalIndex = Get number of points... 1
+   Set point text... 1 intervalIndex "s"
+   Insert point... 1 endPoint
+   intervalIndex = Get number of points... 1
+   Set point text... 1 intervalIndex "e"
   endif
 endproc
 
