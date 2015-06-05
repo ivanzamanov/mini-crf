@@ -1,21 +1,23 @@
 set -e
-set -x
-source $(dirname $0)/functions.sh
-BASE=$(readlink -f $(dirname $0))
+if [ $# -lt 3 ]; then
+  echo "Usage: $0 <sentence index> <db-name> <config_file>"
+  exit 1
+fi
 
-TEMP_F=$(readlink -f concat-input.txt)
+source $(dirname $0)/functions.sh
+DB_NAME=$2
+CONFIG_FILE=$3
+
+BASE=$(readlink -f $(dirname $0)/..)
+
+TEMP_F=$(readlink -f `mktemp`)
 SENT="$(echo "$1" | tr ' ' '_')"
 
-SYNTH_DB=~/SpeechSynthesis/db-synth.bin
-TEST_DB=~/SpeechSynthesis/db-test.bin
-
-pushd $BASE/../src
+SYNTH_DB=~/SpeechSynthesis/db-synth-${DB_NAME}.bin
+TEST_DB=~/SpeechSynthesis/db-test-${DB_NAME}.bin
 
 echo "Concat temp file: $TEMP_F"
-time ./main-opt --mode resynth --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 --textgrid $BASE/concat.TextGrid > "$TEMP_F"
-popd
+time $BASE/src/main-opt --mode resynth --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 --textgrid $BASE/concat.TextGrid < $CONFIG_FILE > "$TEMP_F"
 
-set +x
 fix_synth_output "$TEMP_F"
-set -x
-time praat "$(os_path $BASE/concat.praat)" "$(os_path $TEMP_F)" concat-output.wav
+time praat "$(os_path $BASE/scripts/concat.praat)" "$(os_path $TEMP_F)" concat-output.wav

@@ -1,13 +1,13 @@
 form Feature Extraction
-     comment I/O file paths
-     sentence soundPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A.1.2.Un1_001.wav
-     sentence textGridPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A_1_2_Un1_001.TextGrid
-     sentence outputFile /home/ivo/praat-output.txt
-     comment Generic
-     real timeStep 0.005
-     comment MFCC extraction parameters
-     natural mfccCount 12
-     comment Pitch extraction parameters
+   comment I/O file paths
+   sentence soundPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A.1.2.Un1_001.wav
+   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A_1_2_Un1_001.TextGrid
+   sentence outputFile /home/ivo/praat-output.txt
+   comment Generic
+   real timeStep 0.005
+   comment MFCC extraction parameters
+   natural mfccCount 12
+   comment Pitch extraction parameters
 endform
 
 writeInfoLine: "Parameters:"
@@ -33,13 +33,18 @@ soundObj = Read from file... 'soundPath$'
 selectObject: soundObj
 Rename... Sound
 
+# Extract pitch tier
 pitch = To Pitch... timeStep 75 600
 selectObject: pitch
 Rename... PitchTier
 pitchTier = Down to PitchTier
 
+# Extract pulses to be used to determine cut points
+selectObject: soundObj
+pointProcess = To PointProcess (periodic, cc)... 75 600
+
 # generate MFCC
-# To MFCC... : <coef count> <window length> <time step>
+soundObjOriginal = soundObj
 selectObject: soundObj
 soundObj = Filter (pre-emphasis)... 50
 totalDuration = Get total duration
@@ -47,76 +52,99 @@ mfccObj = To MFCC... mfccCount (4*timeStep) timeStep 100 100 0.0
 selectObject: mfccObj
 maxMFCCFrameCount = Get number of frames
 
-#textGrid = Create TextGrid... 0 totalDuration phonemes ""
+textGridSegmented = Create TextGrid... 0 totalDuration phonemes ""
 
 lastTime = 0
 lastFrame = 1
 procedure getFrameBoundaries
-    selectObject: pitchTier
-    highPitchPoint = Get nearest index from time... endPoint
-    highPitchPoint = max(1, highPitchPoint)
-    highPitchPointTime = Get time from index... highPitchPoint
+  selectObject: pitchTier
+  highPitchPoint = Get nearest index from time... endPoint
+  highPitchPoint = max(1, highPitchPoint)
+  highPitchPointTime = Get time from index... highPitchPoint
 
-    if abs(highPitchPointTime - endPoint) < timeStep
-        endPoint = highPitchPointTime
-    endif
+  if abs(highPitchPointTime - endPoint) < timeStep
+    endPoint = highPitchPointTime
+  endif
 
-    startPoint = lastTime
+  startPoint = lastTime
 
-    selectObject: soundObj
-    #appendInfoLine: startPoint, " ", endPoint
-    #Extract part for overlap... startPoint endPoint 0.1
+  selectObject: soundObj
+  #appendInfoLine: startPoint, " ", endPoint
+  #Extract part for overlap... startPoint endPoint 0.1
 
-    selectObject: mfccObj
-    startFrame = Get frame number from time... startPoint
-    startFrame = max(1, startFrame)
-    endFrame = Get frame number from time... endPoint
+  selectObject: mfccObj
+  startFrame = Get frame number from time... startPoint
+  startFrame = max(1, startFrame)
+  endFrame = Get frame number from time... endPoint
 
-    startFrame = floor(startFrame)
-    endFrame = ceiling(endFrame)
+  startFrame = floor(startFrame)
+  endFrame = ceiling(endFrame)
 
-    startFrame = max(startFrame, lastFrame)
-    endFrame = max(endFrame, startFrame + 1)
+  startFrame = max(startFrame, lastFrame)
+  endFrame = max(endFrame, startFrame + 1)
 
-    lastFrame = endFrame
+  lastFrame = endFrame
 
-    lastTime = endPoint
+  lastTime = endPoint
+endproc
 
-    #appendInfoLine: "Frames ", (endFrame - startFrame + 1), " ", startFrame, " ", endFrame
+procedure getPulseBoundaries
+  selectObject: pointProcess
+  startIndex = Get high index... startPoint
+  endIndex = Get low index... endPoint
 
-    #Insert boundary... 1 startPoint
-    #selectObject: textGrid
-    #Insert boundary... 1 endPoint
+  if startIndex < endIndex
+   startPoint = Get time from index... startIndex
+   endPoint = Get time from index... endIndex
+
+  selectObject: textGridSegmented
+  Insert boundary... 1 startPoint
+  Insert boundary... 1 endPoint
+  endif
 endproc
 
 for i to intervalCount
-    selectObject: textGridObj
-    intervalLabel$ = Get label of interval... 1 i
+  selectObject: textGridObj
+  intervalLabel$ = Get label of interval... 1 i
 
-    appendFileLine: outputFile$, "[Entry]"
-    appendFileLine: outputFile$, "label=", intervalLabel$
+  appendFileLine: outputFile$, "[Entry]"
+  appendFileLine: outputFile$, "label=", intervalLabel$
 
-    startPoint = Get start point... 1 i
-    endPoint = Get end point... 1 i
+  startPoint = Get start point... 1 i
+  endPoint = Get end point... 1 i
 
-    duration = endPoint - startPoint
+  @getPulseBoundaries
 
-    @getFrameBoundaries
+  duration = endPoint - startPoint
 
-    appendFileLine: outputFile$, "start=", startPoint
-    appendFileLine: outputFile$, "end=", endPoint
-    appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
-    appendFileLine: outputFile$, "duration=", duration
+  @getFrameBoundaries
 
-    for frame from startFrame to endFrame
-        selectObject: pitch
-        value = Get value in frame: frame, "Hertz"
-        appendFileLine: outputFile$, "pitch=", value
-        selectObject: mfccObj
-        for j to mfccCount
-            value = Get value in frame: frame, j
-            appendFileLine: outputFile$, j, "=", value
-        endfor
+  appendFileLine: outputFile$, "start=", startPoint
+  appendFileLine: outputFile$, "end=", endPoint
+  appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
+  appendFileLine: outputFile$, "duration=", duration
+
+  for frame from startFrame to endFrame
+    selectObject: pitch
+    value = Get value in frame: frame, "Hertz"
+    appendFileLine: outputFile$, "pitch=", value
+    selectObject: mfccObj
+    for j to mfccCount
+      value = Get value in frame: frame, j
+      appendFileLine: outputFile$, j, "=", value
     endfor
+  endfor
 endfor
+
+selectObject: pitchTier
+Remove
+selectObject: mfccObj
+Remove
+selectObject: pointProcess
+#Remove
+selectObject: soundObj
+Remove
+selectObject: pitch
+Remove
+
 appendInfoLine: "Done"

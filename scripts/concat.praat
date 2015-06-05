@@ -1,8 +1,8 @@
 form Concatenation
      comment Input file
-     sentence fileName concat-input.txt
+     sentence fileName /home/ivo/SpeechSynthesis/mini-crf/src/tmp.txt
      comment Output file
-     sentence outputPath concat-output.wav
+     sentence outputPath /tmp/concat-output.wav
 endform
 
 writeInfo: ""
@@ -146,7 +146,7 @@ selectObject: manipulation
 result = Get resynthesis (overlap-add)
 
 selectObject: blankPitch
-Remove
+#Remove
 selectObject: durationTier
 Remove
 selectObject: concat

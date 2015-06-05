@@ -70,11 +70,11 @@ struct SynthPrinter {
   }
 
   void print_synth(std::vector<int> &path, const std::vector<PhonemeInstance>& desired, std::ostream& out) {
+    std::stringstream run_lengths;
     std::stringstream phonemeIds;
     for(unsigned i = 0; i < path.size(); i++) {
       int id = path[i];
       const PhonemeInstance& phon = alphabet.fromInt(id);
-      phonemeIds << id << "=" << phon.label << " ";
       std::string file = alphabet.file_of(id);
       out << "File=" << file << " ";
       out << "Start=" << phon.start << " ";
@@ -82,9 +82,15 @@ struct SynthPrinter {
       out << "Label=" << PhoneticLabelUtil::fromInt(phon.label) << " ";
       out << "Pitch=" << desired_pitch(desired[i]) << " ";
       out << "Duration=" << desired[i].duration << '\n';
+
+      phonemeIds << id << "=" << phon.label << " ";
+      if(i > 0 && id != (path[i-1] + 1))
+        run_lengths << "|";
+      run_lengths << PhoneticLabelUtil::fromInt(phon.label);
     }
 
     //std::cerr << phonemeIds.str() << std::endl;
+    std::cerr << run_lengths.str() << std::endl;
   }
 
   const std::string desired_pitch(const PhonemeInstance& p) {
@@ -95,14 +101,6 @@ struct SynthPrinter {
     mid = mid / p.frames.length;
     str << mid;
     return str.str();
-  }
-
-  void print_synth_input(std::vector<PhonemeInstance>& path) {
-    for(auto it = path.begin(); it != path.end(); it++) {
-      const PhonemeInstance& phon = *it;
-      std::cerr << phon.id << "=" << PhoneticLabelUtil::fromInt(phon.label) << " ";
-    }
-    std::cerr << '\n';
   }
 
   void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, const std::string file) {

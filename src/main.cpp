@@ -77,7 +77,6 @@ int resynthesize(Options& opts) {
 
   SynthPrinter sp(crf.label_alphabet);
   sp.print_synth(path, input);
-  sp.print_synth_input(input);
   sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
