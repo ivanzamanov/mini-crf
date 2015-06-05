@@ -63,7 +63,7 @@ procedure getFrameBoundaries
   highPitchPointTime = Get time from index... highPitchPoint
 
   if abs(highPitchPointTime - endPoint) < timeStep
-    endPoint = highPitchPointTime
+  endPoint = highPitchPointTime
   endif
 
   startPoint = lastTime
@@ -129,10 +129,15 @@ for i to intervalCount
     value = Get value in frame: frame, "Hertz"
     appendFileLine: outputFile$, "pitch=", value
     selectObject: mfccObj
-    for j to mfccCount
+    appendFile: outputFile$, "mfcc="
+
+    value = Get value in frame: frame, 1
+    appendFile: outputFile$, value
+    for j from 2 to mfccCount
       value = Get value in frame: frame, j
-      appendFileLine: outputFile$, j, "=", value
+      appendFile: outputFile$, " ", value
     endfor
+    appendFileLine: outputFile$
   endfor
 endfor
 

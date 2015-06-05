@@ -27,10 +27,24 @@ static T value(std::istream& stream, const std::string& check) {
   return result;
 }
 
+std::string string_value(std::istream& stream, const std::string& check) {
+  std::string result;
+  char char_buffer[1024 * 1024];
+  char c = stream.get();
+  if(c == '\r')
+    c = stream.get();
+  stream.getline(char_buffer, sizeof(char_buffer));
+  std::string buffer(char_buffer);
+  int index = buffer.find_first_of('=');
+  check_buffer(check, buffer.substr(0, index));
+  result = buffer.substr(index + 1);
+  return result;
+}
+
 PhonemeInstance* parse_file(std::istream& stream, int& size) {
   section(stream, "[Config]"); // [Config]
   value<double>(stream, "timeStep"); // timeStep
-  int mfcc_count = value<int>(stream, "mfcc");
+  value<int>(stream, "mfcc");
   size = value<int>(stream, "intervals");
   PhonemeInstance* result = new PhonemeInstance[size];
 
@@ -50,18 +64,11 @@ PhonemeInstance* parse_file(std::istream& stream, int& size) {
     for(int frame = 0; frame < frames; frame++) {
       int c;
 
-      std::stringstream index_str;
       result[i].frames[frame].pitch = value<double>(stream, "pitch");
+      std::string mfcc_string = string_value(stream, "mfcc");
+      std::stringstream mfcc_value_str(mfcc_string);
       for(c = 0; c < MFCC_N; c++) {
-        index_str.seekp(0);
-        index_str << c+1;
-        result[i].frames[frame].mfcc[c] = value<double>(stream, index_str.str());
-      }
-
-      for(; c < mfcc_count; c++) {
-        index_str.seekp(0);
-        index_str << c+1;
-        value<double>(stream, index_str.str());
+        mfcc_value_str >> result[i].frames[frame].mfcc[c];
       }
     }
   }
