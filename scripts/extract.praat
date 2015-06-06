@@ -74,6 +74,8 @@ procedure getFrameBoundaries
   startFrame = max(startFrame, lastFrame)
   endFrame = max(endFrame, startFrame + 1)
 
+  # Explicitly - first feature frame is the last frame...
+  startFrame = lastFrame
   lastFrame = endFrame
 
   lastTime = endPoint
@@ -81,21 +83,37 @@ endproc
 
 procedure getPulseBoundaries
   selectObject: pointProcess
-  startIndex = Get high index... startPoint
-  endIndex = Get low index... endPoint
+  startIndex = Get nearest index... startPoint
+  endIndex = Get nearest index... endPoint
 
-  if startIndex < endIndex
-   startPoint = Get time from index... startIndex
-   endPoint = Get time from index... endIndex
+  startPulsePoint = Get time from index... startIndex
+  endPulsePoint = Get time from index... endIndex
 
-   selectObject: textGridSegmented
-   Insert point... 1 startPoint
-   intervalIndex = Get number of points... 1
-   Set point text... 1 intervalIndex "s"
-   Insert point... 1 endPoint
-   intervalIndex = Get number of points... 1
-   Set point text... 1 intervalIndex "e"
+  selectObject: pitchTier
+  pitchAtStart = Get value at time... startPoint
+  pitchAtEnd = Get value at time... endPoint
+
+  if abs(startPoint - startPulsePoint) <= 1/pitchAtStart
+    startPoint = startPulsePoint
   endif
+
+  #appendInfoLine: endPoint, " ", endPulsePoint, " ", 1/pitchAtEnd, " ", endIndex
+  if abs(endPoint - endPulsePoint) <= 1/pitchAtEnd
+    endPoint = endPulsePoint
+  endif
+
+  #appendInfoLine: startPoint, " ", endPoint
+  false = 0
+  if false != 0
+    selectObject: textGridSegmented
+    Insert point... 1 startPoint
+    intervalIndex = Get number of points... 1
+    Set point text... 1 intervalIndex "s"
+    Insert point... 1 endPoint
+    intervalIndex = Get number of points... 1
+    Set point text... 1 intervalIndex "e"
+  endif
+
 endproc
 
 for i to intervalCount
@@ -116,10 +134,14 @@ for i to intervalCount
 
   appendFileLine: outputFile$, "start=", startPoint
   appendFileLine: outputFile$, "end=", endPoint
-  appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
+  #appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
+  appendFileLine: outputFile$, "frames=", 2
   appendFileLine: outputFile$, "duration=", duration
 
-  for frame from startFrame to endFrame
+  featureFrames[1] = startFrame
+  featureFrames[2] = endFrame
+  for k to 2
+    frame = featureFrames[k]
     selectObject: pitch
     value = Get value in frame: frame, "Hertz"
     appendFileLine: outputFile$, "pitch=", value
@@ -137,7 +159,7 @@ for i to intervalCount
 endfor
 
 selectObject: pitchTier
-Remove
+#Remove
 selectObject: mfccObj
 Remove
 selectObject: pointProcess
