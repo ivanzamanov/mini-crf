@@ -151,12 +151,12 @@ void testCRF() {
   crf.mu = mu;
 
   vector<TestObject> x;
-  for(int i = 0; i < crf.label_alphabet.size(); i++)
+  for(int i = 0; i < crf.alphabet().size(); i++)
     x.push_back(i);
 
   TestFilter filter;
   filter.crf = &crf;
-  crf.label_alphabet.iterate_sequences(x, filter);
+  crf.alphabet().iterate_sequences(x, filter);
 }
 
 void testSynthInputCSV() {

@@ -8,13 +8,14 @@
 
 unsigned MIN_OPTS = 2;
 
-enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, INVALID };
+enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, BASELINE, INVALID };
 
 Mode get_mode(std::string str) {
   if(str == "synth") return Mode::SYNTH;
   else if(str == "query") return Mode::QUERY;
   else if(str == "resynth") return Mode::RESYNTH;
   else if(str == "train") return Mode::TRAIN;
+  else if(str == "baseline") return Mode::BASELINE;
   return Mode::INVALID;
 }
 

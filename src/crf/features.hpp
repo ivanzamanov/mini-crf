@@ -63,6 +63,10 @@ double Duration(const PhonemeInstance& prev, int pos, const vector<PhonemeInstan
   return std::abs(d1 - d2);
 }
 
+double BaselineFunction(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
+  return prev.id + 1 == next.id;
+}
+
 struct PhoneticFeatures;
 typedef CRandomField<PhonemeAlphabet, PhonemeInstance, PhoneticFeatures> CRF;
 
@@ -72,6 +76,17 @@ struct PhoneticFeatures {
 
   const _EdgeFeature f[2] = { Pitch, MFCCDist };
   const _VertexFeature g[2] = { Duration, PitchState };
+};
+
+struct BaselineFeatures;
+typedef CRandomField<PhonemeAlphabet, PhonemeInstance, BaselineFeatures> BaselineCRF;
+
+struct BaselineFeatures {
+  typedef double (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
+  typedef double (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
+
+  const _EdgeFeature f[1] = { BaselineFunction };
+  const _VertexFeature g[0] = { };
 };
 
 template<class Eval>

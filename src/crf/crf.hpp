@@ -103,7 +103,9 @@ public:
   // Edge feature coefficients
   vector<double> lambda;
 
-  _LabelAlphabet label_alphabet;
+  _LabelAlphabet& alphabet() const { return *label_alphabet; };
+
+  _LabelAlphabet *label_alphabet;
 };
 
 
@@ -122,7 +124,7 @@ double traverse_automaton(const vector<typename CRF::Input>& x, CRF& crf, const 
 
 template<class CRF>
 struct FunctionalAutomaton {
-  FunctionalAutomaton(const CRF& crf): crf(crf), alphabet(crf.label_alphabet), mu(crf.mu), lambda(crf.lambda) { }
+  FunctionalAutomaton(const CRF& crf): crf(crf), alphabet(crf.alphabet()), mu(crf.mu), lambda(crf.lambda) { }
 
   struct Transition {
     Transition() { }

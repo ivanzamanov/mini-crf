@@ -24,6 +24,7 @@ void print_usage() {
 
 CRF crf;
 typename CRF::Alphabet test_alphabet;
+BaselineCRF baseline_crf;
 Corpus<PhonemeInstance, PhonemeInstance> synth_corpus;
 Corpus<PhonemeInstance, PhonemeInstance> test_corpus;
 
@@ -73,9 +74,9 @@ int resynthesize(Options& opts) {
   std::vector<int> path;
   double resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
 
-  std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
+  std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(crf.label_alphabet);
+  SynthPrinter sp(crf.alphabet());
   sp.print_synth(path, input);
   sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
@@ -105,7 +106,7 @@ int synthesize(Options& opts) {
     path.resize(id_strings.size());
     std::transform(id_strings.begin(), id_strings.end(), path.begin(), util::parse_int);
     for(auto it = path.begin(); it != path.end(); it++)
-      desired_phonemes.push_back(crf.label_alphabet.fromInt( *it ));
+      desired_phonemes.push_back(crf.alphabet().fromInt( *it ));
   } else {
     desired_phonemes = parse_synth_input_csv(*input_stream);
     std::string sentence_string = to_text_string(desired_phonemes);
@@ -113,7 +114,7 @@ int synthesize(Options& opts) {
     max_path(desired_phonemes, crf, crf.lambda, crf.mu, &path);
   }
 
-  SynthPrinter sp(crf.label_alphabet);
+  SynthPrinter sp(crf.alphabet());
   sp.print_synth(path, desired_phonemes);
   sp.print_textgrid(path, desired_phonemes, opts.text_grid);
   return 0;
@@ -173,11 +174,11 @@ void resynth_index(int index, std::ostream& outputStream) {
 
   outputStream << input_file << std::endl;
   double cost = max_path(input, crf, crf.lambda, crf.mu, &path);
-  std::vector<PhonemeInstance> output = crf.label_alphabet.to_phonemes(path);
+  std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
   std::cerr << "Cost " << index << ": " << cost << std::endl;
 
-  SynthPrinter sp(crf.label_alphabet);
+  SynthPrinter sp(crf.alphabet());
   sp.print_synth(path, input, outputStream);
 }
 
@@ -205,15 +206,37 @@ int train(const Options&) {
   return 0;
 }
 
+int baseline(const Options& opts) {
+  unsigned index = util::parse_int(opts.input);
+  std::vector<PhonemeInstance> input = test_corpus.input(index);
+
+  std::string sentence_string = to_text_string(input);
+  std::cerr << "Input file: " << test_alphabet.file_of(input[0].id) << std::endl;
+  std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
+  std::cerr << "Input: " << sentence_string << '\n';
+
+  std::vector<int> path;
+  baseline_crf.lambda[0] = 1;
+  max_path(input, baseline_crf, baseline_crf.lambda, baseline_crf.mu, &path);
+
+  std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
+
+  SynthPrinter sp(crf.alphabet());
+  sp.print_synth(path, input);
+  return 0;
+}
+
 void build_data(const Options& opts) {
   std::cerr << "Synth db: " << opts.synth_db << std::endl;
   std::ifstream synth_db(opts.synth_db);
-  build_data_bin(synth_db, crf.label_alphabet, synth_corpus);
+  build_data_bin(synth_db, crf.alphabet(), synth_corpus);
   if(opts.test_db != "") {
     std::cerr << "Test db: " << opts.test_db << std::endl;
     std::ifstream test_db(opts.test_db);
     build_data_bin(test_db, test_alphabet, test_corpus);
   }
+
+  baseline_crf.label_alphabet = crf.label_alphabet;
 }
 
 int main(int argc, const char** argv) {
@@ -229,15 +252,16 @@ int main(int argc, const char** argv) {
   crf.lambda[1] = 1;
 
   for(int i = 0; i < argc; i++)
-	std::cerr << argv[i] << " ";
+    std::cerr << argv[i] << " ";
 
   std::cerr << std::endl;
 
+  crf.label_alphabet = new PhonemeAlphabet();
   Options opts = parse_options(argc, argv);
   build_data(opts);
 
-  pre_process(crf.label_alphabet);
-  pre_process(crf.label_alphabet, synth_corpus);
+  pre_process(crf.alphabet());
+  pre_process(crf.alphabet(), synth_corpus);
   pre_process(test_alphabet);
   pre_process(test_alphabet, test_corpus);
 
@@ -250,6 +274,8 @@ int main(int argc, const char** argv) {
     return resynthesize(opts);
   case Mode::TRAIN:
     return train(opts);
+  case Mode::BASELINE:
+    return baseline(opts);
   default:
     std::cerr << "Unrecognized mode " << opts.mode << std::endl;
     return 1;
