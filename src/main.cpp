@@ -28,11 +28,15 @@ BaselineCRF baseline_crf;
 Corpus<PhonemeInstance, PhonemeInstance> synth_corpus;
 Corpus<PhonemeInstance, PhonemeInstance> test_corpus;
 
+StringLabelProvider synth_labels;
+StringLabelProvider test_labels;
+StringLabelProvider all_labels;
+
 std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
   std::string result(1, ' ');
   for(auto it = vec.begin(); it != vec.end(); it++) {
     result.push_back('|');
-    result.append( PhoneticLabelUtil::fromInt((*it).label) );
+    result.append(all_labels.fromInt((*it).label) );
     result.push_back('|');
   }
   return result;
@@ -76,7 +80,7 @@ int resynthesize(Options& opts) {
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(crf.alphabet());
+  SynthPrinter sp(crf.alphabet(), all_labels);
   sp.print_synth(path, input);
   sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
@@ -114,7 +118,7 @@ int synthesize(Options& opts) {
     max_path(desired_phonemes, crf, crf.lambda, crf.mu, &path);
   }
 
-  SynthPrinter sp(crf.alphabet());
+  SynthPrinter sp(crf.alphabet(), all_labels);
   sp.print_synth(path, desired_phonemes);
   sp.print_textgrid(path, desired_phonemes, opts.text_grid);
   return 0;
@@ -178,7 +182,7 @@ void resynth_index(int index, std::ostream& outputStream) {
 
   std::cerr << "Cost " << index << ": " << cost << std::endl;
 
-  SynthPrinter sp(crf.alphabet());
+  SynthPrinter sp(crf.alphabet(), all_labels);
   sp.print_synth(path, input, outputStream);
 }
 
@@ -221,21 +225,35 @@ int baseline(const Options& opts) {
 
   std::vector<PhonemeInstance> output = baseline_crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(baseline_crf.alphabet());
+  SynthPrinter sp(baseline_crf.alphabet(), all_labels);
   sp.print_synth(path, input);
   return 0;
+}
+
+void consolidate_labels(PhonemeAlphabet& alphabet, StringLabelProvider& original,
+                        StringLabelProvider& cons) {
+  auto it = alphabet.labels.begin();
+  while(it != alphabet.labels.end()) {
+    PhonemeInstance& p = *it;
+    std::string label = original.fromInt(p.label);
+    PhoneticLabel new_label_id = cons.fromString(label);
+    p.label = new_label_id;
+    ++it;
+  }
 }
 
 void build_data(const Options& opts) {
   std::cerr << "Synth db: " << opts.synth_db << std::endl;
   std::ifstream synth_db(opts.synth_db);
-  build_data_bin(synth_db, crf.alphabet(), synth_corpus);
+  build_data_bin(synth_db, crf.alphabet(), synth_corpus, synth_labels);
   if(opts.test_db != "") {
     std::cerr << "Test db: " << opts.test_db << std::endl;
     std::ifstream test_db(opts.test_db);
-    build_data_bin(test_db, test_alphabet, test_corpus);
+    build_data_bin(test_db, test_alphabet, test_corpus, test_labels);
   }
 
+  consolidate_labels(crf.alphabet(), synth_labels, all_labels);
+  consolidate_labels(test_alphabet, test_labels, all_labels);
   baseline_crf.label_alphabet = crf.label_alphabet;
 }
 

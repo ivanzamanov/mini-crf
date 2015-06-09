@@ -7,9 +7,10 @@ static void print_usage(const char* main) {
 
 Corpus<PhonemeInstance, PhonemeInstance> corpus;
 PhonemeAlphabet alphabet;
+StringLabelProvider provider;
 
 void transfer_data(std::istream& input, std::ofstream *output) {
-  build_data_txt(input, &alphabet, &corpus);
+  build_data_txt(input, &alphabet, &corpus, provider);
   BinaryWriter w(output);
 
   std::cout << "Writing data" << std::endl;
@@ -45,6 +46,16 @@ void transfer_data(std::istream& input, std::ofstream *output) {
       w << labels[j].id;
   }
 
+  len = provider.labels.size();
+  w << len;
+  for(unsigned i = 0; i < len; i++) {
+    std::string &label = provider.labels[i];
+    unsigned label_len = label.length();
+    w << label_len;
+    for(unsigned j = 0; j < label_len; j++)
+      w << label[j];
+  }
+
   std::cout << "Written " << w.bytes << " bytes" << std::endl;
 }
 
@@ -72,18 +83,30 @@ void compare_alphabet(PhonemeAlphabet& a1, PhonemeAlphabet& a2) {
   std::cout << "Same alphabets: " << same << std::endl;
 }
 
+void compare_labels(StringLabelProvider& p1, StringLabelProvider& p2) {
+  std::cout << "Comparing labels\n";
+  bool same = p1.labels.size() == p2.labels.size();
+  for(unsigned i = 0; i < p1.labels.size(); i++) {
+    same &= p1.labels[i] == p2.labels[i];
+  }
+
+  std::cout << "Same labels: " << same << std::endl;
+}
+
 void validate_data(std::ifstream& input) {
   std::cout << "Alphabet size: " << alphabet.size() << std::endl;
   std::cout << "Corpus size: " << corpus.size() << std::endl;
   
   Corpus<PhonemeInstance, PhonemeInstance> n_corpus;
   PhonemeAlphabet n_alphabet;
+  StringLabelProvider n_provider;
 
   std::cout << "Validating data" << std::endl;
 
-  build_data_bin(input, n_alphabet, n_corpus);
+  build_data_bin(input, n_alphabet, n_corpus, n_provider);
   compare_corpus(corpus, n_corpus);
   compare_alphabet(alphabet, n_alphabet);
+  compare_labels(provider, n_provider);
   
   std::cout << "Bin alphabet size: " << n_alphabet.size() << std::endl;
   std::cout << "Bin corpus size: " << n_corpus.size() << std::endl;

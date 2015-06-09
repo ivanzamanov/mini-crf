@@ -56,9 +56,12 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
 };
 
 struct SynthPrinter {
-  SynthPrinter(PhonemeAlphabet& alphabet): alphabet(alphabet) { }
+  SynthPrinter(PhonemeAlphabet& alphabet,
+               StringLabelProvider& provider)
+    : alphabet(alphabet), label_provider(provider) { }
 
   PhonemeAlphabet& alphabet;
+  StringLabelProvider& label_provider;
 
   void print_synth(std::vector<int> &path, const std::vector<PhonemeInstance>& desired) {
     print_synth(path, desired, std::cout);
@@ -79,14 +82,14 @@ struct SynthPrinter {
       out << "File=" << file << " ";
       out << "Start=" << phon.start << " ";
       out << "End=" << phon.end << " ";
-      out << "Label=" << PhoneticLabelUtil::fromInt(phon.label) << " ";
+      out << "Label=" << label_provider.fromInt(phon.label) << " ";
       out << "Pitch=" << desired_pitch(desired[i]) << " ";
       out << "Duration=" << desired[i].duration << '\n';
 
       phonemeIds << id << "=" << phon.label << " ";
       if(i > 0 && id != (path[i-1] + 1))
         run_lengths << "|";
-      run_lengths << PhoneticLabelUtil::fromInt(phon.label);
+      run_lengths << label_provider.fromInt(phon.label);
     }
 
     //std::cerr << phonemeIds.str() << std::endl;
@@ -144,7 +147,7 @@ PhonemeInstance to_synth_input(const PhonemeInstance& p) {
   return result;
 }
 
-void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<PhonemeInstance, PhonemeInstance>* corpus) {
+void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<PhonemeInstance, PhonemeInstance>* corpus, StringLabelProvider& label_provider) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
@@ -155,7 +158,7 @@ void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<
   while(list_input >> buffer) {
     std::ifstream stream(buffer.c_str());
     int size;
-    PhonemeInstance* phonemes_from_file = parse_file(stream, size);
+    PhonemeInstance* phonemes_from_file = parse_file(stream, size, label_provider);
     list_input >> buffer;
     files_map.push_back(buffer);
 
@@ -184,7 +187,7 @@ void build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus<
   std::cerr << "End building alphabet" << '\n';
 }
 
-void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<PhonemeInstance, PhonemeInstance>& corpus) {
+void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<PhonemeInstance, PhonemeInstance>& corpus, StringLabelProvider& label_provider) {
   BinaryReader r(&input);
   unsigned alphabet_size;
   r >> alphabet_size;
@@ -232,6 +235,15 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<Phone
     }
 
     corpus.add(input, labels);
+  }
+
+  r >> count;
+  for(unsigned i = 0; i < count; i++) {
+    r >> length;
+    std::string str(length, ' ');
+    for(unsigned j = 0; j < length; j++)
+      r >> str[j];
+    label_provider.labels.push_back(str);
   }
 
   DEBUG(std::cerr << "Read corpus " << corpus.size() << " instances, " << r.bytes << " bytes" << std::endl;)

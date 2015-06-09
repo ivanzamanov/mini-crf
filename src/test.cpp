@@ -142,6 +142,7 @@ void testCRF() {
   srand(5);
 
   TestCRF crf;
+  crf.label_alphabet = new TestAlphabet();
   std::vector<double> lambda;
   lambda.push_back(1.0);
   std::vector<double> mu;

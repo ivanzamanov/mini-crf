@@ -20,4 +20,4 @@ echo "Concat temp file: $TEMP_F"
 time $BASE/src/main-opt --mode baseline --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 --textgrid $BASE/concat.TextGrid < $CONFIG_FILE > "$TEMP_F"
 
 fix_synth_output "$TEMP_F"
-time praat "$(os_path $BASE/scripts/concat.praat)" "$(os_path $TEMP_F)" baseline.wav
+praat "$(os_path $BASE/scripts/concat.praat)" "$(os_path $TEMP_F)" baseline.wav

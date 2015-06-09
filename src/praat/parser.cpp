@@ -41,7 +41,7 @@ std::string string_value(std::istream& stream, const std::string& check) {
   return result;
 }
 
-PhonemeInstance* parse_file(std::istream& stream, int& size) {
+PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider& label_provider) {
   section(stream, "[Config]"); // [Config]
   value<double>(stream, "timeStep"); // timeStep
   value<int>(stream, "mfcc");
@@ -50,7 +50,7 @@ PhonemeInstance* parse_file(std::istream& stream, int& size) {
 
   for (int i = 0; i < size; i++) {
     section(stream, "[Entry]");
-    result[i].label = PhoneticLabelUtil::fromString(value<std::string>(stream, "label"));
+    result[i].label = label_provider.fromString(value<std::string>(stream, "label"));
     result[i].start = value<double>(stream, "start");
     result[i].end = value<double>(stream, "end");
     int frames = value<int>(stream, "frames");
