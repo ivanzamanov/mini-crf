@@ -64,7 +64,7 @@ double Duration(const PhonemeInstance& prev, int pos, const vector<PhonemeInstan
 }
 
 double BaselineFunction(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  return prev.id + 1 == next.id;
+  return (prev.id + 1 == next.id) ? 0 : 1;
 }
 
 struct PhoneticFeatures;

@@ -219,9 +219,9 @@ int baseline(const Options& opts) {
   baseline_crf.lambda[0] = 1;
   max_path(input, baseline_crf, baseline_crf.lambda, baseline_crf.mu, &path);
 
-  std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
+  std::vector<PhonemeInstance> output = baseline_crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(crf.alphabet());
+  SynthPrinter sp(baseline_crf.alphabet());
   sp.print_synth(path, input);
   return 0;
 }
