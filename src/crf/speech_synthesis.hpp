@@ -90,7 +90,7 @@ struct SynthPrinter {
     }
 
     //std::cerr << phonemeIds.str() << std::endl;
-    std::cerr << run_lengths.str() << std::endl;
+    std::cerr << "Output: " << run_lengths.str() << std::endl;
   }
 
   const std::string desired_pitch(const PhonemeInstance& p) {
