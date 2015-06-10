@@ -41,7 +41,10 @@ pitchTier = Down to PitchTier
 
 # Extract pulses to be used to determine cut points
 selectObject: soundObj
-pointProcess = To PointProcess (periodic, cc)... 75 600
+pitchTmp = To Pitch (ac)... timeStep 75 20 1 0 0 0.01 0.35 0.14 600
+pointProcess = To PointProcess
+selectObject: pitchTmp
+Remove
 
 # generate MFCC
 soundObjOriginal = soundObj
