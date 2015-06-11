@@ -75,6 +75,24 @@ void print_function_stats(const PhonemeAlphabet& alphabet, const std::string nam
   std::cout << name << " deviation = " << std::sqrt(dev) * alphabet.size() << std::endl;
 }
 
+void test_performance() {
+  vector<PhonemeInstance> dummy;
+  std::cout << "Begin performance" << std::endl;
+  const typename CRF::Alphabet::LabelClass& class1 = alphabet.classes[11];
+  const typename CRF::Alphabet::LabelClass& class2 = alphabet.classes[10];
+  std::cout << "Count: " << class1.size() << " x " << class2.size() << " x 70"<< std::endl;
+  double result = 0;
+  int m = 0;
+  for(unsigned i = 0; i < 70; i++) {
+    for(auto p1 : class1)
+      for(auto p2 : class2) {
+        result += MFCCDist(alphabet.fromInt(p1), alphabet.fromInt(p2), 0, dummy);
+        m++;
+      }
+  }
+  std::cout << "End performance " << result << " " << m << std::endl;
+}
+
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
 
@@ -85,8 +103,13 @@ int main(int argc, const char** argv) {
 
   std::string input_path(argv[1]);
   std::ifstream input(input_path);
-  build_data_bin(input, alphabet, corpus);
+  StringLabelProvider prov;
+  build_data_bin(input, alphabet, corpus, prov);
   pre_process(alphabet);
+  alphabet.optimize();
+
+  test_performance();
+  return 0;
 
   print_min_sent();
   print_max_sent();

@@ -5,6 +5,7 @@
 
 template<class LabelObject>
 struct LabelAlphabet {
+  static const int CLASS_COUNT = 256;
   typedef std::vector<int> LabelClass;
   typedef std::vector<LabelClass::const_iterator> Iterators;
   typedef LabelObject Label;
@@ -13,12 +14,34 @@ struct LabelAlphabet {
   Array<LabelObject> labels;
 
   void build_classes() {
-    const int length = 256;
+    const int length = CLASS_COUNT;
+    if(classes.data != 0)
+      delete[] classes.data;
+
     classes.data = new LabelAlphabet::LabelClass[length];
     classes.length = length;
 
     for(unsigned i = 0; i < labels.length; i++)
       classes[labels[i].label].push_back(i);
+  }
+
+  void optimize() {
+    build_classes();
+    Array<LabelObject> new_labels;
+    new_labels.init(labels.length);
+
+    unsigned index = 0;
+    for(unsigned i = 0; i < CLASS_COUNT; i++) {
+      for(auto it = classes[i].begin(); it != classes[i].end(); it++) {
+        LabelObject obj = fromInt(*it);
+        new_labels[index] = obj;
+        obj.id = index;
+        index++;
+      }
+    }
+    delete[] labels.data;
+    labels.data = new_labels.data;
+    build_classes();
   }
 
   unsigned size() const { return labels.length; }

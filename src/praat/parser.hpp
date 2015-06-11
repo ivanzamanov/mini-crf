@@ -24,6 +24,8 @@ private:
   void init() { mfcc.fill(0); }
 };
 
+typedef std::array<Frame, 2> FrameArray;
+
 static const unsigned PITCH_CONTOUR_LENGTH = 2;
 struct PitchContour : std::array<double, PITCH_CONTOUR_LENGTH> {
   double diff(const PitchContour& other) const {
@@ -44,7 +46,7 @@ struct PhonemeInstance {
     label = ' ';
     id = 0;
   }
-  Array<Frame> frames;
+  FrameArray frames;
   PitchContour pitch_contour;
   double start;
   double end;
@@ -52,7 +54,7 @@ struct PhonemeInstance {
   unsigned id;
   PhoneticLabel label;
 
-  unsigned size() const { return frames.length; }
+  unsigned size() const { return frames.size(); }
 
   const Frame& at(unsigned index) const { return frames[index]; }
   const Frame& first() const { return frames[0]; }

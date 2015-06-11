@@ -197,6 +197,7 @@ int train(const Options&) {
 
   unsigned count = test_corpus.size();
   std::stringstream *streams = new std::stringstream[count];
+  //#pragma omp parallel for
   for(unsigned i = 0; i < count; i++)
     resynth_index(i, streams[i]);
 
@@ -280,8 +281,12 @@ int main(int argc, const char** argv) {
 
   pre_process(crf.alphabet());
   pre_process(crf.alphabet(), synth_corpus);
+  
   pre_process(test_alphabet);
   pre_process(test_alphabet, test_corpus);
+  
+  crf.alphabet().optimize();
+  test_alphabet.optimize();
 
   switch(get_mode(opts.mode)) {
   case Mode::SYNTH:

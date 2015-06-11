@@ -56,10 +56,10 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
     int frames = value<int>(stream, "frames");
     double duration = value<double>(stream, "duration");
     result[i].duration = duration;
-    result[i].frames.length = frames;
+    //result[i].frames.length = frames;
     if(frames < 0)
       std::cerr << "Error at " << stream.tellg() << std::endl;
-    result[i].frames.data = new Frame[frames];
+    //result[i].frames.data = new Frame[frames];
 
     for(int frame = 0; frame < frames; frame++) {
       int c;
@@ -78,8 +78,8 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
 
 BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
   str << ph.id;
-  str << ph.frames.length;
-  for(unsigned i = 0; i < ph.frames.length; i++)
+  str << ph.frames.size();
+  for(unsigned i = 0; i < ph.frames.size(); i++)
     str << ph.frames[i];
 
   str << ph.start;
@@ -93,8 +93,8 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
   unsigned length;
   str >> ph.id;
   str >> length;
-  ph.frames.data = new Frame[length];
-  ph.frames.length = length;
+  //ph.frames.data = new Frame[length];
+  //ph.frames.length = length;
   for(unsigned i = 0; i < length; i++)
     str >> ph.frames[i];
 
@@ -103,6 +103,13 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
   str >> ph.duration;
   str >> ph.label;
   return str;
+}
+
+bool compare(FrameArray& a1, FrameArray& a2) {
+  bool same = a1.size() == a2.size();
+  for(unsigned i = 0; i < a1.size(); i++)
+    same = same && compare(a1[i], a2[i]);
+  return same;
 }
 
 bool compare(Frame& p1, Frame& p2) {
@@ -133,8 +140,8 @@ bool operator==(const Frame& f1, const Frame& f2) {
 
 bool operator==(const PhonemeInstance& p1, const PhonemeInstance& p2) {
   bool same = p1.start == p2.start && p1.end == p2.end && p1.label == p2.label && p1.id == p2.id;
-  same &= p1.frames.length == p2.frames.length;
-  for(unsigned i = 0; i < p1.frames.length && same; i++)
+  same &= p1.frames.size() == p2.frames.size();
+  for(unsigned i = 0; i < p1.frames.size() && same; i++)
     same &= p1.at(i) == p2.at(i);
   return same;
 }
@@ -174,7 +181,8 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
     p.start = 0;
     p.end = duration;
     p.duration = duration;
-    singleton_array(p.frames, Frame(pitch));
+    //singleton_array(p.frames, Frame(pitch));
+    p.frames[0] = Frame(pitch);
     result.push_back(p);
   }
 

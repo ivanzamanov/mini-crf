@@ -38,10 +38,14 @@ double MFCCDist(const PhonemeInstance& prev, const PhonemeInstance& next, int, c
   const MfccArray& mfcc1 = prev.last().mfcc;
   const MfccArray& mfcc2 = next.first().mfcc;
   double result = 0;
+  std::array<double, MFCC_N> tmp;
   for (unsigned i = 0; i < mfcc1.size(); i++) {
     double diff = mfcc1[i] - mfcc2[i];
-    result += diff * diff;
+    tmp[i] = diff;
   }
+  for (unsigned i = 0; i < mfcc1.size(); i++)
+    result += tmp[i] * tmp[i];
+  
   return std::sqrt(result);
 }
 

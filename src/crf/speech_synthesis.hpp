@@ -99,9 +99,9 @@ struct SynthPrinter {
   const std::string desired_pitch(const PhonemeInstance& p) {
     std::stringstream str;
     double mid = 0;
-    for(unsigned i = 0; i < p.frames.length; i++)
+    for(unsigned i = 0; i < p.frames.size(); i++)
       mid += p.frames[i].pitch;
-    mid = mid / p.frames.length;
+    mid = mid / p.frames.size();
     str << mid;
     return str.str();
   }
@@ -139,11 +139,11 @@ PhonemeInstance to_synth_input(const PhonemeInstance& p) {
   Frame frame;
   double pitch = 0;
 
-  for(unsigned i = 0; i < p.frames.length; i++)
+  for(unsigned i = 0; i < p.frames.size(); i++)
     pitch += p.at(i).pitch;
 
   frame.pitch = pitch;
-  singleton_array(result.frames, frame);
+  result.frames[0] = frame;
   return result;
 }
 

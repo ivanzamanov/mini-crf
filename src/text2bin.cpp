@@ -75,6 +75,8 @@ void compare_corpus(Corpus<PhonemeInstance, PhonemeInstance>& c1, Corpus<Phoneme
 }
 
 void compare_alphabet(PhonemeAlphabet& a1, PhonemeAlphabet& a2) {
+  a1.optimize();
+  a2.optimize();
   bool same = compare(a1.classes, a2.classes);
   same &= compare(a1.labels, a2.labels);
   same &= compare(a1.file_indices, a2.file_indices);

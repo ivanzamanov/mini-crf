@@ -1,6 +1,6 @@
 form Concatenation
      comment Input file
-     sentence fileName /home/ivo/SpeechSynthesis/mini-crf/src/tmp.txt
+     sentence fileName /tmp/tmp.WyZm8CMwbRsynth
      comment Output file
      sentence outputPath /tmp/concat-output.wav
 endform
@@ -74,7 +74,7 @@ concat = Concatenate
 Rename... PlainConcatenation
 for i to segments
   selectObject: parts[i]
-  Remove
+  #Remove
 endfor
 
 selectObject: concat
@@ -123,14 +123,14 @@ endfor
 textGrid = Create TextGrid... 0 totalNewDuration Concatenation ""
 for i to segments - 1
   endTime = newEndTimes[i]
-  Insert boundary... 1 endTime
+  #Insert boundary... 1 endTime
 endfor
 for i to segments - 1
   desiredPitch = pitches[i]
   desiredDuration = durations[i]
   label$ = labels$[i]
   text$ = label$ + " : p=" + string$(desiredPitch) + ", d=" + string$(desiredDuration)
-  Set interval text... 1 i 'text$'
+  #Set interval text... 1 i 'text$'
 endfor
 
 selectObject: durationTier

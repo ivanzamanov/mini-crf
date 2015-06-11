@@ -86,12 +86,6 @@ struct Array {
   }
 };
 
-template<class T>
-void singleton_array(Array<T>& result, T el) {
-  result.init(1);
-  result.data[0] = el;
-}
-
 bool compare(std::string &, std::string&);
 bool compare(int& i1, int& i2);
 
