@@ -7,10 +7,10 @@ var path = require('path'),
 
 var linuxConfig = {
     parallelProcesses: 1,
-    parallelComparisons: 10,
+    parallelComparisons: 12,
     tempDir: '/tmp/',
-    synthDB: '/home/ivo/SpeechSynthesis/db-synth.bin',
-    testDB: '/home/ivo/SpeechSynthesis/db-test.bin',
+    synthDB: '/home/ivo/SpeechSynthesis/db-synth-06-11-21-04.bin',
+    testDB: '/home/ivo/SpeechSynthesis/db-test-06-11-21-04.bin',
     trainingCommand: '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt',
     praatCommand: 'praat',
     synthScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/concat.praat',
@@ -247,9 +247,9 @@ function goldenRange(from, to) {
 function trainGoldenSearch() {
     var ranges = [
         { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
-        { name: 'trans-pitch', values: goldenRange(-1000, 1000) },
+        { name: 'trans-pitch', values: goldenRange(0, 0) },
         { name: 'state-pitch', values: goldenRange(-1000, 1000) },
-        { name: 'state-duration', values: goldenRange(-1000, 1000) }
+        { name: 'state-duration', values: goldenRange(0, 0) }
     ];
     var dimension = 0;
     var iterations = 1000;

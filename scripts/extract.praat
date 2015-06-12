@@ -1,7 +1,7 @@
 form Feature Extraction
    comment I/O file paths
-   sentence soundPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A.1.2.Un1_001.wav
-   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-small/Diana_A_1_2_Un1_001.TextGrid
+   sentence soundPath /home/ivo/SpeechSynthesis/corpus-test/Diana_A.1.1.Un2/Diana_A.1.1.Un2_0023.wav
+   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-test/Diana_A.1.1.Un2/Diana_A_1_1_Un2_0023.TextGrid
    sentence outputFile /home/ivo/praat-output.txt
    comment Generic
    real timeStep 0.005
@@ -10,13 +10,13 @@ form Feature Extraction
    comment Pitch extraction parameters
 endform
 
-writeInfoLine: "Parameters:"
-appendInfoLine: "Sound file: ", soundPath$
-appendInfoLine: "TextGrid file: ", textGridPath$
-appendInfoLine: "Output file: ", outputFile$
-appendInfoLine: "Time step: ", timeStep
-appendInfoLine: "MFCC count: ", mfccCount
-appendInfoLine: ""
+#writeInfoLine: "Parameters:"
+#appendInfoLine: "Sound file: ", soundPath$
+#appendInfoLine: "TextGrid file: ", textGridPath$
+#appendInfoLine: "Output file: ", outputFile$
+#appendInfoLine: "Time step: ", timeStep
+#appendInfoLine: "MFCC count: ", mfccCount
+#appendInfoLine: ""
 
 deleteFile: outputFile$
 appendFileLine: outputFile$, "[Config]"
@@ -103,8 +103,12 @@ endproc
 
 procedure getPulseBoundaries
   selectObject: pointProcess
-  startIndex = Get nearest index... startPoint_
-  endIndex = Get nearest index... endPoint_
+  pointsCount_ = Get number of points
+  startIndex = Get low index... startPoint_
+  endIndex = Get high index... endPoint_
+
+  #endIndex = max(endIndex, pointsCount_)
+  startIndex = max(startIndex, 1)
 
   startPulsePoint = Get time from index... startIndex
   endPulsePoint = Get time from index... endIndex
@@ -117,7 +121,7 @@ procedure getPulseBoundaries
     startPoint_ = startPulsePoint
   endif
 
-  #appendInfoLine: endPoint, " ", endPulsePoint, " ", 1/pitchAtEnd, " ", endIndex
+  appendInfoLine: endPoint_, " ", endPulsePoint, " ", 1/pitchAtEnd, " ", endIndex, " ", startIndex
   if abs(endPoint_ - endPulsePoint) <= 1/pitchAtEnd
     endPoint_ = endPulsePoint
   endif
@@ -144,6 +148,10 @@ procedure outputEntry
   #appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
   appendFileLine: outputFile$, "frames=", 2
   appendFileLine: outputFile$, "duration=", duration
+
+  if endPoint_ <= startPoint_
+   exitScript: "Fuck...", startPoint_, " ", endPoint_
+  endif
 
   featureFrames[1] = startFrame
   featureFrames[2] = endFrame
