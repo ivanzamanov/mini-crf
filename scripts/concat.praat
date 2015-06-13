@@ -1,6 +1,6 @@
 form Concatenation
      comment Input file
-     sentence fileName /tmp/tmp.WyZm8CMwbRsynth
+     sentence fileName /tmp/concat.tmp
      comment Output file
      sentence outputPath /tmp/concat-output.wav
 endform
@@ -29,8 +29,10 @@ for i to segments
     labels$[i] = label$
 
     totalOldDuration += endTimes[i] - startTimes[i]
+    #appendInfoLine: endTimes[i], " ", startTimes[i], " ", totalOldDuration
 endfor
 
+#appendInfoLine: totalOldDuration
 duration = 0
 textGrid = Create TextGrid... 0 totalOldDuration PlainConcatenation ""
 for i to segments

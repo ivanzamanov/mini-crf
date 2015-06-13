@@ -12,6 +12,7 @@
 struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
   Array<std::string> files;
   Array<int> file_indices;
+  Array<int> old_file_indices;
 
   const LabelAlphabet<PhonemeInstance>::LabelClass& get_class(const PhonemeInstance& phon) const {
     return classes[phon.label];
@@ -19,6 +20,10 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
 
   std::string file_of(int phonId) {
     return files[file_indices[phonId]];
+  }
+
+  std::string old_file_of(int phonId) {
+    return files[old_file_indices[phonId]];
   }
 
   int first_by_label(char label) {
@@ -52,6 +57,35 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
         result.push_back(i);
     }
     return result;
+  }
+
+  void optimize() {
+    build_classes();
+    Array<PhonemeInstance> new_labels;
+    new_labels.init(labels.length);
+    Array<int> new_file_indices;
+    new_file_indices.init(file_indices.length);
+
+    unsigned index = 0;
+    for(unsigned i = 0; i < CLASS_COUNT; i++) {
+      for(auto it = classes[i].begin(); it != classes[i].end(); it++) {
+        PhonemeInstance obj = fromInt(*it);
+        new_labels[index] = obj;
+
+        new_file_indices[index] = file_indices[obj.id];
+
+        obj.id = index;
+        index++;
+      }
+    }
+    delete[] labels.data;
+    labels.data = new_labels.data;
+
+    old_file_indices.length = file_indices.length;
+    old_file_indices.data = file_indices.data;
+    // End hack...
+    file_indices.data = new_file_indices.data;
+    build_classes();
   }
 };
 

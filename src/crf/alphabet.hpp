@@ -25,25 +25,6 @@ struct LabelAlphabet {
       classes[labels[i].label].push_back(i);
   }
 
-  void optimize() {
-    build_classes();
-    Array<LabelObject> new_labels;
-    new_labels.init(labels.length);
-
-    unsigned index = 0;
-    for(unsigned i = 0; i < CLASS_COUNT; i++) {
-      for(auto it = classes[i].begin(); it != classes[i].end(); it++) {
-        LabelObject obj = fromInt(*it);
-        new_labels[index] = obj;
-        obj.id = index;
-        index++;
-      }
-    }
-    delete[] labels.data;
-    labels.data = new_labels.data;
-    build_classes();
-  }
-
   unsigned size() const { return labels.length; }
 
   bool allowedState(const LabelObject& l1, const LabelObject& l2) const {

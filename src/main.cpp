@@ -69,7 +69,7 @@ int resynthesize(Options& opts) {
   std::vector<PhonemeInstance> input = test_corpus.input(index);
 
   std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << test_alphabet.file_of(input[0].id) << std::endl;
+  std::cerr << "Input file: " << test_alphabet.old_file_of(input[0].id) << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
@@ -173,7 +173,7 @@ int query(const Options& opts) {
 void resynth_index(int index, std::ostream& outputStream) {
   std::vector<PhonemeInstance> input = test_corpus.input(index);
   std::string sentence_string = to_text_string(input);
-  std::string input_file = test_alphabet.file_of(input[0].id);
+  std::string input_file = test_alphabet.old_file_of(input[0].id);
   std::vector<int> path;
 
   outputStream << input_file << std::endl;
@@ -216,7 +216,7 @@ int baseline(const Options& opts) {
   std::vector<PhonemeInstance> input = test_corpus.input(index);
 
   std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << test_alphabet.file_of(input[0].id) << std::endl;
+  std::cerr << "Input file: " << test_alphabet.old_file_of(input[0].id) << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 

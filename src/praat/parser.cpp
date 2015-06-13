@@ -78,7 +78,8 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
 
 BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
   str << ph.id;
-  str << ph.frames.size();
+  unsigned len = ph.frames.size();
+  str << len;
   for(unsigned i = 0; i < ph.frames.size(); i++)
     str << ph.frames[i];
 

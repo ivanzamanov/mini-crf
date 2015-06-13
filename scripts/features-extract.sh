@@ -18,6 +18,7 @@ EXTRACTOR_SCRIPT="$(dirname $0)/extractor.sh"
 
 mkdir -p $OUTPUT_PATH
 FILES_LIST=$OUTPUT_PATH/files-list
+rm -f $FILES_LIST
 
 WAVS=0
 GRIDS=0
@@ -35,7 +36,7 @@ do
         echo "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
     fi
-done | xargs -P 4 -n 3 -t $EXTRACTOR_SCRIPT
+done | xargs -P 8 -n 3 -t $EXTRACTOR_SCRIPT
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"
