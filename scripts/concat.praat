@@ -1,8 +1,8 @@
 form Concatenation
-     comment Input file
-     sentence fileName /tmp/concat.tmp
-     comment Output file
-     sentence outputPath /tmp/concat-output.wav
+   comment Input file
+   sentence fileName /tmp/tmp.c0w18IclcMsynth
+   comment Output file
+   sentence outputPath /tmp/concat-output.wav
 endform
 
 writeInfo: ""
@@ -13,31 +13,31 @@ segments = Get number of strings
 
 totalOldDuration = 0
 for i to segments
-    line$ = Get string... i
-    fileName$ = extractWord$(line$, "File=")
-    startTime = extractNumber(line$, "Start=")
-    endTime = extractNumber(line$, "End=")
-    desiredPitch = extractNumber(line$, "Pitch=")
-    desiredDuration = extractNumber(line$, "Duration=")
-    label$ = extractWord$(line$, "Label=")
+  line$ = Get string... i
+  fileName$ = extractWord$(line$, "File=")
+  startTime = extractNumber(line$, "Start=")
+  endTime = extractNumber(line$, "End=")
+  desiredPitch = extractNumber(line$, "Pitch=")
+  desiredDuration = extractNumber(line$, "Duration=")
+  label$ = extractWord$(line$, "Label=")
 
-    fileNames$[i] = fileName$
-    startTimes[i] = startTime
-    endTimes[i] = endTime
-    pitches[i] = desiredPitch
-    durations[i] = desiredDuration
-    labels$[i] = label$
+  fileNames$[i] = fileName$
+  startTimes[i] = startTime
+  endTimes[i] = endTime
+  pitches[i] = desiredPitch
+  durations[i] = desiredDuration
+  labels$[i] = label$
 
-    totalOldDuration += endTimes[i] - startTimes[i]
-    #appendInfoLine: endTimes[i], " ", startTimes[i], " ", totalOldDuration
+  totalOldDuration += endTimes[i] - startTimes[i]
+  #appendInfoLine: endTimes[i], " ", startTimes[i], " ", totalOldDuration
 endfor
 
 #appendInfoLine: totalOldDuration
 duration = 0
 textGrid = Create TextGrid... 0 totalOldDuration PlainConcatenation ""
 for i to segments
-    duration += (endTimes[i] - startTimes[i])
-    if i != segments
+  duration += (endTimes[i] - startTimes[i])
+  if i != segments
     Insert boundary... 1 duration
   endif
   label$ = labels$[i]
@@ -76,7 +76,7 @@ concat = Concatenate
 Rename... PlainConcatenation
 for i to segments
   selectObject: parts[i]
-  #Remove
+  Remove
 endfor
 
 selectObject: concat
@@ -125,14 +125,14 @@ endfor
 textGrid = Create TextGrid... 0 totalNewDuration Concatenation ""
 for i to segments - 1
   endTime = newEndTimes[i]
-  #Insert boundary... 1 endTime
+  Insert boundary... 1 endTime
 endfor
 for i to segments - 1
   desiredPitch = pitches[i]
   desiredDuration = durations[i]
   label$ = labels$[i]
   text$ = label$ + " : p=" + string$(desiredPitch) + ", d=" + string$(desiredDuration)
-  #Set interval text... 1 i 'text$'
+  Set interval text... 1 i 'text$'
 endfor
 
 selectObject: durationTier

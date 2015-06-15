@@ -22,11 +22,18 @@ writeInfo: ""
 timeStep = 0.005
 mfccCount = 12
 
+semiphons = 1
+
 textGridObj = Read from file... 'textGridPath$'
 Rename... TextGrid
 
 intervalCount = Get number of intervals... 1
-phonemesCount = intervalCount * 2
+
+if semiphons
+  phonemesCount = intervalCount * 2
+else
+  phonemesCount = intervalCount
+endif
 
 soundObj = Read from file... 'soundPath$'
 selectObject: soundObj
@@ -45,15 +52,17 @@ totalDuration = Get total duration
 windowLength = 4 * timeStep
 mfccObj = To MFCC... mfccCount windowLength timeStep 100 100 0.0
 
-#textGridSegmented = Create TextGrid... 0 totalDuration phonemes phonemes
-
 # Available objects:
 # pointProcess, soundObj, pitch
 
 textGridSegmented = Create TextGrid... 0 totalDuration phonemes ""
 # First off, extract all boundary points...
 for i to intervalCount
-  intervalIndex = (i-1) * 2 + 1
+  if semiphons
+    intervalIndex = (i-1) * 2 + 1
+  else
+    intervalIndex = i
+  endif
 
   selectObject: textGridObj
   intervalLabel$ = Get label of interval... 1 i
@@ -73,25 +82,28 @@ for i to intervalCount
   endPoint = intervalRight
   @findMaxEnergyPoint
 
-  semiPhonStart[intervalIndex] = startPoint
-  semiPhonEnd[intervalIndex] = maxEnergyPoint
-  
-  semiPhonStart[intervalIndex + 1] = maxEnergyPoint
-  semiPhonEnd[intervalIndex + 1] = endPoint
+  if semiphons
+    semiPhonStart[intervalIndex] = startPoint
+    semiPhonEnd[intervalIndex] = maxEnergyPoint
 
-  selectObject: textGridSegmented
-  #appendInfoLine: intervalIndex, ": ", startPoint, " ", maxEnergyPoint, " ", endPoint
-  if startPoint != 0
-     #Insert boundary... 1 startPoint
+    semiPhonStart[intervalIndex + 1] = maxEnergyPoint
+    semiPhonEnd[intervalIndex + 1] = endPoint
+  else
+    semiPhonStart[intervalIndex] = startPoint
+    semiPhonEnd[intervalIndex] = endPoint
   endif
-  #Insert boundary... 1 maxEnergyPoint
 endfor
 
 appendInfoLine: "intervals = ", intervalCount
 
 # By now, I have the boundaries as defined by the text grid and maximum energy
 # Now, round to a glottal pulse
-semiPhonCount = intervalCount * 2
+if semiphons
+  semiPhonCount = intervalCount * 2
+else
+  semiPhonCount = intervalCount
+endif
+
 appendInfoLine: "semiPhonCount = ", semiPhonCount
 minStartIndex = 0
 for i to semiPhonCount
@@ -120,18 +132,12 @@ for i to semiPhonCount
   endif
 endfor
 
-#selectObject: soundObj
-#semiPhonStart[semiPhonCount + 1] = Get total duration
-#for i to semiPhonCount
-#  semiPhonEnd[i] = semiPhonStart[i + 1]
-#endfor
-
-#for i to semiPhonCount - 1
-#  appendInfoLine: i
-#  Insert boundary... 1 semiPhonStart[i]
-#endfor
-
 for i to semiPhonCount
+  selectObject: textGridSegmented
+  if i != 0
+    #appendInfoLine: "Insert ", i
+    #Insert boundary... 1 semiPhonStart[i]
+  endif
   selectObject: mfccObj
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
   startFrames[i] = Get frame number from time... semiPhonStart[i]

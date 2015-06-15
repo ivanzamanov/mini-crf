@@ -8,7 +8,7 @@ MAIN_DEPS = $(wildcard */*.hpp */*.cpp *.hpp) main.cpp
 CPP_FILES = $(wildcard */*.cpp)
 
 main: $(MAIN_DEPS)
-	$(CMD) -pg -g main.cpp $(CPP_FILES) -o main
+	$(CMD) -pg -g -fopenmp main.cpp $(CPP_FILES) -o main
 
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test

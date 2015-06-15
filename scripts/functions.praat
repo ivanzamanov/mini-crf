@@ -33,8 +33,8 @@ procedure getPulseBoundaries
   #appendInfoLine: i, ": ", startPoint_, " ", endPoint_
   selectObject: pointProcess
   maxIndex_ = Get number of points
-  startIndex = Get low index... startPoint_
-  endIndex = Get low index... endPoint_
+  startIndex = Get high index... startPoint_
+  endIndex = Get high index... endPoint_
 
   # Required for edge cases such as start and end of file
   startIndex = minStartIndex

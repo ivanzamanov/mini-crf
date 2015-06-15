@@ -127,7 +127,7 @@ function dimensionsToString(ranges) {
     var result = '';
     _.forEach(ranges, function(range, index) {
         var values = range.values;
-        result += printf('[%s: (%d,%d,%d)] ', range.name, values[0], values[1], values[2]);
+        result += printf('[%s: (%f,%f,%f)] ', range.name, values[0], values[1], values[2]);
     });
     return result;
 }

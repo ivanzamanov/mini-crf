@@ -3,14 +3,15 @@ var path = require('path'),
     async = require('async'),
     minimist = require('minimist'),
     _ = require('lodash'),
-    search = require('./search');
+    search = require('./search'),
+    printf = require('sprintf-js').sprintf;
 
 var linuxConfig = {
     parallelProcesses: 1,
     parallelComparisons: 12,
     tempDir: '/tmp/',
-    synthDB: '/home/ivo/SpeechSynthesis/db-synth-06-11-21-04.bin',
-    testDB: '/home/ivo/SpeechSynthesis/db-test-06-11-21-04.bin',
+    synthDB: '/home/ivo/SpeechSynthesis/db-synth-06-14-15-11.bin',
+    testDB: '/home/ivo/SpeechSynthesis/db-test-06-14-15-11.bin',
     trainingCommand: '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt',
     praatCommand: 'praat',
     synthScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/concat.praat',
@@ -247,9 +248,9 @@ function goldenRange(from, to) {
 function trainGoldenSearch() {
     var ranges = [
         { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
-        { name: 'trans-pitch', values: goldenRange(0, 0) },
+        { name: 'trans-pitch', values: goldenRange(-1000, 1000) },
         { name: 'state-pitch', values: goldenRange(-1000, 1000) },
-        { name: 'state-duration', values: goldenRange(0, 0) }
+        { name: 'state-duration', values: goldenRange(-1000, 1000) }
     ];
     var dimension = 0;
     var iterations = 1000;
@@ -259,7 +260,7 @@ function trainGoldenSearch() {
         var args = [];
         _.forEach(ranges, function(range) {
             // The mid
-            args.push({name: range.name, value: range.values[1]});
+            args.push({name: range.name, value: range.values[0]});
         });
         args[dimension].value = x;
         multiParamFunc(args, function(err, value) {
@@ -273,6 +274,9 @@ function trainGoldenSearch() {
         console.log('Iteration: ' + (1000 - iterations));
         if(iterations === 0 || isConverged(ranges)) {
             console.log('Optimum at ' + search.dimensionsToString(ranges));
+            ranges.forEach(function(index, range) {
+                console.log(printf('[%s=%f', range.name, range.values[0]));
+            });
             return;
         } else {
             ranges[dimension].values = [a, b, c];

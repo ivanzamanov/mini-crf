@@ -13,6 +13,7 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
   Array<std::string> files;
   Array<int> file_indices;
   Array<int> old_file_indices;
+  Array<unsigned> old_ids;
 
   const LabelAlphabet<PhonemeInstance>::LabelClass& get_class(const PhonemeInstance& phon) const {
     return classes[phon.label];
@@ -59,12 +60,18 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
     return result;
   }
 
+  unsigned old_id(unsigned id) {
+    return old_ids[id];
+  }
+
   void optimize() {
     build_classes();
     Array<PhonemeInstance> new_labels;
     new_labels.init(labels.length);
     Array<int> new_file_indices;
     new_file_indices.init(file_indices.length);
+
+    old_ids.init(labels.length);
 
     unsigned index = 0;
     for(unsigned i = 0; i < CLASS_COUNT; i++) {
@@ -73,12 +80,13 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
         new_labels[index] = obj;
 
         new_file_indices[index] = file_indices[obj.id];
+        old_ids[index] = obj.id;
 
         obj.id = index;
         index++;
       }
     }
-    delete[] labels.data;
+
     labels.data = new_labels.data;
 
     old_file_indices.length = file_indices.length;
@@ -120,8 +128,9 @@ struct SynthPrinter {
       out << "Pitch=" << desired_pitch(desired[i]) << " ";
       out << "Duration=" << desired[i].duration << '\n';
 
+      unsigned old_id = alphabet.old_id(id);
       phonemeIds << id << "=" << phon.label << " ";
-      if(i > 0 && id != (path[i-1] + 1))
+      if(i > 0 && old_id != (alphabet.old_id(path[i-1]) + 1))
         run_lengths << "|";
       run_lengths << label_provider.fromInt(phon.label);
     }

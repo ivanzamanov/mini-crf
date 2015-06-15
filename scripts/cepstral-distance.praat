@@ -76,6 +76,6 @@ procedure diff_cepstra
 			y2 = Get value in cell... j i
 			dist = dist + (y1 - y2) * (y1 - y2)
   endfor
-  result = max(result + dist)
+  result = max(result, dist)
   endfor
 endproc
