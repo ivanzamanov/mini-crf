@@ -12,10 +12,10 @@ enum FunctionId {
 
 struct FeatureValues {
   static const unsigned COUNT = 2;
-  double values[COUNT];
+  std::array<float, COUNT> values;
 
   int diff(const FeatureValues& o) const {
-    for(unsigned i = 0; i < COUNT; i++) {
+    for(unsigned i = 0; i < values.size(); i++) {
       if(values[i] != o.values[i])
         return (int) i;
     }
@@ -107,6 +107,21 @@ FeatureValues get_feature_values(const PhonemeInstance& p1, const PhonemeInstanc
   result.values[FunctionId::mfcc] = MFCCDist(p1, p2, 0, dummy);
   return result;
 }
+
+struct FeaturesCacheProvider {
+  
+};
+
+struct FeaturesCache {
+  FeaturesCache(PhoneticLabel src, int src_count, PhoneticLabel dest, int dest_count):
+    src(src),
+    dest(dest),
+    values(src_count, dest_count) { }
+
+  PhoneticLabel src;
+  PhoneticLabel dest;
+  Matrix<FeatureValues> values;
+};
 
 #endif
 

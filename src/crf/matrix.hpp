@@ -5,17 +5,18 @@
 #include<iostream>
 #include<fstream>
 
+template<class Value>
 class Matrix {
 public:
   Matrix(int rows, int cols): r(rows), c(cols) {
-    data = new double[r * c];
+    data = new Value[r * c];
   }
 
   ~Matrix() {
     delete data;
   }
 
-  double& operator()(int row, int col) {
+  Value& operator()(int row, int col) {
     if(row >= rows() || row < 0 || col < 0 || col >= cols()) {
       throw "Invalid element requested";
     }
@@ -33,9 +34,7 @@ public:
 
   int r;
   int c;
-  double* data;
-
-  double xmin, xmax, dx, x1, ymin, ymax, dy, y1;
+  Value* data;
 };
 
 template<class T>

@@ -255,7 +255,7 @@ struct FunctionalAutomaton {
 
     int pos = x.size() - 1;
 
-    Matrix paths(alphabet_length(), x.size());
+    Matrix<double> paths(alphabet_length(), x.size());
     vector<unsigned> options;
 
     // transitions to final state
