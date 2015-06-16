@@ -49,7 +49,7 @@ soundObjOriginal = soundObj
 selectObject: soundObj
 soundObj = Filter (pre-emphasis)... 50
 totalDuration = Get total duration
-windowLength = 4 * timeStep
+windowLength = 2 * timeStep
 mfccObj = To MFCC... mfccCount windowLength timeStep 100 100 0.0
 
 # Available objects:
@@ -142,6 +142,9 @@ for i to semiPhonCount
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
   startFrames[i] = Get frame number from time... semiPhonStart[i]
   endFrames[i] = Get frame number from time... semiPhonEnd[i]
+
+  semiPhonStart[i] = Get time from frame number... startFrames[i]
+  semiPhonEnd[i] = Get time from frame number... endFrames[i]
 endfor
 
 for i to semiPhonCount - 1
@@ -210,11 +213,14 @@ procedure outputEntry
 
   featureFrames[1] = startFrame_
   featureFrames[2] = endFrame_
+
+  selectObject: pitch
+  pitchPoint = (endPoint_ - startPoint_)/2
+  pitchValue = Get value at time: pitchPoint, "Hertz", "Linear"
+
   for k to 2
     frame = featureFrames[k]
-    selectObject: pitch
-    value = Get value in frame: frame, "Hertz"
-    appendFileLine: outputFile$, "pitch=", value
+    appendFileLine: outputFile$, "pitch=", pitchValue
 
     selectObject: mfccObj
     appendFile: outputFile$, "mfcc="

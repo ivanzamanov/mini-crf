@@ -274,8 +274,8 @@ function trainGoldenSearch() {
         console.log('Iteration: ' + (1000 - iterations));
         if(iterations === 0 || isConverged(ranges)) {
             console.log('Optimum at ' + search.dimensionsToString(ranges));
-            ranges.forEach(function(index, range) {
-                console.log(printf('[%s=%f', range.name, range.values[0]));
+            _.forEach(ranges, function(range) {
+                console.log(printf('%s=%f', range.name, range.values[0]));
             });
             return;
         } else {
