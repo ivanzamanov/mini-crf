@@ -47,3 +47,6 @@ cygwin1.dll
 *.TextGrid
 *.wav
 *.txt
+logs*
+*.conf
+*.json

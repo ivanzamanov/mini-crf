@@ -16,6 +16,6 @@ TIME_STEP=0.01
 MFCC_COUNT=12
 MFCC_WINDOW=0.015
 
-CMD="praat $(os_path $PRAAT_SCRIPT) $(os_path $WAV_FILE) $(os_path $TEXT_GRID) $(os_path $OUTPUT_FILE)"
+CMD="praat $PRAAT_SCRIPT $WAV_FILE $TEXT_GRID $OUTPUT_FILE"
 echo $CMD
 $CMD

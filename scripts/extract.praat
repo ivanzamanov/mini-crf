@@ -1,8 +1,8 @@
 form Feature Extraction
    comment I/O file paths
-   sentence soundPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E.1.Un1_014.wav
-   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E_1_Un1_014.TextGrid
-   sentence outputFile /home/ivo/praat-output.txt
+   sentence soundPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E.1.Un1_015.wav
+   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E_1_Un1_015.TextGrid
+   sentence outputFile /tmp/praat-output.txt
    #comment Generic
    #real timeStep 0.005
    #comment MFCC extraction parameters
@@ -19,7 +19,7 @@ writeInfo: ""
 #appendInfoLine: "MFCC count: ", mfccCount
 #appendInfoLine: ""
 
-timeStep = 0.005
+timeStep = 0.001
 mfccCount = 12
 
 semiphons = 1
@@ -83,12 +83,19 @@ for i to intervalCount
   @findMaxEnergyPoint
 
   if semiphons
+    selectObject: textGridObj
+    startPoint = Get start point... 1 i
+    endPoint = Get end point... 1 i
+
     semiPhonStart[intervalIndex] = startPoint
     semiPhonEnd[intervalIndex] = maxEnergyPoint
 
     semiPhonStart[intervalIndex + 1] = maxEnergyPoint
     semiPhonEnd[intervalIndex + 1] = endPoint
   else
+    selectObject: textGridObj
+    #startPoint = Get start point... 1 i
+    #endPoint = Get end point... 1 i
     semiPhonStart[intervalIndex] = startPoint
     semiPhonEnd[intervalIndex] = endPoint
   endif
@@ -122,13 +129,13 @@ for i to semiPhonCount
   endif
   
   if startPulsePoint == endPulsePoint
-    appendInfo: "Skip: ", labels$[i], " ", startPulsePoint, " ", endPulsePoint
+    appendInfo: "Pulse Skip: ", labels$[i], " ", startPulsePoint, " ", endPulsePoint
     appendInfoLine: " = ", semiPhonStart[i], " ", semiPhonEnd[i]
   endif
 
   if (i != 1) && startPulsePoint != semiPhonEnd[i - 1]
-    appendInfo: "Skip: ", i, " ", labels$[i], " ", startPulsePoint, " ", endPulsePoint
-    appendInfoLine: " = ", semiPhonStart[i], " ", semiPhonEnd[i]
+    appendInfo: "Point Skip: ", i, " ", labels$[i], " ", startPulsePoint, " ", endPulsePoint
+    appendInfoLine: " = ", semiPhonStart[i], " ", semiPhonEnd[i - 1]
   endif
 endfor
 
@@ -142,6 +149,20 @@ for i to semiPhonCount
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
   startFrames[i] = Get frame number from time... semiPhonStart[i]
   endFrames[i] = Get frame number from time... semiPhonEnd[i]
+
+  startFrames[i] = floor(startFrames[i])
+  endFrames[i] = floor(endFrames[i])
+endfor
+
+for i to semiPhonCount
+  if i > 1
+     startFrames[i] = endFrames[i-1]
+  endif
+
+  #appendInfoLine: i, ": ", startFrames[i], " ", endFrames[i]
+  if startFrames[i] >= endFrames[i]
+     endFrames[i] = startFrames[i] + 1
+  endif
 
   semiPhonStart[i] = Get time from frame number... startFrames[i]
   semiPhonEnd[i] = Get time from frame number... endFrames[i]
@@ -178,7 +199,7 @@ for i to semiPhonCount
   if ! startPoint_ >= endPoint_
     @outputEntry
   else
-    appendInfoLine: startPoint_, " ", endPoint_
+    appendInfoLine: i, ": ", startPoint_, " ", endPoint_
     exitScript: "Fail"
   endif
 endfor
@@ -214,12 +235,12 @@ procedure outputEntry
   featureFrames[1] = startFrame_
   featureFrames[2] = endFrame_
 
-  selectObject: pitch
-  pitchPoint = (endPoint_ - startPoint_)/2
-  pitchValue = Get value at time: pitchPoint, "Hertz", "Linear"
-
   for k to 2
     frame = featureFrames[k]
+    selectObject: mfccObj
+    pitchPoint = Get time from frame... frame
+    selectObject: pitch
+    pitchValue = Get value at time: pitchPoint, "Hertz", "Linear"
     appendFileLine: outputFile$, "pitch=", pitchValue
 
     selectObject: mfccObj

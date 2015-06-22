@@ -10,19 +10,64 @@ enum FunctionId {
   mfcc = 1
 };
 
-struct FeatureValues {
-  static const unsigned COUNT = 2;
-  std::array<float, COUNT> values;
-
+static const unsigned FEATURES_COUNT = 2;
+struct FeatureValues : public std::array<float, FEATURES_COUNT> {
   int diff(const FeatureValues& o) const {
-    for(unsigned i = 0; i < values.size(); i++) {
-      if(values[i] != o.values[i])
+    for(unsigned i = 0; i < size(); i++) {
+      if((*this)[i] != o[i])
         return (int) i;
     }
     return -1;
   }
 
-  unsigned size() const { return COUNT; }
+  void populate(float pitch, float mfcc) {
+    (*this)[FunctionId::pitch] = pitch;
+    (*this)[FunctionId::mfcc] = mfcc;
+  }
+};
+
+struct FeatureValuesKey {
+  FeatureValuesKey(PhoneticLabel src, PhoneticLabel dest): src(src), dest(dest) { }
+  FeatureValuesKey(): src(0), dest(0) { }
+
+  PhoneticLabel src;
+  PhoneticLabel dest;
+
+  bool operator==(const FeatureValuesKey& other) {
+    return src == other.src && dest == other.dest;
+  }
+};
+
+struct FeatureValuesCache {
+  FeatureValuesKey key;
+  Matrix<FeatureValues> *values;
+
+  void init(int srcSize, int destSize) {
+    values = new Matrix<FeatureValues>(srcSize, destSize);
+  }
+
+  FeatureValues& operator()(unsigned srcId, unsigned destId) {
+    return (*values)(srcId, destId);
+  }
+};
+
+struct FeatureValuesCacheProvider {
+  std::vector<FeatureValuesCache> values;
+
+  FeatureValuesCache& get(PhoneticLabel src, PhoneticLabel dest) {
+    FeatureValuesKey key(src, dest);
+
+    for(auto it = values.begin(); it != values.end(); it++)
+      if((*it).key == key) {
+        return *it;
+      }
+
+    FeatureValuesCache result;
+    result.key = key;
+    result.values = 0;
+    values.push_back(result);
+    return values[values.size() - 1];
+  }
 };
 
 double Pitch(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
@@ -103,25 +148,12 @@ double feature_value(const PhonemeInstance& p1, const PhonemeInstance& p2) {
 FeatureValues get_feature_values(const PhonemeInstance& p1, const PhonemeInstance& p2) {
   FeatureValues result;
   vector<PhonemeInstance> dummy;
-  result.values[FunctionId::pitch] = Pitch(p1, p2, 0, dummy);
-  result.values[FunctionId::mfcc] = MFCCDist(p1, p2, 0, dummy);
+  result.populate(
+                  Pitch(p1, p2, 0, dummy),
+                  MFCCDist(p1, p2, 0, dummy)
+                  );
   return result;
 }
-
-struct FeaturesCacheProvider {
-  
-};
-
-struct FeaturesCache {
-  FeaturesCache(PhoneticLabel src, int src_count, PhoneticLabel dest, int dest_count):
-    src(src),
-    dest(dest),
-    values(src_count, dest_count) { }
-
-  PhoneticLabel src;
-  PhoneticLabel dest;
-  Matrix<FeatureValues> values;
-};
 
 #endif
 

@@ -80,7 +80,7 @@ for i to segments
 endfor
 
 selectObject: concat
-manipulation = To Manipulation... 0.005 75 600
+manipulation = To Manipulation... 0.001 75 600
 selectObject: manipulation
 
 pitchTier = Extract pitch tier

@@ -37,7 +37,8 @@ struct PitchContour : std::array<double, PITCH_CONTOUR_LENGTH> {
   }
 };
 
-typedef unsigned int PhoneticLabel;
+typedef int PhoneticLabel;
+const PhoneticLabel INVALID_LABEL = -1;
 
 struct PhonemeInstance {
   PhonemeInstance() {

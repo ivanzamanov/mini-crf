@@ -1,8 +1,8 @@
 
 set -e
 
-if [ $# -lt 1 ]; then
-  echo "Usage: $(readlink -f $0) <synth|baseline>"
+if [ $# -lt 2 ]; then
+  echo "Usage: $(readlink -f $0) <synth|baseline> <config>"
   exit 1
 fi
 
@@ -13,7 +13,7 @@ LOG_FILE=$DIR/log.txt
 
 for ((i=0;i<30;i++))
 do
-  ./run-$MODE.sh $i 06-07-23-16 ../src/coefs-opt-cep-dist.conf &>> $LOG_FILE
+  ./run-$MODE.sh $i 06-07-23-16 $2 &>> $LOG_FILE
   mv $MODE.wav $DIR/$i.wav
 done
 
@@ -23,4 +23,4 @@ pushd $DIR
 zip $MODE-package.zip log.txt *.wav
 popd
 
-echo Output: $(readlink -f $DIR/$PACKAGE)
+echo Output: $DIR/$PACKAGE

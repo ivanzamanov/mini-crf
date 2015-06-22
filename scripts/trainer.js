@@ -6,6 +6,19 @@ var path = require('path'),
     search = require('./search'),
     printf = require('sprintf-js').sprintf;
 
+var macConfig = {
+    parallelProcesses: 1,
+    parallelComparisons: 12,
+    tempDir: '/Users/ivanzamanov/tmp/',
+    synthDB: '/Users/ivanzamanov/SpeechSynthesis/db-synth-06-14-15-11.bin',
+    testDB: '/Users/ivanzamanov/SpeechSynthesis/db-test-06-14-15-11.bin',
+    trainingCommand: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/src/main-opt',
+    praatCommand: 'praat',
+    synthScript: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/scripts/concat.praat',
+    compareScript: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/scripts/cepstral-distance.praat',
+    valueCachePath: '/Users/ivanzamanov/SpeechSynthesis/values-cache.json'
+};
+
 var linuxConfig = {
     parallelProcesses: 1,
     parallelComparisons: 12,

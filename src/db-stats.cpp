@@ -93,6 +93,34 @@ void test_performance() {
   std::cout << "End performance " << result << " " << m << std::endl;
 }
 
+void print_transition_counts() {
+  unsigned result = 0;
+  FeatureValuesCacheProvider prov;
+  for(unsigned s = 0; s < corpus.size(); s++) {
+    auto sent = corpus.label(s);
+    for(unsigned i = 1; i < sent.size(); i++) {
+      auto class1 = alphabet.get_class( sent[i - 1] );
+      auto class2 = alphabet.get_class( sent[i] );
+      FeatureValuesCache& cache = prov.get(sent[i-1].label, sent[i].label);
+
+      if(cache.values == 0) {
+        result += class1.size() * class2.size();
+        std::cout << "So far: " << result << std::endl;
+        cache.init(1, 1);
+      }
+    }
+  }
+
+  unsigned classCount = 0;
+  for(auto cl : alphabet.classes) {
+    if(cl.size() > 0)
+      classCount++;
+  }
+  std::cout << "Total classes: " << classCount << std::endl;
+  std::cout << "Class pairs: " << prov.values.size() << std::endl;
+  std::cout << "Transitions: " << result << std::endl;
+}
+
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
 
@@ -108,8 +136,9 @@ int main(int argc, const char** argv) {
   pre_process(alphabet);
   alphabet.optimize();
 
-  test_performance();
+  print_transition_counts();
   return 0;
+  test_performance();
 
   print_min_sent();
   print_max_sent();

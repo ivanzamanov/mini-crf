@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-source $(dirname $0)/functions.sh
 
 CORPUS_PATH="/home/ivo/SpeechSynthesis/corpus-small"
 OUTPUT_PATH="/home/ivo/corpus-features"
@@ -31,7 +30,7 @@ do
     GRID=$(dirname $WAV)/$GRID_NAME.TextGrid
     if [ -f $GRID ]; then
         #echo "Extracting from $WAV"
-				OUTPUT=$(os_path $OUTPUT_PATH/"$GRID_NAME.Features")
+				OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
 				echo "$OUTPUT $WAV" >> $FILES_LIST
         echo "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
