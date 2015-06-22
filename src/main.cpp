@@ -2,12 +2,14 @@
 #include<algorithm>
 #include<string>
 #include<ios>
+#include<unistd.h>
 
 #include"options.hpp"
 #include"crf/crf.hpp"
 #include"crf/features.hpp"
 #include"crf/training.hpp"
 #include"crf/speech_synthesis.hpp"
+#include"threadpool/threadpool.h"
 
 void print_usage() {
     std::cerr << "Usage: <cmd> <options>\n";
@@ -170,7 +172,18 @@ int query(const Options& opts) {
   return 0;
 }
 
-void resynth_index(int index, std::ostream& outputStream) {
+struct ResynthParams {
+  ResynthParams(int index, std::ostream* os, bool* flag)
+    :index(index), os(os), flag(flag) { }
+  int index;
+  std::ostream *os;
+  bool* flag;
+};
+
+void resynth_index(ResynthParams* params) {
+  int index = params->index;
+  std::ostream& outputStream = *(params->os);
+  
   std::vector<PhonemeInstance> input = test_corpus.input(index);
   std::string sentence_string = to_text_string(input);
   std::string input_file = test_alphabet.old_file_of(input[0].id);
@@ -184,6 +197,8 @@ void resynth_index(int index, std::ostream& outputStream) {
 
   SynthPrinter sp(crf.alphabet(), all_labels);
   sp.print_synth(path, input, outputStream);
+
+  *(params->flag) = 1;
 }
 
 int train(const Options&) {
@@ -197,9 +212,31 @@ int train(const Options&) {
 
   unsigned count = test_corpus.size();
   std::stringstream *streams = new std::stringstream[count];
+  bool* flags = new bool[count];
   //#pragma omp parallel for
-  for(unsigned i = 0; i < count; i++)
-    resynth_index(i, streams[i]);
+  ThreadPool tp(8);
+  int ret = tp.initialize_threadpool();
+  if (ret == -1) {
+    cerr << "Failed to initialize thread pool!" << endl;
+    return 0;
+  }
+
+  for(unsigned i = 0; i < count; i++) {
+    flags[i] = 0;
+    ResynthParams* params = new ResynthParams(i, streams+i, &flags[i]);
+    Task* t = new ParamTask<ResynthParams>(&resynth_index, params);
+    tp.add_task(t);
+  }
+
+  bool done;
+  do {
+    sleep(1);
+    done = true;
+    for(unsigned i = 0; i < count; i++)
+      done &= flags[i];
+  } while(!done);
+
+  tp.destroy_threadpool();
 
   const std::string delim = "----------";
   std::cout << streams[0].str() << std::endl;

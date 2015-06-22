@@ -114,9 +114,9 @@ void validate_data(std::ifstream& input) {
 
 std::ostream& operator<<(std::ostream& str, const FeatureValues& fv) {
   str << "(";
-  str << fv.values[0];
+  str << fv[0];
   for(unsigned i = 1; i < fv.size(); i++)
-    str << ", " << fv.values[i];
+    str << ", " << fv[i];
   str << ")";
   return str;
 }
