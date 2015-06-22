@@ -1,5 +1,4 @@
 #!/bin/bash
-source $(dirname $0)/functions.sh
 
 if [ $# -lt 3 ]; then
     echo "Usage: `basename $0` <wav> <textgrid> <output>"
