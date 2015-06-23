@@ -7,7 +7,7 @@ fi
 DB_NAME=$2
 CONFIG_FILE=$3
 
-TEMP_F=$(mktemp)
+TEMP_F=$(mktemp /tmp/temp-synth.XXXXXX)
 SENT="$(echo "$1" | tr ' ' '_')"
 
 SYNTH_DB=~/SpeechSynthesis/db-synth-${DB_NAME}.bin

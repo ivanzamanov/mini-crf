@@ -214,7 +214,7 @@ int train(const Options&) {
   std::stringstream *streams = new std::stringstream[count];
   bool* flags = new bool[count];
   //#pragma omp parallel for
-  ThreadPool tp(8);
+  ThreadPool tp(12);
   int ret = tp.initialize_threadpool();
   if (ret == -1) {
     cerr << "Failed to initialize thread pool!" << endl;

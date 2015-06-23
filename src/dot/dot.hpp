@@ -1,5 +1,5 @@
 #ifndef __DOT_H__
-#define __DOT_H_
+#define __DOT_H__
 
 #include<cstdio>
 

@@ -10,8 +10,8 @@ var macConfig = {
     parallelProcesses: 1,
     parallelComparisons: 12,
     tempDir: '/Users/ivanzamanov/tmp/',
-    synthDB: '/Users/ivanzamanov/SpeechSynthesis/db-synth-06-14-15-11.bin',
-    testDB: '/Users/ivanzamanov/SpeechSynthesis/db-test-06-14-15-11.bin',
+    synthDB: '/Users/ivanzamanov/SpeechSynthesis/db-synth-06-22-22-24.bin',
+    testDB: '/Users/ivanzamanov/SpeechSynthesis/db-test-06-22-22-24.bin',
     trainingCommand: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/src/main-opt',
     praatCommand: 'praat',
     synthScript: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/scripts/concat.praat',
@@ -46,7 +46,7 @@ var winConfig = {
 };
 
 var isWindows = require('os').platform() == 'win32';
-var config = isWindows ? winConfig : linuxConfig;
+var config = macConfig;
 config.trainingArguments = ['--mode', 'train', '--synth-database', config.synthDB, '--test-database', config.testDB ];
 
 function parseArguments() {
@@ -309,7 +309,7 @@ function trainGoldenSearch() {
 function isConverged(ranges) {
   var result = true;
   _.forEach(ranges, function(range) {
-    result = result && (range.values[2] - range.values[0]) < 0.1;
+    result = result && (range.values[2] - range.values[0]) <= 1;
   });
   return result;
 }
