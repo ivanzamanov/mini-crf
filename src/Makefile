@@ -3,27 +3,29 @@ CC = g++
 CFLAGS = -std=c++11 -Wall -I.
 OBJ_DIR = bin
 OBJ = crf.o
+#CLIB = -stdlib=libc++
+CLIB =
 CMD = $(CC) $(CFLAGS)
 MAIN_DEPS = $(wildcard */*.hpp */*.cpp *.hpp) main.cpp
 CPP_FILES = $(wildcard */*.cpp)
 
 main: $(MAIN_DEPS)
-	$(CMD) -stdlib=libc++ -pg -g main.cpp $(CPP_FILES) -lpthread -o main
+	$(CMD) $(CLIB) -pg -g main.cpp $(CPP_FILES) -lpthread -o main
 
 test: $(MAIN_DEPS) test.cpp
-	$(CMD) -stdlib=libc++ test.cpp $(CPP_FILES) -lpthread -o test
+	$(CMD) $(CLIB) test.cpp $(CPP_FILES) -lpthread -o test
 
 db-stats: $(MAIN_DEPS) db-stats.cpp
-	$(CMD) -stdlib=libc++ -Ofast -mtune=native -fopenmp db-stats.cpp $(CPP_FILES) -o db-stats
+	$(CMD) $(CLIB) -Ofast -mtune=native -fopenmp db-stats.cpp $(CPP_FILES) -o db-stats
 
 main-opt: $(MAIN_DEPS)
-	$(CC) -stdlib=libc++ -std=c++11 -Wall -I. -Ofast -mtune=native main.cpp $(CPP_FILES) -lpthread  -o main-opt
+	$(CC) $(CLIB) -std=c++11 -Wall -I. -Ofast -mtune=native main.cpp $(CPP_FILES) -lpthread  -o main-opt
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
-	$(CMD) -stdlib=libc++ text2bin.cpp -g $(CPP_FILES) -o text2bin -lpthread
+	$(CMD) $(CLIB) text2bin.cpp -g $(CPP_FILES) -o text2bin -lpthread
 
 text2bin-opt: $(MAIN_DEPS) text2bin.cpp
-	$(CMD) -stdlib=libc++ -O3 text2bin.cpp $(CPP_FILES) -lpthread -o text2bin-opt
+	$(CMD) $(CLIB) -O3 text2bin.cpp $(CPP_FILES) -lpthread -o text2bin-opt
 
 all: clean main test main-opt text2bin text2bin-opt
 

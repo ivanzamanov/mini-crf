@@ -11,6 +11,8 @@ selectObject: strings
 
 segments = Get number of strings
 
+crossfadeTime = 0.005
+
 totalOldDuration = 0
 for i to segments
   line$ = Get string... i
@@ -52,6 +54,7 @@ for i to segments
   selectObject: sound
 
   part = Extract part... startTimes[i] endTimes[i] rectangular 1.0 0
+  #part = Extract part for overlap... startTimes[i] endTimes[i] crossfadeTime
   resample = Resample... 24000 50
   selectObject: part
   Remove
@@ -60,6 +63,7 @@ for i to segments
   selectObject: sound
   Remove
   duration += durations[i]
+  #appendInfoLine: "Duration: ", durations[i]
   parts[i] = part
   boundaries[i] = duration
 
@@ -72,6 +76,7 @@ for i to segments
 endfor
 
 appendInfoLine: "Concatenating ", segments, " parts"
+#concat = Concatenate with overlap... crossfadeTime
 concat = Concatenate
 Rename... PlainConcatenation
 for i to segments
@@ -107,20 +112,32 @@ totalNewDuration = 0
 for i to segments
   startTime = startTimes[i]
   endTime = endTimes[i]
+
+  #if i != 1
+  #  startTime = startTime - crossfadeTime/2
+  #endif
+  #if i != segments
+  #  endTime = endTime - crossfadeTime/2
+  #endif
+
   oldDuration = (endTime - startTime)
   newDuration = durations[i]
   totalNewDuration += newDuration
   newEndTimes[i] = totalNewDuration
   scale = newDuration / oldDuration
-  #appendInfoLine: oldDuration, " ", newDuration, " ", scale
+  appendInfoLine: oldDuration, " ", newDuration, " ", scale
 
   selectObject: durationTier
-  point1 = totalOldDuration + 0.00001
+  point1 = totalOldDuration + 0.000001
+
   totalOldDuration += oldDuration
-  point2 = totalOldDuration - 0.00001
+  point2 = totalOldDuration - 0.000001
+
   Add point... point1 scale
   Add point... point2 scale
 endfor
+appendInfoLine: "Old Duration: ", totalOldDuration
+appendInfoLine: "New Duration: ", totalNewDuration
 
 textGrid = Create TextGrid... 0 totalNewDuration Concatenation ""
 for i to segments - 1
@@ -146,6 +163,8 @@ Replace pitch tier
 
 selectObject: manipulation
 result = Get resynthesis (overlap-add)
+outputDuration = Get total duration
+appendInfoLine: "Duration: ", outputDuration
 
 selectObject: blankPitch
 #Remove
