@@ -14,14 +14,18 @@ procedure findMaxEnergyPoint
     #appendInfoLine: p1_, " ", p2_
     # Undefined check for edge case at end of file
     if (energy_ != undefined) && energy_ > max_
-    #if energy_ > max_
       maxEnergyPoint = (p1_ + p2_) / 2
       max_ = energy_
     endif
   endfor
 
   # Extreme edge cases
-  if maxEnergyPoint == startPoint || maxEnergyPoint >= endPoint || maxEnergyPoint == 0
+  invalid = maxEnergyPoint == startPoint
+  invalid = maxEnergyPoint >= endPoint || invalid
+  invalid = maxEnergyPoint == 0 || invalid
+  invalid = (maxEnergyPoint - startPoint) < minLength
+  invalid = (endPoint - maxEnergyPoint) < minLength
+  if invalid
     maxEnergyPoint = (endPoint - startPoint) / 2
   endif
 endproc

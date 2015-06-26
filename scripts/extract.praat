@@ -1,13 +1,8 @@
 form Feature Extraction
-   comment I/O file paths
-   sentence soundPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E.1.Un1_015.wav
-   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E_1_Un1_015.TextGrid
-   sentence outputFile /tmp/praat-output.txt
-   #comment Generic
-   #real timeStep 0.005
-   #comment MFCC extraction parameters
-   #natural mfccCount 12
-   #comment Pitch extraction parameters
+  comment I/O file paths
+  sentence soundPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E.1.Un1_015.wav
+  sentence textGridPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E_1_Un1_015.TextGrid
+  sentence outputFile /tmp/praat-output.txt
 endform
 
 writeInfo: ""
@@ -19,7 +14,8 @@ writeInfo: ""
 #appendInfoLine: "MFCC count: ", mfccCount
 #appendInfoLine: ""
 
-timeStep = 0.001
+timeStep = 0.005
+minLength = 2 * timeStep
 mfccCount = 12
 
 semiphons = 1
@@ -118,7 +114,6 @@ for i to semiPhonCount
   endPoint_ = semiPhonEnd[i]
 
   @getPulseBoundaries
-
 
   semiPhonStart[i] = startPulsePoint
   semiPhonEnd[i] = endPulsePoint

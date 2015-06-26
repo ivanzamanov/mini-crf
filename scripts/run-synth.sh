@@ -16,4 +16,5 @@ TEST_DB=~/SpeechSynthesis/db-test-${DB_NAME}.bin
 echo "Concat temp file: $TEMP_F"
 time src/main-opt --mode resynth --synth-database $SYNTH_DB --test-database $TEST_DB --input $1 < $CONFIG_FILE > "$TEMP_F"
 
+echo "CMD: praat scripts/concat.praat $TEMP_F $(pwd)/synth.wav"
 praat scripts/concat.praat $TEMP_F $(pwd)/synth.wav

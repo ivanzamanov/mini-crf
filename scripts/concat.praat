@@ -71,7 +71,7 @@ for i to segments
   selectObject: part
 endfor
 
-appendInfoLine: "Concatenating ", segments, " parts"
+#appendInfoLine: "Concatenating ", segments, " parts"
 concat = parts[1]
 for i from 2 to segments
   selectObject: concat
@@ -83,12 +83,12 @@ for i from 2 to segments
 
   cfTime = min(crossfadeTime, lastDuration / 2)
   cfTime = min(cfTime, nextDuration / 2)
-  appendInfoLine: "CF Time: ", cfTime
+  #appendInfoLine: "CF Time: ", cfTime
   oldDurations[i-1] -= cfTime/2
   oldDurations[i] -= cfTime/2
   concat = Concatenate with overlap... cfTime
   concatDuration = Get total duration
-  appendInfoLine: "After concat: ", concatDuration
+  #appendInfoLine: "After concat: ", concatDuration
 endfor
 Rename... PlainConcatenation
 selectObject: concat
@@ -120,7 +120,7 @@ for i to segments
   totalNewDuration += newDuration
   newEndTimes[i] = totalNewDuration
   scale = newDuration / oldDuration
-  appendInfoLine: oldDuration, " -> ", newDuration, " by ", scale
+  #appendInfoLine: oldDuration, " -> ", newDuration, " by ", scale
   #appendInfoLine: oldDuration, " ", newDuration, " ", scale
 
   selectObject: durationTier
