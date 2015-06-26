@@ -1,6 +1,6 @@
 form Concatenation
    comment Input file
-   sentence fileName /home/ivo/SpeechSynthesis/mini-crf/temp-synth.txt
+   sentence fileName /home/ivo/SpeechSynthesis/mini-crf/example-concat.txt
    comment Output file
    sentence outputPath /tmp/concat-output.wav
 endform
@@ -11,7 +11,7 @@ selectObject: strings
 
 segments = Get number of strings
 
-crossfadeTime = 0.005
+crossfadeTime = 0.05
 
 totalOldDuration = 0
 for i to segments
@@ -54,6 +54,7 @@ for i to segments
   selectObject: sound
 
   part = Extract part... startTimes[i] endTimes[i] rectangular 1.0 0
+  oldDurations[i] = endTimes[i] - startTimes[i]
   #part = Extract part for overlap... startTimes[i] endTimes[i] crossfadeTime
   resample = Resample... 24000 50
   selectObject: part
@@ -70,42 +71,31 @@ for i to segments
   selectObject: part
 endfor
 
-for i to segments
-  part = parts[i]
-  plusObject: part
-endfor
-
 appendInfoLine: "Concatenating ", segments, " parts"
-concat = Concatenate with overlap... crossfadeTime
-concatDuration = Get total duration
-#concat = Concatenate
-Rename... PlainConcatenation
-for i to segments
+concat = parts[1]
+for i from 2 to segments
+  selectObject: concat
+  lastDuration = oldDurations[i-1]
   selectObject: parts[i]
-  Remove
-endfor
+  nextDuration = oldDurations[i]
 
+  plusObject: concat
+
+  cfTime = min(crossfadeTime, lastDuration / 2)
+  cfTime = min(cfTime, nextDuration / 2)
+  appendInfoLine: "CF Time: ", cfTime
+  oldDurations[i-1] -= cfTime/2
+  oldDurations[i] -= cfTime/2
+  concat = Concatenate with overlap... cfTime
+  concatDuration = Get total duration
+  appendInfoLine: "After concat: ", concatDuration
+endfor
+Rename... PlainConcatenation
 selectObject: concat
 manipulation = To Manipulation... 0.001 75 600
-selectObject: manipulation
 
-pitchTier = Extract pitch tier
+# Pitch modification
 blankPitch = Create PitchTier... NewPitchTier 0 concatDuration
-
-selectObject: pitchTier
-# for i to segments - 1
-#   mid1 = (boundaries[i-1] + boundaries[i]) / 2
-#   mid2 = (boundaries[i] + boundaries[i+1]) / 2
-
-#   startPitch = pitches[i]
-#   endPitch = pitches[i+1]
-
-#   selectObject: blankPitch
-#   Add point... mid1 startPitch
-#   Add point... mid2 endPitch
-# endfor
-
-selectObject: blankPitch
 for i to segments - 1
   mid = (boundaries[i-1] + boundaries[i]) / 2
   pitchValue = pitches[i]
@@ -113,27 +103,19 @@ for i to segments - 1
   Add point... mid pitchValue
 endfor
 
-# Duration
+# Duration modification
 durationTier = Create DurationTier... Duration 0 concatDuration
 totalOldDuration = 0
 totalNewDuration = 0
 
 checkDuration = 0
 for i to segments
-  startTime = startTimes[i]
-  endTime = endTimes[i]
-
   plusDuration = crossfadeTime / 2
   if i != 1 && i != segments
-   plusDuration = crossfadeTime
+    plusDuration = crossfadeTime
   endif
 
-  oldDuration = (endTime - startTime) - plusDuration
-  if oldDuration <= plusDuration
-    appendInfoLine: oldDuration, " ", endTime - startTime
-    oldDuration = endTime - startTime
-  endif
-
+  oldDuration = oldDurations[i]
   newDuration = durations[i]
   totalNewDuration += newDuration
   newEndTimes[i] = totalNewDuration
@@ -158,6 +140,27 @@ appendInfoLine: "Old Duration: ", totalOldDuration
 appendInfoLine: "New Duration: ", totalNewDuration
 appendInfoLine: "Check Duration: ", checkDuration
 
+# ---- Resynthesis assemble ----
+# Set pitch manipulation
+selectObject: blankPitch
+plusObject: manipulation
+Replace pitch tier
+selectObject: manipulation
+
+# Set duration manipulation
+selectObject: durationTier
+plusObject: manipulation
+Replace duration tier
+
+# And resynthesize
+selectObject: manipulation
+#appendInfoLine: "Resynthesizing"
+result = Get resynthesis (overlap-add)
+
+outputDuration = Get total duration
+appendInfoLine: "Duration after dur manip: ", outputDuration
+
+# Optional - assemble a TextGrid to show how the parts fit together
 textGrid = Create TextGrid... 0 totalNewDuration Concatenation ""
 for i to segments - 1
   endTime = newEndTimes[i]
@@ -171,37 +174,18 @@ for i to segments - 1
   Set interval text... 1 i 'text$'
 endfor
 
-selectObject: pitchTier
-#Remove
-selectObject: blankPitch
-plusObject: manipulation
-Replace pitch tier
-selectObject: manipulation
-#result = Get resynthesis (overlap-add)
-#outputDuration = Get total duration
-#appendInfoLine: "Duration after pitch manip: ", outputDuration
-#manipulation = To Manipulation... 0.001 75 600
-
-selectObject: durationTier
-plusObject: manipulation
-Replace duration tier
-
-selectObject: manipulation
-appendInfoLine: "Resynthesizing"
-result = Get resynthesis (overlap-add)
-
-outputDuration = Get total duration
-appendInfoLine: "Duration after dur manip: ", outputDuration
+for i to segments
+  selectObject: parts[i]
+  Remove
+endfor
 
 selectObject: blankPitch
-#Remove
+Remove
 selectObject: durationTier
-#Remove
+Remove
 selectObject: concat
 Remove
 selectObject: manipulation
-#Remove
-selectObject: pitchTier
 Remove
 selectObject: strings
 Remove
