@@ -1,6 +1,6 @@
 form Concatenation
    comment Input file
-   sentence fileName /home/ivo/SpeechSynthesis/mini-crf/example-concat.txt
+   sentence fileName /tmp/temp-synth.kM5v5k
    comment Output file
    sentence outputPath /tmp/concat-output.wav
 endform
@@ -73,10 +73,14 @@ endfor
 
 #appendInfoLine: "Concatenating ", segments, " parts"
 concat = parts[1]
+newName$ = "Concat-1"
+Rename: newName$
 for i from 2 to segments
   selectObject: concat
   lastDuration = oldDurations[i-1]
   selectObject: parts[i]
+  newPartName$ = "PartCopy" + string$(i)
+  Copy... newPartName
   nextDuration = oldDurations[i]
 
   plusObject: concat
@@ -88,6 +92,8 @@ for i from 2 to segments
   oldDurations[i] -= cfTime/2
   concat = Concatenate with overlap... cfTime
   concatDuration = Get total duration
+  newName$ = "Concat-" + string$(i)
+  Rename: newName$
   #appendInfoLine: "After concat: ", concatDuration
 endfor
 Rename... PlainConcatenation
