@@ -43,7 +43,7 @@ procedure getPulseBoundaries
   # Required for edge cases such as start and end of file
   startIndex = minStartIndex
   startIndex = max(startIndex, 1)
-  endIndex = max(startIndex + 10, endIndex)
+  endIndex = max(startIndex + 1, endIndex)
 
   startIndex = min(maxIndex_ - 1, startIndex)
   endIndex = min(maxIndex_, endIndex)

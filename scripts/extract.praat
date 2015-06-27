@@ -73,15 +73,13 @@ for i to intervalCount
 
   # Find point of maximum energy between startPoint and endPoint
   # This is where the phoneme should be split
-  selectObject: soundObj
+  selectObject: soundObjOriginal
   startPoint = intervalLeft
   endPoint = intervalRight
   @findMaxEnergyPoint
 
   if semiphons
     selectObject: textGridObj
-    startPoint = Get start point... 1 i
-    endPoint = Get end point... 1 i
 
     semiPhonStart[intervalIndex] = startPoint
     semiPhonEnd[intervalIndex] = maxEnergyPoint
@@ -90,8 +88,6 @@ for i to intervalCount
     semiPhonEnd[intervalIndex + 1] = endPoint
   else
     selectObject: textGridObj
-    #startPoint = Get start point... 1 i
-    #endPoint = Get end point... 1 i
     semiPhonStart[intervalIndex] = startPoint
     semiPhonEnd[intervalIndex] = endPoint
   endif
