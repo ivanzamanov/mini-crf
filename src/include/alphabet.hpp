@@ -5,6 +5,11 @@
 
 template<class LabelObject>
 struct LabelAlphabet {
+  virtual ~LabelAlphabet() {
+    classes.destroy();
+    labels.destroy();
+  }
+
   static const int CLASS_COUNT = 256;
   typedef std::vector<int> LabelClass;
   typedef std::vector<LabelClass::const_iterator> Iterators;
@@ -15,12 +20,8 @@ struct LabelAlphabet {
 
   void build_classes() {
     const int length = CLASS_COUNT;
-    if(classes.data != 0)
-      delete[] classes.data;
-
-    classes.data = new LabelAlphabet::LabelClass[length];
-    classes.length = length;
-
+    classes.init(length);
+ 
     for(unsigned i = 0; i < labels.length; i++)
       classes[labels[i].label].push_back(i);
   }

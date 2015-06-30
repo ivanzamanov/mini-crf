@@ -53,15 +53,15 @@ std::string to_id_string(const std::vector<PhonemeInstance>& vec) {
   return result.str();
 }
 
-double get_total_duration(std::vector<PhonemeInstance> input) {
-  double result = 0;
-  for(unsigned i = 0; i < input.size(); i++) result += input[i].duration;
+stime_t get_total_duration(std::vector<PhonemeInstance> input) {
+  stime_t result = 0;
+  for(auto p : input) result += p.duration;
   return result;
 }
 
 int resynthesize(Options& opts) {
   PlainStreamConfig conf(std::cin);
-  double val;
+  coefficient val;
   crf.mu[0] = conf.get("state-pitch", val);
   crf.mu[1] = conf.get("state-duration", val);
   crf.lambda[0] = conf.get("trans-pitch", val);
@@ -78,7 +78,7 @@ int resynthesize(Options& opts) {
   std::cerr << "Original trans cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Original state cost: " << state_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
   std::vector<int> path;
-  double resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
+  cost resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
@@ -173,8 +173,12 @@ int query(const Options& opts) {
 }
 
 struct ResynthParams {
-  ResynthParams(int index, std::ostream* os, bool* flag)
-    :index(index), os(os), flag(flag) { }
+  void init(int index, std::ostream* os, bool* flag) {
+    this->index = index;
+    this->os = os;
+    this->flag = flag;
+  }
+
   int index;
   std::ostream *os;
   bool* flag;
@@ -190,7 +194,7 @@ void resynth_index(ResynthParams* params) {
   std::vector<int> path;
 
   outputStream << input_file << std::endl;
-  double cost = max_path(input, crf, crf.lambda, crf.mu, &path);
+  cost cost = max_path(input, crf, crf.lambda, crf.mu, &path);
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
   std::cerr << "Cost " << index << ": " << cost << std::endl;
@@ -204,7 +208,7 @@ void resynth_index(ResynthParams* params) {
 int train(const Options&) {
   PlainStreamConfig conf(std::cin);
 
-  double val;
+  coefficient val;
   crf.mu[0] = conf.get("state-pitch", val);
   crf.mu[1] = conf.get("state-duration", val);
   crf.lambda[0] = conf.get("trans-pitch", val);
@@ -221,9 +225,11 @@ int train(const Options&) {
     return 0;
   }
 
+  ResynthParams params[count];
   for(unsigned i = 0; i < count; i++) {
     flags[i] = 0;
-    ResynthParams* params = new ResynthParams(i, streams+i, &flags[i]);
+    //ResynthParams* params = new ResynthParams(i, streams+i, &flags[i]);
+    params[i].init(i, streams+i, &flags[i]);
     Task* t = new ParamTask<ResynthParams>(&resynth_index, params);
     tp.add_task(t);
   }

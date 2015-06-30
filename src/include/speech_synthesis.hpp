@@ -11,6 +11,12 @@
 #include"parser.hpp"
 
 struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
+  ~PhonemeAlphabet() {
+    files.destroy();
+    file_indices.destroy();
+    old_file_indices.destroy();
+    old_ids.destroy();
+  }
   Array<std::string> files;
   Array<int> file_indices;
   Array<int> old_file_indices;
@@ -25,7 +31,8 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
   }
 
   std::string old_file_of(int phonId) {
-    return files[old_file_indices[phonId]];
+    auto index = old_file_indices[phonId];
+    return files[index];
   }
 
   int first_by_label(char label) {
@@ -88,8 +95,10 @@ struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
       }
     }
 
+    labels.destroy();
     labels.data = new_labels.data;
 
+    old_file_indices.destroy();
     old_file_indices.length = file_indices.length;
     old_file_indices.data = file_indices.data;
     // End hack...
@@ -142,9 +151,9 @@ struct SynthPrinter {
 
   const std::string desired_pitch(const PhonemeInstance& p) {
     std::stringstream str;
-    double mid = 0;
-    for(unsigned i = 0; i < p.frames.size(); i++)
-      mid += p.frames[i].pitch;
+    frequency mid = 0;
+    for(auto frame : p.frames)
+      mid += frame.pitch;
     mid = mid / p.frames.size();
     str << mid;
     return str.str();
@@ -158,7 +167,7 @@ struct SynthPrinter {
   void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, std::ostream& out) {
     TextGrid grid(path.size());
     unsigned i = 0;
-    double time_offset = 0;
+    stime_t time_offset = 0;
     for(i = 0; i < path.size(); i++) {
       const PhonemeInstance& phon = alphabet.fromInt(path[i]);
       const PhonemeInstance& desired = input[i];
@@ -181,7 +190,7 @@ PhonemeInstance to_synth_input(const PhonemeInstance& p) {
   result.end = p.end;
   result.label = p.label;
   Frame frame;
-  double pitch = 0;
+  frequency pitch = 0;
 
   for(unsigned i = 0; i < p.frames.size(); i++)
     pitch += p.at(i).pitch;
@@ -235,11 +244,9 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<Phone
   BinaryReader r(&input);
   unsigned alphabet_size;
   r >> alphabet_size;
-  alphabet.labels.length = alphabet_size;
-  alphabet.labels.data = new PhonemeInstance[alphabet_size];
 
-  alphabet.file_indices.data = new int[alphabet_size];
-  alphabet.file_indices.length = alphabet_size;
+  alphabet.labels.init(alphabet_size);
+  alphabet.file_indices.init(alphabet_size);
 
   for(unsigned i = 0; i < alphabet.size(); i++)
     r >> alphabet.labels[i] >> alphabet.file_indices[i];
@@ -248,8 +255,8 @@ void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus<Phone
 
   unsigned count;
   r >> count;
-  alphabet.files.length = count;
-  alphabet.files.data = new std::string[count];
+  alphabet.files.init(count);
+
   unsigned length;
   for(unsigned i = 0; i < count; i++) {
     r >> length;
@@ -302,7 +309,7 @@ void pre_process(PhonemeAlphabet& alphabet) {
   for(unsigned i = 0; i < alphabet.files.length; i++) {
     std::vector<int> phonemes = alphabet.phonemes_of_file(i);
 
-    double last_pitch = 0;
+    frequency last_pitch = 0;
     for(auto it = phonemes.begin(); it != phonemes.end(); it++) {
       PhonemeInstance& phi = alphabet.fromInt(*it);
       for(auto frame_it = phi.frames.begin(); frame_it != phi.frames.end(); ++frame_it) {

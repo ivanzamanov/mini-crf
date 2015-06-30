@@ -31,12 +31,12 @@ void print_max_sent() {
 }
 
 void print_function_stats(const PhonemeAlphabet& alphabet, const std::string name,
-                          double (*func)(const PhonemeInstance&, const PhonemeInstance&,
+                          cost (*func)(const PhonemeInstance&, const PhonemeInstance&,
                                          int, const vector<PhonemeInstance>&)) {
   vector<PhonemeInstance> dummy;
 
   unsigned k = 0;
-  double expect = 0;
+  cost expect = 0;
   for(unsigned i = 0; i < alphabet.size(); i++) {
     const PhonemeInstance& p1 = alphabet.fromInt(i);
 
@@ -46,7 +46,7 @@ void print_function_stats(const PhonemeAlphabet& alphabet, const std::string nam
 
       const PhonemeInstance& p2 = alphabet.fromInt(i);
 
-      double value = func(p1, p2, 0, dummy);
+      cost value = func(p1, p2, 0, dummy);
         k++;
         expect += (value - expect) / k;
     }
@@ -55,7 +55,7 @@ void print_function_stats(const PhonemeAlphabet& alphabet, const std::string nam
   std::cout << name << " expectation = " << expect << std::endl;
 
   k = 0;
-  double dev = 0;
+  cost dev = 0;
   for(unsigned i = 0; i < alphabet.size(); i++) {
     const PhonemeInstance& p1 = alphabet.fromInt(i);
 
@@ -65,7 +65,7 @@ void print_function_stats(const PhonemeAlphabet& alphabet, const std::string nam
 
       const PhonemeInstance& p2 = alphabet.fromInt(i);
 
-      double value = func(p1, p2, 0, dummy);
+      cost value = func(p1, p2, 0, dummy);
 #pragma omp critical
       {
         k++;
@@ -82,7 +82,7 @@ void test_performance() {
   const typename CRF::Alphabet::LabelClass& class1 = alphabet.classes[11];
   const typename CRF::Alphabet::LabelClass& class2 = alphabet.classes[10];
   std::cout << "Count: " << class1.size() << " x " << class2.size() << " x 70"<< std::endl;
-  double result = 0;
+  cost result = 0;
   int m = 0;
   for(unsigned i = 0; i < 70; i++) {
     for(auto p1 : class1)
@@ -130,6 +130,9 @@ int main(int argc, const char** argv) {
     return 1;
   }
 
+  print_min_sent();
+  print_max_sent();
+
   std::string input_path(argv[1]);
   std::ifstream input(input_path);
   StringLabelProvider prov;
@@ -139,10 +142,8 @@ int main(int argc, const char** argv) {
 
   print_transition_counts();
   return 0;
-  test_performance();
 
-  print_min_sent();
-  print_max_sent();
+  test_performance();
   print_function_stats(alphabet, "Pitch", Pitch);
   print_function_stats(alphabet, "MFCC Transition", MFCCDist);
   return 0;

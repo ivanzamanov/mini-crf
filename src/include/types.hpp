@@ -7,9 +7,13 @@
 
 static const int MFCC_N = 12;
 
+typedef float coefficient;
+typedef float cost;
+typedef double probability;
 typedef float frequency;
-typedef float time_point_t;
-typedef std::array<double, MFCC_N> MfccArray;
+typedef float stime_t;
+typedef float mfcc_t;
+typedef std::array<mfcc_t, MFCC_N> MfccArray;
 typedef unsigned id_t;
 
 typedef int PhoneticLabel;
@@ -17,7 +21,7 @@ const PhoneticLabel INVALID_LABEL = -1;
 
 struct Frame {
   Frame():pitch(0) { init(); }
-  Frame(double pitch): pitch(pitch) { init(); }
+  Frame(frequency pitch): pitch(pitch) { init(); }
 
   MfccArray mfcc;
   frequency pitch;
@@ -50,9 +54,9 @@ struct PhonemeInstance {
 
   FrameArray frames;
   PitchContour pitch_contour;
-  time_point_t start;
-  time_point_t end;
-  time_point_t duration;
+  stime_t start;
+  stime_t end;
+  stime_t duration;
   id_t id;
   PhoneticLabel label;
   PhoneticLabel ctx_left;

@@ -18,13 +18,13 @@ struct Pair {
 };
 
 namespace util {
-  double mult_exp(double x, double y);
-  double mult(double x, double y);
-  double log_mult(double logX, double logY);
-  double log_sum(double logX, double logY);
-  double log_sum2(double logX, double logY);
-  double sum_log(double x, double y);
-  double sum(double x, double y);
+  float mult_exp(float x, float y);
+  float mult(float x, float y);
+  float log_mult(float logX, float logY);
+  float log_sum(float logX, float logY);
+  float log_sum2(float logX, float logY);
+  float sum_log(float x, float y);
+  float sum(float x, float y);
 
   int parse_int(const std::string& str);
 };
@@ -54,10 +54,7 @@ template<class T>
 struct Array {
   typedef ArrayIterator<T> iterator;
   typedef ArrayIterator<T, true> reverse_iterator;
-  Array() {
-    length = 0;
-    data = 0;
-  }
+  Array(): length(0), data(0) { }
 
   unsigned length;
   T* data;
@@ -72,17 +69,16 @@ struct Array {
   reverse_iterator rend() { return ArrayIterator<T, true>(data - 1); }
 
   void init(unsigned length) {
+    destroy();
     this->length = length;
     data = new T[length];
   }
   
   void destroy() {
-    delete[] data;
-  }
-
-  void copy_from(Array<T>& other) {
-    length = other.length;
-    memcpy(data, other.data, length * sizeof(T));
+    if (data) {
+      delete[] data;
+      data = 0;
+    }
   }
 };
 
@@ -108,8 +104,7 @@ bool compare(Array<T> a1, Array<T> a2) {
 template<class T>
 Array<T> to_array(std::vector<T> &v) {
   Array<T> result;
-  result.data = new T[v.size()];
-  result.length = v.size();
+  result.init(v.size());
   auto it = v.begin();
   int i = 0;
   while(it != v.end()) {

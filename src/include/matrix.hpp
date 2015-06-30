@@ -13,7 +13,7 @@ public:
   }
 
   ~Matrix() {
-    delete data;
+    delete[] data;
   }
 
   Value& operator()(int row, int col) {

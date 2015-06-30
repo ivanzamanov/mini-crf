@@ -39,14 +39,14 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
   }
 };
 
-double TestTransFunc(const TestObject& l1, const TestObject& l2, int pos, const vector<int>& input) {
+cost TestTransFunc(const TestObject& l1, const TestObject& l2, int pos, const vector<int>& input) {
   if(input[pos - 1] == l1.id && input[pos] == l2.id)
     return -1;
   else
     return rand();
 }
 
-double TestStateFunc(const TestObject& label, int pos, const vector<int>& input) {
+cost TestStateFunc(const TestObject& label, int pos, const vector<int>& input) {
   if(input[pos] == label.id)
     return -1;
   else
@@ -57,8 +57,8 @@ struct TestFeatures;
 typedef CRandomField<TestAlphabet, int, TestFeatures> TestCRF;
 
 struct TestFeatures {
-  typedef double (*EdgeFeature)(const TestObject&, const TestObject&, int, const vector<int>&);
-  typedef double (*VertexFeature)(const TestObject&, int, const vector<int>&);
+  typedef cost (*EdgeFeature)(const TestObject&, const TestObject&, int, const vector<int>&);
+  typedef cost (*VertexFeature)(const TestObject&, int, const vector<int>&);
 
   const EdgeFeature f[1] = { TestTransFunc };
   const VertexFeature g[1] = { TestStateFunc } ;
@@ -114,8 +114,8 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
     std::cerr << a.x[i] << " ";
   std::cerr << std::endl;
 
-  double expected_cost = total_cost(labels, *crf, crf->lambda, crf->mu, a.x);
-  double cost = a.traverse(&best_path);
+  cost expected_cost = total_cost(labels, *crf, crf->lambda, crf->mu, a.x);
+  cost cost = a.traverse(&best_path);
 
   std::cerr << "Cost = " << cost << ", path = ";
   // for(unsigned i = 0; i < best_path.size(); i++)
@@ -143,9 +143,9 @@ void testCRF() {
 
   TestCRF crf;
   crf.label_alphabet = new TestAlphabet();
-  std::vector<double> lambda;
+  std::vector<coefficient> lambda;
   lambda.push_back(1.0);
-  std::vector<double> mu;
+  std::vector<coefficient> mu;
   mu.push_back(1.0);
 
   crf.lambda = lambda;

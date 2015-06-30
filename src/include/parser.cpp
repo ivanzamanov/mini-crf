@@ -43,7 +43,7 @@ std::string string_value(std::istream& stream, const std::string& check) {
 
 PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider& label_provider) {
   section(stream, "[Config]"); // [Config]
-  value<double>(stream, "timeStep"); // timeStep
+  value<stime_t>(stream, "timeStep"); // timeStep
   value<int>(stream, "mfcc");
   size = value<int>(stream, "intervals");
   PhonemeInstance* result = new PhonemeInstance[size];
@@ -51,10 +51,10 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
   for (int i = 0; i < size; i++) {
     section(stream, "[Entry]");
     result[i].label = label_provider.convert(value<std::string>(stream, "label"));
-    result[i].start = value<double>(stream, "start");
-    result[i].end = value<double>(stream, "end");
+    result[i].start = value<stime_t>(stream, "start");
+    result[i].end = value<stime_t>(stream, "end");
     int frames = value<int>(stream, "frames");
-    double duration = value<double>(stream, "duration");
+    stime_t duration = value<stime_t>(stream, "duration");
     result[i].duration = duration;
     //result[i].frames.length = frames;
     if(frames < 0)
@@ -64,7 +64,7 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
     for(int frame = 0; frame < frames; frame++) {
       int c;
 
-      result[i].frames[frame].pitch = value<double>(stream, "pitch");
+      result[i].frames[frame].pitch = value<stime_t>(stream, "pitch");
       std::string mfcc_string = string_value(stream, "mfcc");
       std::stringstream mfcc_value_str(mfcc_string);
       for(c = 0; c < MFCC_N; c++) {
@@ -174,7 +174,8 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
   char id;
   while(is >> id) {
     char c;
-    double duration, pitch;
+    stime_t duration;
+    frequency pitch;
 
     is >> c >> duration >> c >> pitch;
     PhonemeInstance p;
@@ -191,8 +192,7 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
 }
 
 void print_synth_input_csv_phoneme(std::ostream& os, const PhonemeInstance& p) {
-  double pitch = to_pitch_contour<false>(p)[0];
-  os << p.label << ',' << p.duration << ',' << pitch;
+  os << p.label << ',' << p.duration << ',' << to_pitch_contour<false>(p)[0];
 }
 
 void print_synth_input_csv(std::ostream& os, std::vector<PhonemeInstance>& phons) {
