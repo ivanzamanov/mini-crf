@@ -5,11 +5,11 @@
 #include<unistd.h>
 
 #include"options.hpp"
-#include"crf/crf.hpp"
-#include"crf/features.hpp"
-#include"crf/training.hpp"
-#include"crf/speech_synthesis.hpp"
-#include"threadpool/threadpool.h"
+#include"crf.hpp"
+#include"features.hpp"
+#include"training.hpp"
+#include"speech_synthesis.hpp"
+#include"threadpool.h"
 
 void print_usage() {
     std::cerr << "Usage: <cmd> <options>\n";
@@ -38,7 +38,7 @@ std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
   std::string result(1, ' ');
   for(auto it = vec.begin(); it != vec.end(); it++) {
     result.push_back('|');
-    result.append(all_labels.fromInt((*it).label) );
+    result.append(all_labels.convert((*it).label) );
     result.push_back('|');
   }
   return result;
@@ -273,8 +273,8 @@ void consolidate_labels(PhonemeAlphabet& alphabet, StringLabelProvider& original
   auto it = alphabet.labels.begin();
   while(it != alphabet.labels.end()) {
     PhonemeInstance& p = *it;
-    std::string label = original.fromInt(p.label);
-    PhoneticLabel new_label_id = cons.fromString(label);
+    std::string label = original.convert(p.label);
+    PhoneticLabel new_label_id = cons.convert(label);
     p.label = new_label_id;
     ++it;
   }

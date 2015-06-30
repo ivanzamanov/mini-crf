@@ -17,7 +17,7 @@ static void section(std::istream& stream, const std::string& check) {
 }
 
 template<class T>
-static T value(std::istream& stream, const std::string& check) {
+T value(std::istream& stream, const std::string& check) {
   T result;
   stream >> buffer;
   int index = buffer.find_first_of('=');
@@ -50,7 +50,7 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
 
   for (int i = 0; i < size; i++) {
     section(stream, "[Entry]");
-    result[i].label = label_provider.fromString(value<std::string>(stream, "label"));
+    result[i].label = label_provider.convert(value<std::string>(stream, "label"));
     result[i].start = value<double>(stream, "start");
     result[i].end = value<double>(stream, "end");
     int frames = value<int>(stream, "frames");

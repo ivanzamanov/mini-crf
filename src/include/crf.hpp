@@ -7,7 +7,7 @@
 
 #include"alphabet.hpp"
 #include"matrix.hpp"
-#include"../dot/dot.hpp"
+#include"dot/dot.hpp"
 
 using std::vector;
 

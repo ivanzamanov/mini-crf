@@ -4,10 +4,10 @@
 #include<ios>
 
 #include"options.hpp"
-#include"crf/crf.hpp"
-#include"crf/features.hpp"
-#include"crf/training.hpp"
-#include"crf/speech_synthesis.hpp"
+#include"crf.hpp"
+#include"features.hpp"
+#include"training.hpp"
+#include"speech_synthesis.hpp"
 
 CRF crf;
 typename CRF::Alphabet test_alphabet;

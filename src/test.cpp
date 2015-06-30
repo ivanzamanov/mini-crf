@@ -2,9 +2,9 @@
 #include<sstream>
 #include<cstdlib>
 
-#include"praat/parser.hpp"
-#include"crf/speech_synthesis.hpp"
-#include"crf/crf.hpp"
+#include"parser.hpp"
+#include"speech_synthesis.hpp"
+#include"crf.hpp"
 
 struct TestObject {
   TestObject() { };
@@ -166,8 +166,8 @@ void testSynthInputCSV() {
   vector<PhonemeInstance> phons = parse_synth_input_csv(csv_str);
 
   //assertEquals('p', phons[0].label);
-  assertEquals(0.5, phons[0].duration);
-  assertEquals(251.12, phons[0].first().pitch);
+  assertEquals(0.5f, phons[0].duration);
+  assertEquals(251.12f, phons[0].first().pitch);
 
   csv_str.seekp(0); csv_str.seekg(0);
   print_synth_input_csv(csv_str, phons);

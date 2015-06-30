@@ -1,5 +1,5 @@
-#include"crf/speech_synthesis.hpp"
-#include"crf/features.hpp"
+#include"speech_synthesis.hpp"
+#include"features.hpp"
 
 static void print_usage(const char* main) {
   std::cout << "Usage: " << main << ": <input_file>|- <output_file> [<function_value_cache>]\n";

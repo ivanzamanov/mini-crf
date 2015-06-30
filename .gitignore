@@ -32,6 +32,7 @@
 *#
 
 # Binaries and temps
+bin
 node_modules
 main
 test

@@ -6,8 +6,9 @@
 #include<sstream>
 
 #include"crf.hpp"
-#include"../praat/textgrid.hpp"
-#include"../praat/parser.hpp"
+#include"textgrid.hpp"
+#include"types.hpp"
+#include"parser.hpp"
 
 struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
   Array<std::string> files;
@@ -124,7 +125,7 @@ struct SynthPrinter {
       out << "File=" << file << " ";
       out << "Start=" << phon.start << " ";
       out << "End=" << phon.end << " ";
-      out << "Label=" << label_provider.fromInt(phon.label) << " ";
+      out << "Label=" << label_provider.convert(phon.label) << " ";
       out << "Pitch=" << desired_pitch(desired[i]) << " ";
       out << "Duration=" << desired[i].duration << '\n';
 
@@ -132,7 +133,7 @@ struct SynthPrinter {
       phonemeIds << id << "=" << phon.label << " ";
       if(i > 0 && old_id != (alphabet.old_id(path[i-1]) + 1))
         run_lengths << "|";
-      run_lengths << label_provider.fromInt(phon.label);
+      run_lengths << label_provider.convert(phon.label);
     }
 
     //std::cerr << phonemeIds.str() << std::endl;
