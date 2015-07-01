@@ -45,12 +45,15 @@ struct PitchContour : std::array<frequency, 2> {
 };
 
 struct PhonemeInstance {
-  PhonemeInstance() {
-    start = 0;
-    end = 0;
-    label = ' ';
-    id = 0;
-  }
+  PhonemeInstance()
+    :start(0),
+     end(0),
+     duration(0),
+     id(0),
+     label(INVALID_LABEL),
+     ctx_left(INVALID_LABEL),
+     ctx_right(INVALID_LABEL)
+  { }
 
   FrameArray frames;
   PitchContour pitch_contour;

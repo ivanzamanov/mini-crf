@@ -48,16 +48,23 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
   size = value<int>(stream, "intervals");
   PhonemeInstance* result = new PhonemeInstance[size];
 
+  PhoneticLabel last = INVALID_LABEL;
   for (int i = 0; i < size; i++) {
     section(stream, "[Entry]");
     result[i].label = label_provider.convert(value<std::string>(stream, "label"));
+    result[i].ctx_left = last;
+
+    last = result[i].label;
+    if (i > 0)
+      result[i - 1].ctx_right = last;
+
     result[i].start = value<stime_t>(stream, "start");
     result[i].end = value<stime_t>(stream, "end");
     int frames = value<int>(stream, "frames");
     stime_t duration = value<stime_t>(stream, "duration");
     result[i].duration = duration;
     //result[i].frames.length = frames;
-    if(frames < 0)
+    if (frames < 0)
       std::cerr << "Error at " << stream.tellg() << std::endl;
     //result[i].frames.data = new Frame[frames];
 
@@ -87,6 +94,8 @@ BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
   str << ph.end;
   str << ph.duration;
   str << ph.label;
+  str << ph.ctx_left;
+  str << ph.ctx_right;
   return str;
 }
 
@@ -103,6 +112,8 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
   str >> ph.end;
   str >> ph.duration;
   str >> ph.label;
+  str >> ph.ctx_left;
+  str >> ph.ctx_right;
   return str;
 }
 
@@ -140,7 +151,13 @@ bool operator==(const Frame& f1, const Frame& f2) {
 }
 
 bool operator==(const PhonemeInstance& p1, const PhonemeInstance& p2) {
-  bool same = p1.start == p2.start && p1.end == p2.end && p1.label == p2.label && p1.id == p2.id;
+  bool same = p1.start == p2.start &&
+    p1.end == p2.end &&
+    p1.label == p2.label &&
+    p1.id == p2.id &&
+    p1.ctx_left == p2.ctx_left &&
+    p1.ctx_right == p2.ctx_right;
+
   same &= p1.frames.size() == p2.frames.size();
   for(unsigned i = 0; i < p1.frames.size() && same; i++)
     same &= p1.at(i) == p2.at(i);

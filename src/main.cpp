@@ -66,6 +66,7 @@ int resynthesize(Options& opts) {
   crf.mu[1] = conf.get("state-duration", val);
   crf.lambda[0] = conf.get("trans-pitch", val);
   crf.lambda[1] = conf.get("trans-mfcc", val);
+  crf.lambda[2] = conf.get("trans-ctx", val);
 
   unsigned index = util::parse_int(opts.input);
   std::vector<PhonemeInstance> input = test_corpus.input(index);
@@ -213,6 +214,7 @@ int train(const Options&) {
   crf.mu[1] = conf.get("state-duration", val);
   crf.lambda[0] = conf.get("trans-pitch", val);
   crf.lambda[1] = conf.get("trans-mfcc", val);
+  crf.lambda[2] = conf.get("trans-ctx", val);
 
   unsigned count = test_corpus.size();
   std::stringstream *streams = new std::stringstream[count];
@@ -280,8 +282,9 @@ void consolidate_labels(PhonemeAlphabet& alphabet, StringLabelProvider& original
   while(it != alphabet.labels.end()) {
     PhonemeInstance& p = *it;
     std::string label = original.convert(p.label);
-    PhoneticLabel new_label_id = cons.convert(label);
-    p.label = new_label_id;
+    p.label = cons.convert(label);
+    p.ctx_left = (p.ctx_left == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_left));
+    p.ctx_right = (p.ctx_right == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_right));
     ++it;
   }
 }
@@ -312,6 +315,7 @@ int main(int argc, const char** argv) {
   crf.mu[1] = 1;
   crf.lambda[0] = 1000;
   crf.lambda[1] = 1;
+  crf.lambda[2] = 1;
 
   for(int i = 0; i < argc; i++)
     std::cerr << argv[i] << " ";

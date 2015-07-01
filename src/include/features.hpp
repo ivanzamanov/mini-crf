@@ -74,6 +74,10 @@ cost Pitch(const PhonemeInstance& prev, const PhonemeInstance& next, int, const 
   return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
 }
 
+cost LeftContext(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
+  return prev.label != next.ctx_left;
+}
+
 cost PitchState(const PhonemeInstance& p1, int pos, const vector<PhonemeInstance>& x) {
   const PhonemeInstance& p2 = x[pos];
   return p1.pitch_contour.diff(p2.pitch_contour);
@@ -123,7 +127,7 @@ struct PhoneticFeatures {
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
-  const _EdgeFeature f[2] = { Pitch, MFCCDist };
+  const _EdgeFeature f[3] = { Pitch, MFCCDist, LeftContext };
   const _VertexFeature g[2] = { Duration, PitchState };
 };
 

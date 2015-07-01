@@ -262,6 +262,7 @@ function trainGoldenSearch() {
     var ranges = [
         { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
         { name: 'trans-pitch', values: goldenRange(-1000, 1000) },
+        { name: 'trans-ctx', values: goldenRange(-1000, 1000) },
         { name: 'state-pitch', values: goldenRange(-1000, 1000) },
         { name: 'state-duration', values: goldenRange(-1000, 1000) }
     ];
