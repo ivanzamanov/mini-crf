@@ -105,9 +105,9 @@ class ParamTask : public Task {
 
   void operator()() {
     (*m_fn_ptr)(m_arg);
-    if (m_arg != NULL) {
-      delete m_arg;
-    }
+    //if (m_arg != NULL) {
+    //  delete m_arg;
+    //}
   }
 
  protected:

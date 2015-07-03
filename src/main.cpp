@@ -202,8 +202,9 @@ void resynth_index(ResynthParams* params) {
 
   SynthPrinter sp(crf.alphabet(), all_labels);
   sp.print_synth(path, input, outputStream);
-
+  //std::cerr << "Written output" << std::endl;
   *(params->flag) = 1;
+  //std::cerr << "done" << std::endl;
 }
 
 int train(const Options&) {
@@ -217,10 +218,10 @@ int train(const Options&) {
   crf.lambda[2] = conf.get("trans-ctx", val);
 
   unsigned count = test_corpus.size();
-  std::stringstream *streams = new std::stringstream[count];
-  bool* flags = new bool[count];
+  std::stringstream streams[count];
+  bool flags[count];
   //#pragma omp parallel for
-  ThreadPool tp(12);
+  ThreadPool tp(8);
   int ret = tp.initialize_threadpool();
   if (ret == -1) {
     cerr << "Failed to initialize thread pool!" << endl;
@@ -231,8 +232,8 @@ int train(const Options&) {
   for(unsigned i = 0; i < count; i++) {
     flags[i] = 0;
     //ResynthParams* params = new ResynthParams(i, streams+i, &flags[i]);
-    params[i].init(i, streams+i, &flags[i]);
-    Task* t = new ParamTask<ResynthParams>(&resynth_index, params);
+    params[i].init(i, &streams[i], &flags[i]);
+    Task* t = new ParamTask<ResynthParams>(&resynth_index, &params[i]);
     tp.add_task(t);
   }
 
@@ -252,7 +253,6 @@ int train(const Options&) {
     std::cout << delim << streams[i].str() << std::endl;
   }
 
-  delete[] streams;
   return 0;
 }
 
