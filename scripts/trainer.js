@@ -258,6 +258,25 @@ function goldenRange(from, to) {
     return [from, from + search.R * (to - from), to];
 }
 
+function collectArgs(ranges) {
+    var args = [];
+    _.forEach(ranges, function(range) {
+        // The mid
+        args.push({
+            name: range.name,
+            value: range.values[0]
+        });
+    });
+    return args;
+}
+
+function logConverged(ranges) {
+    console.log('Optimum at ' + search.dimensionsToString(ranges));
+    _.forEach(ranges, function(range) {
+        console.log(printf('%s=%f', range.name, range.values[0]));
+    });
+}
+
 function trainGoldenSearch() {
     var ranges = [
         { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
@@ -271,15 +290,9 @@ function trainGoldenSearch() {
     var multiParamFunc = search.MultiParamFunction(trainWithCoefficients, config.valueCachePath);
 
     var func = function(x, callback) {
-        var args = [];
-        _.forEach(ranges, function(range) {
-            // The mid
-            args.push({name: range.name, value: range.values[0]});
-        });
+        var args = collectArgs(ranges);
         args[dimension].value = x;
-        multiParamFunc(args, function(err, value) {
-            callback(null, value);
-        });
+        multiParamFunc(args, callback);
     };
 
     function stepCallback(a, b, c) {
@@ -287,11 +300,7 @@ function trainGoldenSearch() {
         iterations--;
         console.log('Iteration: ' + (1000 - iterations));
         if(iterations === 0 || isConverged(ranges)) {
-            console.log('Optimum at ' + search.dimensionsToString(ranges));
-            _.forEach(ranges, function(range) {
-                console.log(printf('%s=%f', range.name, range.values[0]));
-            });
-            return;
+            logConverged(ranges);
         } else {
             ranges[dimension].values = [a, b, c];
             dimension = (dimension + 1) % ranges.length;

@@ -8,32 +8,34 @@
 template<class Value>
 class Matrix {
 public:
-  Matrix(int rows, int cols): r(rows), c(cols) {
-    data = new Value[r * c];
+  Matrix(unsigned rows, unsigned cols): r(rows), c(cols) {
+    unsigned long total = r * c;
+    data = new Value[total];
   }
 
   ~Matrix() {
     delete[] data;
   }
 
-  Value& operator()(int row, int col) {
-    if(row >= rows() || row < 0 || col < 0 || col >= cols()) {
+  Value& operator()(unsigned row, unsigned col) {
+    if(row >= rows() ||  col >= cols()) {
       throw "Invalid element requested";
     }
 
-    return data[row * c + col];
+    unsigned long index = row * c + col;
+    return data[index];
   }
 
-  int rows() const {
+  unsigned rows() const {
     return r;
   }
 
-  int cols() const {
+  unsigned cols() const {
     return c;
   }
 
-  int r;
-  int c;
+  unsigned long r;
+  unsigned long c;
   Value* data;
 };
 

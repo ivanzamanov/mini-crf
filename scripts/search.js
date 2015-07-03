@@ -5,13 +5,15 @@ var fs = require('fs'),
 
 var R = 0.61803;
 
-function goldenSearchStep(a, b, c, func, callback) {
-    var x;
+function pickNext(a, b, c) {
     if (c - b > b - a)
-        x = b + R * (c - b);
+        return b + R * (c - b);
     else
-        x = b - R * (b - a);
+        return b - R * (b - a);
+}
 
+function goldenSearchStep(a, b, c, func, callback) {
+    var x = pickNext(a, b, c);
     async.mapLimit([x, b], 1, func, function(err, values) {
         var xVal = values[0], bVal = values[1];
         if (xVal < bVal) {
