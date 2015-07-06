@@ -5,6 +5,8 @@
 #include"crf.hpp"
 #include"speech_synthesis.hpp"
 
+using namespace tool;
+
 enum FunctionId {
   pitch = 0,
   mfcc = 1

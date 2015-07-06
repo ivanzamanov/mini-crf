@@ -8,9 +8,20 @@ CLIB =
 CMD = $(CC) $(CFLAGS)
 MAIN_DEPS = $(wildcard */*.hpp */*.cpp *.hpp) main.cpp
 CPP_FILES = $(wildcard */*.cpp)
+PRAAT_SCRIPTS = $(subst praat,o,$(subst ../scripts/,,$(wildcard ../scripts/*.praat)))
+
+OBJ_COPY = objcopy --input binary --output elf64-x86-64 --binary-architecture i386
 
 main: $(MAIN_DEPS)
 	$(CMD) $(CLIB) -pg -g main.cpp $(CPP_FILES) -o main -lpthread
+
+#%.o:
+#	cd ../scripts ; $(OBJ_COPY) $(subst .o,.praat,$@) ../src/$@
+
+#clean-praats:
+#	rm -f *.o
+
+#praats: clean-praats $(PRAAT_SCRIPTS)
 
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) $(CLIB) test.cpp $(CPP_FILES) -o test -lpthread

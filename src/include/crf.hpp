@@ -15,7 +15,7 @@ using std::vector;
 const double TRAINING_RATIO = 0.3;
 
 template<class Input, class Label>
-class Corpus {
+class _Corpus {
 public:
   vector<Label>& label(int i) {
     return labels[i];
@@ -34,16 +34,16 @@ public:
     this->labels.push_back(labels);
   };
 
-  Corpus<Input, Label> training_part() {
-    Corpus<Input, Label> result;
+  _Corpus<Input, Label> training_part() {
+    _Corpus<Input, Label> result;
     unsigned count = size() / TRAINING_RATIO;
     for(unsigned i = 0; i < count; i++)
       result.add(inputs[i], labels[i]);
     return result;
   };
 
-  Corpus<Input, Label> testing_part() {
-    Corpus<Input, Label> result;
+  _Corpus<Input, Label> testing_part() {
+    _Corpus<Input, Label> result;
     unsigned count = size() / TRAINING_RATIO;
     for(unsigned i = count; i < size(); i++)
       result.add(inputs[i], labels[i]);
@@ -61,7 +61,7 @@ public:
   typedef _LabelAlphabet Alphabet;
   typedef typename Alphabet::Label Label;
   typedef _Input Input;
-  typedef Corpus<Input, Label> TrainingCorpus;
+  typedef _Corpus<Input, Label> TrainingCorpus;
 
   typedef cost (*EdgeFeature)(const Label&, const Label&, const int, const vector<Input>&);
   typedef cost (*VertexFeature)(const Label&, int, const vector<Input>&);
@@ -217,7 +217,7 @@ struct FunctionalAutomaton {
   }
 
   template<bool includeState, bool includeTransition>
-  cost traverse_transitions(const Array<Transition> children, const typename CRF::Label& src, int pos, unsigned& max_child) {
+  cost traverse_transitions(const Transition* children, unsigned children_length, const typename CRF::Label& src, int pos, unsigned& max_child) {
     unsigned m = 0;
 
     auto child = alphabet.fromInt(children[m].child);
@@ -228,7 +228,7 @@ struct FunctionalAutomaton {
 
     cost agg;
     agg = child_value;
-    for(++m; m < children.length; ++m) {
+    for(++m; m < children_length; ++m) {
       child = alphabet.fromInt(children[m].child);
       transition = calculate_value<includeState, includeTransition>(src, child, pos);
       child_value = funcs.concat(children[m].base_value, transition);
@@ -248,11 +248,14 @@ struct FunctionalAutomaton {
 
     vector<int> max_path;
     // Will need for intermediate computations
-    Array<Transition> children, next_children;
-    children.init(alphabet_length());
-    children.length = 0;
-    next_children.init(alphabet_length());
-    next_children.length = 0;
+    Transition children_a[alphabet_length()],
+      next_children_a[alphabet_length()];
+
+    Transition* children = children_a,
+      *next_children = next_children_a;
+
+    unsigned children_length = 0;
+    unsigned next_children_length = 0;
 
     int pos = x.size() - 1;
 
@@ -265,7 +268,7 @@ struct FunctionalAutomaton {
     options.push_back(allowed.size());
     for(auto it = allowed.begin(); it != allowed.end() ; it++) {
       auto dest = *it;
-      children[children.length++].set(dest, funcs.empty());
+      children[children_length++].set(dest, funcs.empty());
     }
     prog.update();
 
@@ -276,26 +279,29 @@ struct FunctionalAutomaton {
       const typename CRF::Alphabet::LabelClass& allowed = alphabet.get_class(x[pos]);
       options.push_back(allowed.size());
 
-      next_children.length = allowed.size();
+      next_children_length = allowed.size();
       //      #pragma omp parallel for
       for(unsigned m = 0; m < allowed.size(); m++) {
         auto srcId = allowed[m];
 
         const typename CRF::Label& src = alphabet.fromInt(srcId);
         unsigned max_child;
-        cost value = traverse_transitions<true, true>(children, src, pos + 1, max_child);
+        cost value = traverse_transitions<true, true>(children, children_length,
+                                                      src, pos + 1, max_child);
         next_children[m].set(srcId, value);
 
         paths(srcId, pos) = max_child;
       }
 
-      children.length = 0;
+      children_length = 0;
       std::swap(children, next_children);
+      std::swap(children_length, next_children_length);
       prog.update();
     }
 
     unsigned max_child;
-    cost value = traverse_transitions<true, false>(children, alphabet.fromInt(0), 0, max_child);
+    cost value = traverse_transitions<true, false>(children, children_length,
+                                                   alphabet.fromInt(0), 0, max_child);
     prog.finish();
 
     max_path.push_back(max_child);
@@ -306,9 +312,6 @@ struct FunctionalAutomaton {
 
     if(max_path_ptr)
       *max_path_ptr = max_path;
-
-    children.destroy();
-    next_children.destroy();
 
     return value;
   }

@@ -83,7 +83,6 @@ struct Options {
     for(unsigned i = 0; i < length; i++) {
       std::string test(args[i]);
       if(opt == test) {
-        std::cerr << opt << " = " << true << std::endl;
         return true;
       }
     }
@@ -102,6 +101,14 @@ struct Options {
       }
     }
     return std::string("");
+  }
+
+  bool check_opt(std::string opt) {
+    if(!has_opt(opt)) {
+      std::cerr << "Missing required option " << opt << std::endl;
+      return false;
+    }
+    return true;
   }
 };
 
@@ -143,4 +150,8 @@ Options parse_options(unsigned argc, const char** argv) {
   return opts;
 }
 
+bool has_required(Options& opts) {
+  return opts.check_opt("--synth-database")
+    && opts.check_opt("--test-database");
+}
 #endif

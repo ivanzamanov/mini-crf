@@ -1,14 +1,19 @@
 var _ = require('lodash'),
-    data = '';
+    data = '',
+    fs = require('fs');
 
-process.stdin.on('data', function(str) {
-  data += str.toString();
+debugger;
+data = fs.readFileSync(process.argv[2]);
+
+var obj = JSON.parse(data);
+
+var min = {value: obj[0].value };
+_.forEach(obj, function(entry) {
+    if(entry.value <= min.value)
+        min = entry;
 });
 
-process.stdin.on('end', function() {
-  var obj = JSON.parse(data);
-
-  _.forEach(obj, function(val) {
-    console.log(val.name + '=' + val.value);
-  });
+console.error("Min value: " + min.value);
+_.forEach(min.args, function(arg) {
+    console.log(arg.name + "=" + arg.value);
 });

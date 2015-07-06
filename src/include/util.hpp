@@ -29,59 +29,6 @@ namespace util {
   int parse_int(const std::string& str);
 };
 
-template<class T, class Constr>
-struct ArrayIteratorBase {
-  ArrayIteratorBase(T* data): data(data) { }
-  T* data;
-
-  T& operator*() { return *data; }
-
-  Constr increment() { return Constr(++data); }
-  Constr decrement() { return Constr(--data); }
-
-  bool operator==(const Constr& o) const { return data == o.data; }
-  bool operator!=(const Constr& o) const { return data != o.data; }
-};
-
-template<class T, bool reverse = false>
-struct ArrayIterator : public ArrayIteratorBase<T, ArrayIterator<T, reverse>> {
-  ArrayIterator(T* data): ArrayIteratorBase<T, ArrayIterator<T, reverse>>(data) { }
-
-  ArrayIterator<T, reverse> operator++() { if(reverse) return ArrayIteratorBase<T, ArrayIterator<T, reverse>>::decrement(); else return ArrayIteratorBase<T, ArrayIterator<T, reverse>>::increment(); }
-};
-
-template<class T>
-struct Array {
-  typedef ArrayIterator<T> iterator;
-  typedef ArrayIterator<T, true> reverse_iterator;
-  Array(): length(0), data(0) { }
-
-  unsigned length;
-  T* data;
-
-  T& operator[](int n) { return data[n]; };
-  const T& operator[](int n) const { return data[n]; };
-
-  iterator begin() { return ArrayIterator<T>(data); }
-  iterator end() { return ArrayIterator<T>(data + length); }
-
-  reverse_iterator rbegin() { return ArrayIterator<T, true>(data + length - 1); }
-  reverse_iterator rend() { return ArrayIterator<T, true>(data - 1); }
-
-  void init(unsigned length) {
-    destroy();
-    this->length = length;
-    data = new T[length];
-  }
-  
-  void destroy() {
-    if (data) {
-      delete[] data;
-      data = 0;
-    }
-  }
-};
-
 bool compare(std::string &, std::string&);
 bool compare(int& i1, int& i2);
 
@@ -91,28 +38,6 @@ bool compare(std::vector<T> &v1, std::vector<T> &v2) {
   for(unsigned i = 0; i < v1.size(); i++)
     same = same && v1[i] == v2[i];
   return same;
-}
-
-template<class T>
-bool compare(Array<T> a1, Array<T> a2) {
-  bool same = a1.length == a2.length;
-  for(unsigned i = 0; i < a1.length; i++)
-    same = same && compare(a1[i], a2[i]);
-  return same;
-}
-
-template<class T>
-Array<T> to_array(std::vector<T> &v) {
-  Array<T> result;
-  result.init(v.size());
-  auto it = v.begin();
-  int i = 0;
-  while(it != v.end()) {
-    result[i] = *it;
-    i++;
-    ++it;
-  }
-  return result;
 }
 
 struct BinaryWriter {

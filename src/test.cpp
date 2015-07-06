@@ -17,12 +17,11 @@ static const int CLASSES = 3;
 
 struct TestAlphabet : LabelAlphabet<TestObject> {
   TestAlphabet() {
-    labels.data = new TestObject[size()];
+    labels.resize(size());
     for(int i = 0; i < size(); i++) {
       labels[i].label = i % CLASSES;
       labels[i].id = i;
     }
-    labels.length = size();
     build_classes();
   }
 

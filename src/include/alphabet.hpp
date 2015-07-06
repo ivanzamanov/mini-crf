@@ -5,28 +5,23 @@
 
 template<class LabelObject>
 struct LabelAlphabet {
-  virtual ~LabelAlphabet() {
-    classes.destroy();
-    labels.destroy();
-  }
-
   static const int CLASS_COUNT = 256;
+
   typedef std::vector<int> LabelClass;
   typedef std::vector<LabelClass::const_iterator> Iterators;
   typedef LabelObject Label;
 
-  Array<LabelClass> classes;
-  Array<LabelObject> labels;
+  std::vector<LabelClass> classes;
+  std::vector<LabelObject> labels;
 
   void build_classes() {
-    const int length = CLASS_COUNT;
-    classes.init(length);
- 
-    for(unsigned i = 0; i < labels.length; i++)
+    classes.clear();
+    classes.resize(CLASS_COUNT);
+    for(unsigned i = 0; i < labels.size(); i++)
       classes[labels[i].label].push_back(i);
   }
 
-  unsigned size() const { return labels.length; }
+  unsigned size() const { return labels.size(); }
 
   bool allowedState(const LabelObject& l1, const LabelObject& l2) const {
     return l1.label == l2.label;

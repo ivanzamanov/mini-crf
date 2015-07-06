@@ -4,11 +4,10 @@
 #include<ios>
 #include<unistd.h>
 
-#include"options.hpp"
+#include"tool.hpp"
 #include"crf.hpp"
 #include"features.hpp"
 #include"training.hpp"
-#include"speech_synthesis.hpp"
 #include"threadpool.h"
 
 void print_usage() {
@@ -24,21 +23,11 @@ void print_usage() {
     std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
 }
 
-CRF crf;
-typename CRF::Alphabet test_alphabet;
-BaselineCRF baseline_crf;
-Corpus<PhonemeInstance, PhonemeInstance> synth_corpus;
-Corpus<PhonemeInstance, PhonemeInstance> test_corpus;
-
-StringLabelProvider synth_labels;
-StringLabelProvider test_labels;
-StringLabelProvider all_labels;
-
 std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
   std::string result(1, ' ');
   for(auto it = vec.begin(); it != vec.end(); it++) {
     result.push_back('|');
-    result.append(all_labels.convert((*it).label) );
+    result.append(labels_all.convert((*it).label) );
     result.push_back('|');
   }
   return result;
@@ -69,10 +58,10 @@ int resynthesize(Options& opts) {
   crf.lambda[2] = conf.get("trans-ctx", val);
 
   unsigned index = util::parse_int(opts.input);
-  std::vector<PhonemeInstance> input = test_corpus.input(index);
+  std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << test_alphabet.old_file_of(input[0].id) << std::endl;
+  std::cerr << "Input file: " << alphabet_test.old_file_of(input[0].id) << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
@@ -83,7 +72,7 @@ int resynthesize(Options& opts) {
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(crf.alphabet(), all_labels);
+  SynthPrinter sp(crf.alphabet(), labels_all);
   sp.print_synth(path, input);
   sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
@@ -121,55 +110,9 @@ int synthesize(Options& opts) {
     max_path(desired_phonemes, crf, crf.lambda, crf.mu, &path);
   }
 
-  SynthPrinter sp(crf.alphabet(), all_labels);
+  SynthPrinter sp(crf.alphabet(), labels_all);
   sp.print_synth(path, desired_phonemes);
   sp.print_textgrid(path, desired_phonemes, opts.text_grid);
-  return 0;
-}
-
-static const char DELIM = ',';
-void output_frame(std::ostream& out, const Frame& frame) {
-  // out << frame.pitch;
-  // for(unsigned i = 0; i < frame.mfcc.length(); i++)
-  //   out << DELIM << frame.mfcc[i];
-}
-
-void output_csv_columns(std::ostream& out) {
-  out << "phon_id" << DELIM << "label_id" << DELIM << "pitch";
-  for(unsigned i = 0; i < MFCC_N; i++)
-    out << DELIM << "mfcc" << i + 1;
-  out << '\n';
-}
-
-int query(const Options& opts) {
-  std::vector<PhonemeInstance> input_phonemes;
-  std::vector<int> int_ids;
-  if(opts.phon_id) {
-    std::vector<std::string> id_strings = split_string(opts.input, ',');
-    input_phonemes.resize(id_strings.size());
-    std::transform(id_strings.begin(), id_strings.end(), int_ids.begin(), util::parse_int);
-  } else if(opts.text_input) {
-    std::cerr << "Arbitrary text input supported only for --mode synth\n";
-  } else if(opts.sentence) {
-    int index = util::parse_int(opts.input);
-    input_phonemes = synth_corpus.input(index);
-  } else {
-    std::cerr << "No input type specified\n";
-    return 1;
-  }
-
-  std::ostream& out = std::cout;
-  out.precision(10);
-  out << "id,duration,pitch\n";
-  // output_csv_columns(out);
-  for(unsigned i = 0; i < input_phonemes.size(); i++) {
-    const PhonemeInstance& output = input_phonemes[i];
-    PhonemeInstance p = to_synth_input(output);
-    // out << p.label << DELIM << input_phonemes[i].id << DELIM;
-    out << p.label << DELIM << p.duration << DELIM << p.first().pitch;
-    output_frame(out, p.first());
-    out << '\n';
-  }
   return 0;
 }
 
@@ -189,9 +132,9 @@ void resynth_index(ResynthParams* params) {
   int index = params->index;
   std::ostream& outputStream = *(params->os);
   
-  std::vector<PhonemeInstance> input = test_corpus.input(index);
+  std::vector<PhonemeInstance> input = corpus_test.input(index);
   std::string sentence_string = to_text_string(input);
-  std::string input_file = test_alphabet.old_file_of(input[0].id);
+  std::string input_file = alphabet_test.old_file_of(input[0].id);
   std::vector<int> path;
 
   outputStream << input_file << std::endl;
@@ -200,7 +143,7 @@ void resynth_index(ResynthParams* params) {
 
   std::cerr << "Cost " << index << ": " << cost << std::endl;
 
-  SynthPrinter sp(crf.alphabet(), all_labels);
+  SynthPrinter sp(crf.alphabet(), labels_all);
   sp.print_synth(path, input, outputStream);
   //std::cerr << "Written output" << std::endl;
   *(params->flag) = 1;
@@ -217,7 +160,7 @@ int train(const Options&) {
   crf.lambda[1] = conf.get("trans-mfcc", val);
   crf.lambda[2] = conf.get("trans-ctx", val);
 
-  unsigned count = test_corpus.size();
+  unsigned count = corpus_test.size();
   std::stringstream streams[count];
   bool flags[count];
   //#pragma omp parallel for
@@ -258,10 +201,10 @@ int train(const Options&) {
 
 int baseline(const Options& opts) {
   unsigned index = util::parse_int(opts.input);
-  std::vector<PhonemeInstance> input = test_corpus.input(index);
+  std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << test_alphabet.old_file_of(input[0].id) << std::endl;
+  std::cerr << "Input file: " << alphabet_test.old_file_of(input[0].id) << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
@@ -271,45 +214,15 @@ int baseline(const Options& opts) {
 
   std::vector<PhonemeInstance> output = baseline_crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(baseline_crf.alphabet(), all_labels);
+  SynthPrinter sp(baseline_crf.alphabet(), labels_test);
   sp.print_synth(path, input);
   return 0;
 }
 
-void consolidate_labels(PhonemeAlphabet& alphabet, StringLabelProvider& original,
-                        StringLabelProvider& cons) {
-  auto it = alphabet.labels.begin();
-  while(it != alphabet.labels.end()) {
-    PhonemeInstance& p = *it;
-    std::string label = original.convert(p.label);
-    p.label = cons.convert(label);
-    p.ctx_left = (p.ctx_left == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_left));
-    p.ctx_right = (p.ctx_right == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_right));
-    ++it;
-  }
-}
-
-void build_data(const Options& opts) {
-  std::cerr << "Synth db: " << opts.synth_db << std::endl;
-  std::ifstream synth_db(opts.synth_db);
-  build_data_bin(synth_db, crf.alphabet(), synth_corpus, synth_labels);
-  if(opts.test_db != "") {
-    std::cerr << "Test db: " << opts.test_db << std::endl;
-    std::ifstream test_db(opts.test_db);
-    build_data_bin(test_db, test_alphabet, test_corpus, test_labels);
-  }
-
-  consolidate_labels(crf.alphabet(), synth_labels, all_labels);
-  consolidate_labels(test_alphabet, test_labels, all_labels);
-  baseline_crf.label_alphabet = crf.label_alphabet;
-}
-
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  if(argc < (int) MIN_OPTS) {
-    print_usage();
+  if(!init_tool(argc, argv))
     return 1;
-  }
 
   crf.mu[0] = 1000;
   crf.mu[1] = 1;
@@ -317,29 +230,8 @@ int main(int argc, const char** argv) {
   crf.lambda[1] = 1;
   crf.lambda[2] = 1;
 
-  for(int i = 0; i < argc; i++)
-    std::cerr << argv[i] << " ";
-
-  std::cerr << std::endl;
-
-  crf.label_alphabet = new PhonemeAlphabet();
   Options opts = parse_options(argc, argv);
-  build_data(opts);
-
-  pre_process(crf.alphabet());
-  pre_process(crf.alphabet(), synth_corpus);
-  
-  pre_process(test_alphabet);
-  pre_process(test_alphabet, test_corpus);
-  
-  crf.alphabet().optimize();
-  test_alphabet.optimize();
-
   switch(get_mode(opts.mode)) {
-  case Mode::SYNTH:
-    return synthesize(opts);
-  case Mode::QUERY:
-    return query(opts);
   case Mode::RESYNTH:
     return resynthesize(opts);
   case Mode::TRAIN:
@@ -350,6 +242,6 @@ int main(int argc, const char** argv) {
     std::cerr << "Unrecognized mode " << opts.mode << std::endl;
     return 1;
   }
-  //trainGradientDescent<CRF>(crf, synth_corpus);
+
   return 0;
 }

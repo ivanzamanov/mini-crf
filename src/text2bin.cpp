@@ -1,11 +1,10 @@
-#include"speech_synthesis.hpp"
-#include"features.hpp"
+#include"tool.hpp"
 
 static void print_usage(const char* main) {
   std::cout << "Usage: " << main << ": <input_file>|- <output_file> [<function_value_cache>]\n";
 }
 
-Corpus<PhonemeInstance, PhonemeInstance> corpus;
+Corpus corpus;
 PhonemeAlphabet alphabet;
 StringLabelProvider provider;
 
@@ -14,13 +13,13 @@ void transfer_data(std::istream& input, std::ofstream *output) {
   BinaryWriter w(output);
 
   std::cout << "Writing data" << std::endl;
-  w << alphabet.size();
+  w << (unsigned) alphabet.size();
   for(unsigned i = 0; i < alphabet.size(); i++)
     w << alphabet.fromInt(i) << alphabet.file_indices[i];
   std::cout << "Written phonemes, " << w.bytes << " bytes\n";
 
-  w << alphabet.files.length;
-  for(unsigned i = 0; i < alphabet.files.length; i++) {
+  w << (unsigned) alphabet.files.size();
+  for(unsigned i = 0; i < alphabet.files.size(); i++) {
     std::string &file = alphabet.files[i];
     unsigned len = file.length();
     w << len;
@@ -59,7 +58,7 @@ void transfer_data(std::istream& input, std::ofstream *output) {
   std::cout << "Written " << w.bytes << " bytes" << std::endl;
 }
 
-void compare_corpus(Corpus<PhonemeInstance, PhonemeInstance>& c1, Corpus<PhonemeInstance, PhonemeInstance>& c2) {
+void compare_corpus(Corpus& c1, Corpus& c2) {
   std::cout << "Comparing corpuses\n";
   bool same = c1.size() == c2.size();
   for(unsigned i = 0; i < c1.size(); i++) {
@@ -97,7 +96,7 @@ void validate_data(std::ifstream& input) {
   std::cout << "Alphabet size: " << alphabet.size() << std::endl;
   std::cout << "Corpus size: " << corpus.size() << std::endl;
   
-  Corpus<PhonemeInstance, PhonemeInstance> n_corpus;
+  Corpus n_corpus;
   PhonemeAlphabet n_alphabet;
   StringLabelProvider n_provider;
 
