@@ -42,13 +42,13 @@ struct FeatureValuesKey {
 
 struct FeatureValuesCache {
   FeatureValuesKey key;
-  Matrix<FeatureValues> *values;
+  Matrix<cost> *values;
 
   void init(int srcSize, int destSize) {
-    values = new Matrix<FeatureValues>(srcSize, destSize);
+    values = new Matrix<cost>(srcSize, destSize);
   }
 
-  FeatureValues& operator()(unsigned srcId, unsigned destId) {
+  cost& operator()(unsigned srcId, unsigned destId) {
     return (*values)(srcId, destId);
   }
 };

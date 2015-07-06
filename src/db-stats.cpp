@@ -25,7 +25,22 @@ void print_max_sent(tool::Corpus corpus) {
   std::cout << "Longest sentence: " << max << std::endl;
 }
 
-void print_transition_counts(PhonemeAlphabet alphabet, Corpus corpus) {
+void populate_cache(FeatureValuesCache& cache,
+                    vector<PhoneticLabel> c1, vector<PhoneticLabel> c2,
+                    PhonemeAlphabet& alphabet) {
+  std::vector<PhonemeInstance> dummy;
+  unsigned i = 0, j = 0;
+  for(id_t id1 : c1) {
+    for(id_t id2: c2) {
+      cache(i, j) = MFCCDist( alphabet.fromInt(id1), alphabet.fromInt(id2), 0, dummy);
+      j++;
+    }
+    i++;
+    j = 0;
+  }
+}
+
+void print_transition_counts(PhonemeAlphabet& alphabet, Corpus& corpus) {
   unsigned result = 0;
   FeatureValuesCacheProvider prov;
   for(unsigned s = 0; s < corpus.size(); s++) {
@@ -38,7 +53,8 @@ void print_transition_counts(PhonemeAlphabet alphabet, Corpus corpus) {
       if(cache.values == 0) {
         result += class1.size() * class2.size();
         std::cout << "So far: " << result << std::endl;
-        cache.init(1, 1);
+        cache.init(class1.size(), class2.size());
+        populate_cache(cache, class1, class2, alphabet);
       }
     }
   }

@@ -17,7 +17,7 @@ struct LabelAlphabet {
   void build_classes() {
     classes.clear();
     classes.resize(CLASS_COUNT);
-    for(unsigned i = 0; i < labels.size(); i++)
+    for(id_t i = 0; i < labels.size(); i++)
       classes[labels[i].label].push_back(i);
   }
 

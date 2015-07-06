@@ -33,15 +33,6 @@ std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
   return result;
 }
 
-std::string to_id_string(const std::vector<PhonemeInstance>& vec) {
-  std::stringstream result;
-  auto it = vec.begin();
-  result << (*it).id;
-  for(; it != vec.end(); it++)
-    result << ',' << (*it).id;
-  return result.str();
-}
-
 stime_t get_total_duration(std::vector<PhonemeInstance> input) {
   stime_t result = 0;
   for(auto p : input) result += p.duration;
@@ -145,9 +136,7 @@ void resynth_index(ResynthParams* params) {
 
   SynthPrinter sp(crf.alphabet(), labels_all);
   sp.print_synth(path, input, outputStream);
-  //std::cerr << "Written output" << std::endl;
   *(params->flag) = 1;
-  //std::cerr << "done" << std::endl;
 }
 
 int train(const Options&) {
@@ -174,7 +163,6 @@ int train(const Options&) {
   ResynthParams params[count];
   for(unsigned i = 0; i < count; i++) {
     flags[i] = 0;
-    //ResynthParams* params = new ResynthParams(i, streams+i, &flags[i]);
     params[i].init(i, &streams[i], &flags[i]);
     Task* t = new ParamTask<ResynthParams>(&resynth_index, &params[i]);
     tp.add_task(t);
@@ -221,8 +209,10 @@ int baseline(const Options& opts) {
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  if(!init_tool(argc, argv))
+  if(!init_tool(argc, argv)) {
+    print_usage();
     return 1;
+  }
 
   crf.mu[0] = 1000;
   crf.mu[1] = 1;
