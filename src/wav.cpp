@@ -1,5 +1,6 @@
 #include<iostream>
 #include<fstream>
+#include<cmath>
 
 #include"wav.hpp"
 
@@ -33,21 +34,33 @@ void concatWavs(int, char** argv) {
   Wave wav2(str2);
   printWav(wav2, argv[2]);
 
-  float cfLeft = 0.5, cfRight = 0.5;
+  float cfLeft = 0.001, cfRight = 0.001;
 
   unsigned left = wav1.at_time( wav1.duration() - cfLeft);
   unsigned right = wav2.at_time( cfRight );
   WaveBuilder wb(wav1.h);
 
   wb.append(wav1, 0, left);
+  int bufLen = std::max(wav1.length() - left, right);
+  // Assume 16 bits per sample...
+  short buf[bufLen];
+  std::cout << bufLen << " smoothing samples" << std::endl;
+  for(int i = 1; i <= bufLen; i++) {
+    float t = (float) i / bufLen;
 
-  char bufLen = wav1.length() - left + right;
-  char buf[bufLen];
-  for(unsigned i = 0; i < bufLen; i++) {
-    buf[i] = ((float) bufLen/i) * wav1[left + i] + (1 - ((float) bufLen/i)) * wav2[i];
+    short v1 = (1 - t) * wav1.get(left + i);
+    short v2 = t * wav2.get(i);
+    buf[i - 1] = v1 + v2;
   }
-  
-  wb.append(wav2, right, wav2.lenght() - right);
+
+  wb.append((unsigned char*) buf, bufLen * sizeof(buf[0]));
+
+  wb.append(wav2, right, wav2.length());
+
+  Wave output = wb.build();
+  printWav(output, argv[3]);
+  std::ofstream result(argv[3]);
+  output.write(result);
 }
 
 int main(int argc, char** argv) {

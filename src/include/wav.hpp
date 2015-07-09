@@ -24,19 +24,30 @@ struct WaveHeader {
 struct Wave {
   Wave(): data(0) { }
   Wave(std::istream& istr) {
+    read(istr);
+  }
+
+  void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
     data = new unsigned char[h.samplesBytes];
     istr.read((char*) data, h.samplesBytes);
+  }
 
-    bytesPerSample = (h.bitsPerSample / 8);
+  void write(std::ostream& ostr) {
+    ostr.write((char*) &h, sizeof(h));
+    ostr.write((char*) data, h.samplesBytes);
+  }
+
+  unsigned bytesPerSample() const {
+    return h.bitsPerSample / 8;
   }
 
   unsigned length() const {
-    return h.samplesBytes / bytesPerSample;
+    return h.samplesBytes / bytesPerSample();
   }
 
   float duration() const {
-    return (float) length() / ((float) h.sampleRate);
+    return (float) length() / h.sampleRate;
   }
 
   // The sample index at the given time
@@ -44,31 +55,44 @@ struct Wave {
     return time * h.sampleRate;
   }
 
-  unsigned char& operator[](int i) {
-    return data[i / bytesPerSample];
+  short get(int i) const {
+    if(i < 0 || i >= (int) length())
+      return 0;
+    return ((short*) data)[i];
+  }
+
+  short& operator[](int i) {
+    return ((short*) data)[i];
   }
 
   WaveHeader h;
-  unsigned bytesPerSample;
   unsigned char* data;
 };
 
 struct WaveBuilder {
   WaveBuilder(WaveHeader h): h(h) {
     data = 0;
-    length = 0;
+    this->h.samplesBytes = 0;
   }
   WaveHeader h;
   unsigned char* data;
-  int length;
 
   void append(Wave& w, int offset, int count) {
-    append(w.data + offset, count);
+    append(w.data + offset, count * w.h.bitsPerSample / 8);
   }
 
   void append(unsigned char* data, int count) {
-    this->data = (unsigned char*) realloc(data, length + count);
-    memcpy(data + length, data, count);
+    this->data = (unsigned char*) realloc(this->data, h.samplesBytes + count);
+    memcpy(this->data + h.samplesBytes, data, count);
+
+    h.samplesBytes += count;
+  }
+
+  Wave build() {
+    Wave result;
+    result.h = h;
+    result.data = this->data;
+    return result;
   }
 };
 
