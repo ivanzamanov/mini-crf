@@ -126,7 +126,7 @@ struct WaveBuilder {
   unsigned char* data;
 
   void append(WaveData& w) {
-    append((unsigned char*) (w.data + w.offset), w.length);
+    append((unsigned char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
   }
   
   void append(Wave& w, int offset, int count) {

@@ -3,10 +3,10 @@
 template<class Arr>
 static unsigned from_chars(Arr arr) {
   unsigned result = 0;
-  result = arr[0];
-  result &= (result << 8) & arr[1];
-  result &= (result << 8) & arr[2];
-  result &= (result << 8) & arr[3];
+  result = arr[3];
+  result = (result << 8) | arr[2];
+  result = (result << 8) | arr[1];
+  result = (result << 8) | arr[0];
   return result;
 }
 

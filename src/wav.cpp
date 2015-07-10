@@ -4,12 +4,27 @@
 
 #include"wav.hpp"
 
+#define PRINT(X) std::cout << #X": " << wav.h.X << std::endl
 void printWav(Wave& wav, char* file) {
   std::cout << "File: " << file << std::endl;
-  std::cout << "Byte rate: " << wav.h.byteRate << std::endl;
+  /*  std::cout << "Byte rate: " << wav.h.byteRate << std::endl;
   std::cout << "Sample rate: " << wav.h.sampleRate << std::endl;
   std::cout << "Bits per sample: " << wav.h.bitsPerSample << std::endl;
-  std::cout << "Duration (s): " << wav.duration() << std::endl;
+  std::cout << "Duration (s): " << wav.duration() << std::endl;*/
+  PRINT(chunkId);
+  PRINT(chunkSize);
+  PRINT(format);
+  PRINT(subchunkId);
+  PRINT(subchunk1Size);
+  PRINT(audioFormat);
+  PRINT(channels);
+  PRINT(sampleRate);
+  PRINT(byteRate);
+  PRINT(blockAlign);
+  PRINT(bitsPerSample);
+  PRINT(subchunk2Id);
+  PRINT(samplesBytes);
+  std::cout << "Samples: " << wav.h.samplesBytes / (wav.h.bitsPerSample / 8) << std::endl;
 }
 
 void printWavs(int argc, char** argv) {
@@ -64,6 +79,6 @@ void concatWavs(int, char** argv) {
 }
 
 int main(int argc, char** argv) {
-  //printWavs(argc, argv);
-  concatWavs(argc, argv);
+  printWavs(argc, argv);
+  //concatWavs(argc, argv);
 }
