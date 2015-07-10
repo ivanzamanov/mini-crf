@@ -28,7 +28,10 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream&);
 BinaryWriter& operator<<(BinaryWriter&, const PhonemeInstance&);
 BinaryReader& operator>>(BinaryReader&, PhonemeInstance&);
 
-PhonemeInstance* parse_file(std::istream&, int&, StringLabelProvider&);
+BinaryWriter& operator<<(BinaryWriter&, const FileData&);
+BinaryReader& operator>>(BinaryReader&, FileData&);
+
+std::vector<PhonemeInstance> parse_file(FileData&, StringLabelProvider&);
 
 bool compare(Frame&, Frame&);
 bool compare(PhonemeInstance&, PhonemeInstance&);

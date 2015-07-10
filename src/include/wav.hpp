@@ -4,7 +4,45 @@
 #include<cstdlib>
 #include<cstring>
 #include<iostream>
+#include<fstream>
+#include<vector>
 
+const unsigned DEFAULT_SAMPLE_RATE = 24000;
+
+// Does not own data
+struct WaveData {
+  WaveData()
+    : data(0), offset(-1), length(-1)
+  { }
+  WaveData(short* data, int offset, int length)
+    : data(data), offset(offset), length(length)
+  { }
+
+  short* data;
+  int offset, length;
+
+  WaveData range(int offset, int length) {
+    return WaveData(data, this->offset + offset, length);
+  }
+
+  short* begin() const { return data; }
+  short* end() const { return data + length; }
+  unsigned size() const { return length; }
+
+  static WaveData copy(WaveData& origin) {
+    short* newData = new short[origin.length];
+    memcpy(newData, origin.data, origin.length * sizeof(data[0]));
+    return WaveData(newData, 0, origin.length);
+  }
+};
+
+struct SpeechWaveData : WaveData {
+  SpeechWaveData(WaveData& data): WaveData::WaveData(data) { }
+  // Sample indexes that are pitch marks
+  std::vector<int> pitch_marks;
+};
+
+// Owns data
 struct WaveHeader {
   unsigned chunkId,
     chunkSize,
@@ -23,8 +61,10 @@ struct WaveHeader {
 
 struct Wave {
   Wave(): data(0) { }
-  Wave(std::istream& istr) {
-    read(istr);
+  Wave(std::istream& istr) { read(istr); }
+  ~Wave() {
+    if(data)
+      delete data;
   }
 
   WaveHeader h;
@@ -36,7 +76,7 @@ struct Wave {
     istr.read((char*) data, h.samplesBytes);
   }
 
-  void write(std::ostream& ostr) {
+  void write(std::ofstream& ostr) {
     ostr.write((char*) &h, sizeof(h));
     ostr.write((char*) data, h.samplesBytes);
   }
@@ -69,28 +109,12 @@ struct Wave {
   short& operator[](int i) const {
     return ((short*) data)[i];
   }
-};
 
-struct WaveData {
-  WaveData(short* data, int offset, int length)
-    : data(data), offset(offset), length(length)
-  { }
-
-  short* data;
-  int offset, length;
-
-  WaveData range(int offset, int length) {
-    return WaveData(data, this->offset + offset, length);
+  WaveData extract(float start, float end) {
+    unsigned startSample = at_time(start),
+      endSample = at_time(end);
+    return WaveData((short*) data, startSample, (endSample - startSample));
   }
-
-  WaveData copy() {
-    short* newData = new short[length];
-    memcpy(newData, data, length * sizeof(data[0]));
-    return WaveData(newData, 0, length);
-  }
-
-  short* begin() const { return data; }
-  short* end() const { return data + length; }
 };
 
 struct WaveBuilder {
@@ -101,6 +125,10 @@ struct WaveBuilder {
   WaveHeader h;
   unsigned char* data;
 
+  void append(WaveData& w) {
+    append((unsigned char*) (w.data + w.offset), w.length);
+  }
+  
   void append(Wave& w, int offset, int count) {
     append(w.data + offset, count * w.h.bitsPerSample / 8);
   }
@@ -110,6 +138,7 @@ struct WaveBuilder {
     memcpy(this->data + h.samplesBytes, data, count);
 
     h.samplesBytes += count;
+    h.chunkSize += count;
   }
 
   Wave build() {

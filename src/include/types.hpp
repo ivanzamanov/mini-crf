@@ -72,6 +72,21 @@ struct PhonemeInstance {
   const Frame& last() const { return frames[size() - 1]; }
 };
 
+struct FileData {
+  static FileData of(std::string& path) {
+    FileData result;
+    result.file = path;
+    return result;
+  }
+
+  std::vector<float> pitch_marks;
+  std::string file;
+
+  bool operator==(const FileData& o) const {
+    return pitch_marks == o.pitch_marks && file == o.file;
+  }
+};
+
 struct StringLabelProvider {
   std::vector<std::string> labels;
 

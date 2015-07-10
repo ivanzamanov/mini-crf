@@ -28,10 +28,7 @@ namespace tool {
     crf.label_alphabet = &alphabet_synth;
     build_data(opts);
 
-    pre_process(alphabet_synth);
     pre_process(alphabet_synth, corpus_synth);
-  
-    pre_process(alphabet_test);
     pre_process(alphabet_test, corpus_test);
   
     alphabet_synth.optimize();

@@ -7,8 +7,8 @@
 #include"tool.hpp"
 #include"crf.hpp"
 #include"features.hpp"
-#include"training.hpp"
 #include"threadpool.h"
+#include"speech_mod.hpp"
 
 void print_usage() {
     std::cerr << "Usage: <cmd> <options>\n";
@@ -69,6 +69,11 @@ int resynthesize(Options& opts) {
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
+
+  std::ofstream wav_output("resynth.wav");
+  SpeechWaveSynthesis(output, input, crf.alphabet())
+    .get_resynthesis()
+    .write(wav_output);
   return 0;
 }
 

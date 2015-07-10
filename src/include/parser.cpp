@@ -41,12 +41,15 @@ std::string string_value(std::istream& stream, const std::string& check) {
   return result;
 }
 
-PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider& label_provider) {
+std::vector<PhonemeInstance> parse_file(FileData& fileData, StringLabelProvider& label_provider) {
+  std::ifstream stream(fileData.file);
   section(stream, "[Config]"); // [Config]
   value<stime_t>(stream, "timeStep"); // timeStep
   value<int>(stream, "mfcc");
-  size = value<int>(stream, "intervals");
-  PhonemeInstance* result = new PhonemeInstance[size];
+  int size = value<int>(stream, "intervals");
+
+  std::vector<PhonemeInstance> result;
+  result.resize(size);
 
   PhoneticLabel last = INVALID_LABEL;
   for (int i = 0; i < size; i++) {
@@ -66,7 +69,7 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
     //result[i].frames.length = frames;
     if (frames < 0)
       std::cerr << "Error at " << stream.tellg() << std::endl;
-    //result[i].frames.data = new Frame[frames];
+    //result[i].frames = new Frame[frames];
 
     for(int frame = 0; frame < frames; frame++) {
       int c;
@@ -80,6 +83,10 @@ PhonemeInstance* parse_file(std::istream& stream, int& size, StringLabelProvider
     }
   }
 
+  size = value<int>(stream, "pulses");
+  fileData.pitch_marks.resize(size);
+  for(auto i = 0; i < size; i++)
+    fileData.pitch_marks[i] = value<float>(stream, "p");
   return result;
 }
 
@@ -117,6 +124,17 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
   return str;
 }
 
+BinaryWriter& operator<<(BinaryWriter& str, const FileData& data) {
+  str << data.file;
+  str << data.pitch_marks;
+  return str;
+}
+
+BinaryReader& operator>>(BinaryReader& str, FileData& data) {
+  str >> data.file;
+  str >> data.pitch_marks;
+  return str;
+}
 bool compare(FrameArray& a1, FrameArray& a2) {
   bool same = a1.size() == a2.size();
   for(unsigned i = 0; i < a1.size(); i++)
