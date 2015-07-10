@@ -13,19 +13,11 @@ void transfer_data(std::istream& input, std::ofstream *output) {
   BinaryWriter w(output);
 
   std::cout << "Writing data" << std::endl;
-  w << (unsigned) alphabet.size();
-  for(unsigned i = 0; i < alphabet.size(); i++)
-    w << alphabet.fromInt(i) << alphabet.file_indices[i];
+  w << alphabet.labels;
+  w << alphabet.file_indices;
   std::cout << "Written phonemes, " << w.bytes << " bytes\n";
 
-  w << (unsigned) alphabet.files.size();
-  for(unsigned i = 0; i < alphabet.files.size(); i++) {
-    std::string &file = alphabet.files[i];
-    unsigned len = file.length();
-    w << len;
-    for(unsigned j = 0; j < len; j++)
-      w << file[j];
-  }
+  w << alphabet.files;
   std::cout << "Written file names, " << w.bytes << " bytes\n";
 
   unsigned len;
@@ -45,16 +37,7 @@ void transfer_data(std::istream& input, std::ofstream *output) {
       w << labels[j].id;
   }
 
-  len = provider.labels.size();
-  w << len;
-  for(unsigned i = 0; i < len; i++) {
-    std::string &label = provider.labels[i];
-    unsigned label_len = label.length();
-    w << label_len;
-    for(unsigned j = 0; j < label_len; j++)
-      w << label[j];
-  }
-
+  w << provider.labels;
   std::cout << "Written " << w.bytes << " bytes" << std::endl;
 }
 

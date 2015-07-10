@@ -233,31 +233,16 @@ namespace tool {
 
   void build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus& corpus, StringLabelProvider& label_provider) {
     BinaryReader r(&input);
-    unsigned alphabet_size;
-    r >> alphabet_size;
 
-    alphabet.labels.resize(alphabet_size);
-    alphabet.file_indices.resize(alphabet_size);
-    for(unsigned i = 0; i < alphabet.size(); i++)
-      r >> alphabet.labels[i] >> alphabet.file_indices[i];
+    r >> alphabet.labels;
+    r >> alphabet.file_indices;
 
-    DEBUG(std::cerr << "Read " << alphabet.size() << " phonemes, " << r.bytes << " bytes\n";)
-
-      unsigned count;
-    r >> count;
-    alphabet.files.resize(count);
-
+    DEBUG(std::cerr << "Read " << alphabet.size() << " phonemes, " << r.bytes << " bytes\n");
+    r >> alphabet.files;
     unsigned length;
-    for(unsigned i = 0; i < count; i++) {
-      r >> length;
-      std::string str(length, ' ');
-      for(unsigned j = 0; j < length; j++)
-        r >> str[j];
-      alphabet.files[i] = str;
-    }
-    DEBUG(std::cerr << "Read " << alphabet.files.length << " file names, " << r.bytes << " bytes" << std::endl;)
+    DEBUG(std::cerr << "Read " << alphabet.files.length << " file names, " << r.bytes << " bytes" << std::endl);
 
-      unsigned corpus_size;
+    unsigned corpus_size;
     r >> corpus_size;
     for(unsigned i = 0; i < corpus_size; i++) {
       r >> length;
@@ -278,21 +263,13 @@ namespace tool {
       corpus.add(input, labels);
     }
 
-    r >> count;
-    for(unsigned i = 0; i < count; i++) {
-      r >> length;
-      std::string str(length, ' ');
-      for(unsigned j = 0; j < length; j++)
-        r >> str[j];
-      label_provider.labels.push_back(str);
-    }
+    r >> label_provider.labels;
+    DEBUG(std::cerr << "Read corpus " << corpus.size() << " instances, " << r.bytes << " bytes" << std::endl);
 
-    DEBUG(std::cerr << "Read corpus " << corpus.size() << " instances, " << r.bytes << " bytes" << std::endl;)
+    alphabet.build_classes();
 
-      alphabet.build_classes();
-
-    DEBUG(std::cerr << "Read " << r.bytes << " bytes" << std::endl;)
-      }
+    DEBUG(std::cerr << "Read " << r.bytes << " bytes" << std::endl;);
+  }
 
   void pre_process(PhonemeAlphabet& alphabet) {
     // phonemes without pitch - assign that of the nearest neightbor with pitch

@@ -155,8 +155,8 @@ for i to semiPhonCount
      endFrames[i] = startFrames[i] + 1
   endif
 
-  semiPhonStart[i] = Get time from frame number... startFrames[i]
-  semiPhonEnd[i] = Get time from frame number... endFrames[i]
+  #semiPhonStart[i] = Get time from frame number... startFrames[i]
+  #semiPhonEnd[i] = Get time from frame number... endFrames[i]
 endfor
 
 for i to semiPhonCount - 1
@@ -193,6 +193,14 @@ for i to semiPhonCount
     appendInfoLine: i, ": ", startPoint_, " ", endPoint_
     exitScript: "Fail"
   endif
+endfor
+
+selectObject: pointProcess
+pointsCount = Get number of points
+appendFileLine: outputFile$, "pulses=", pointsCount
+for i to pointsCount
+  value = Get time from index... i
+  appendFileLine: outputFile$, "p=", value
 endfor
 
 # And clean up a bit

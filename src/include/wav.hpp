@@ -27,6 +27,9 @@ struct Wave {
     read(istr);
   }
 
+  WaveHeader h;
+  unsigned char* data;
+
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
     data = new unsigned char[h.samplesBytes];
@@ -51,22 +54,43 @@ struct Wave {
   }
 
   // The sample index at the given time
-  unsigned at_time(float time) {
+  unsigned at_time(float time) const {
     return time * h.sampleRate;
   }
 
+  // Checked access to sample
   short get(int i) const {
     if(i < 0 || i >= (int) length())
       return 0;
     return ((short*) data)[i];
   }
 
-  short& operator[](int i) {
+  // Unchecked access to sample
+  short& operator[](int i) const {
     return ((short*) data)[i];
   }
+};
 
-  WaveHeader h;
-  unsigned char* data;
+struct WaveData {
+  WaveData(short* data, int offset, int length)
+    : data(data), offset(offset), length(length)
+  { }
+
+  short* data;
+  int offset, length;
+
+  WaveData range(int offset, int length) {
+    return WaveData(data, this->offset + offset, length);
+  }
+
+  WaveData copy() {
+    short* newData = new short[length];
+    memcpy(newData, data, length * sizeof(data[0]));
+    return WaveData(newData, 0, length);
+  }
+
+  short* begin() const { return data; }
+  short* end() const { return data + length; }
 };
 
 struct WaveBuilder {

@@ -45,6 +45,18 @@ struct BinaryWriter {
   std::ostream* const s;
   unsigned bytes;
 
+  BinaryWriter& w(const std::string& val) { return wVec(val); }
+  template<class T>
+  BinaryWriter& w(const std::vector<T>& val) { return wVec(val); }
+
+  template<class T>
+  BinaryWriter& wVec(T& val) {
+    (*this) << (unsigned) val.size();
+    for(auto& el : val)
+      (*this) << el;
+    return (*this);
+  }
+
   template<class T>
   BinaryWriter& w(const T& val) {
     unsigned size = sizeof(val);
@@ -63,6 +75,20 @@ struct BinaryReader {
   BinaryReader(std::istream* str): s(str), bytes(0) { }
   std::istream* const s;
   unsigned bytes;
+
+  BinaryReader& r(std::string& val) { return rVec(val); }
+  template<class T>
+  BinaryReader& r(std::vector<T>& val) { return rVec(val); }
+
+  template<class T>
+  BinaryReader& rVec(T& val) {
+    unsigned len;
+    (*this) >> len;
+    val.resize(len);
+    for(auto& el : val)
+      (*this) >> el;
+    return (*this);
+  }
 
   template<class T>
   BinaryReader& r(T& val) {
