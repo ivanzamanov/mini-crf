@@ -27,6 +27,18 @@ namespace util {
   float sum(float x, float y);
 
   int parse_int(const std::string& str);
+
+  template<class T, class Func>
+  void each(T* ptr, int length, Func f) {
+    for(int i = 0; i < length; i++)
+      f(ptr[i]);
+  }
+
+  template<class T, class Func>
+  void each(std::vector<T> &v, Func f) {
+    for(auto& el : v)
+      f(el);
+  }
 };
 
 bool compare(std::string &, std::string&);

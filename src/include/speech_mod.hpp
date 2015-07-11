@@ -20,6 +20,8 @@ struct SpeechWaveSynthesis {
   PhonemeAlphabet& origin;
 
   Wave get_resynthesis();
+private:
+  void do_resynthesis(short*, SpeechWaveData*);
 };
 
 #endif
