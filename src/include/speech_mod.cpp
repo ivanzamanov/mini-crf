@@ -37,11 +37,6 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
   }
 }
 
-static void do_copy(short* dest, WaveData d) {
-  for(int i = 0; i < d.length; i++)
-    dest[i] = d.data[d.offset + i];
-}
-
 void gen_window(float* data, int size) {
   transform(data, size, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * i / size)); });
 }
@@ -66,6 +61,18 @@ vector<STSignal> extractSTSignals(const SpeechWaveData& swd) {
 
     result.push_back(sig);
   }
+
+  // Edge case of having too little pitch marks... bad case!
+  if(swd.marks.size() < 3) {
+    int stLength = swd.length;
+    WaveData d(swd.data, swd.marks[0], swd.marks[1]);
+    d = WaveData::copy(d);
+    float window[stLength]; gen_window(window, stLength);
+    transform(d.data, stLength, [&](int i, short& v) { return v * window[i]; });
+    STSignal sig(d);
+    sig.marks.push_back(0);
+    result.push_back(sig);
+  }
   return result;
 }
 
@@ -83,11 +90,23 @@ vector<int> create_plan(vector<STSignal>& stSignals, const PhonemeInstance& tgt)
   return plan;
 }
 
-void overlap_add(short* dest, int& offset, STSignal& cst, STSignal& pst) {
-  
+void overlap_add(short* dest, int& offset, int max_offset, STSignal& st, PhonemeInstance& tgt) {
+  float targetPitch = (tgt.pitch_contour[0] + tgt.pitch_contour[1]) / 2;
+  int newLength = (1/targetPitch) * DEFAULT_SAMPLE_RATE;
+  int halfLength = st.length / 2;
+  int index = std::min(newLength, halfLength);
+
+  while(index <= halfLength && offset < max_offset) {
+    // Actual overlap-add here
+    // How to normalize energy, i.e account for energy distortion
+    // caused by the -add
+    dest[offset + index] += st[index];
+    index++;
+  }
+  offset += halfLength;
 }
 
-void SpeechWaveSynthesis::do_resynthesis(short* dest, SpeechWaveData* pieces) {
+void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) {
   int destOffset = 0;
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
@@ -99,9 +118,12 @@ void SpeechWaveSynthesis::do_resynthesis(short* dest, SpeechWaveData* pieces) {
     vector<int> plan = create_plan(stSignals, tgt);
 
     // Now recombine
-    do_copy(dest, stSignals[0]);
-    for(unsigned j = 1; j < stSignals.size(); j++)
-      overlap_add(dest, destOffset, stSignals[j], stSignals[j - 1]);
+    for(unsigned j = 0; j < stSignals.size(); j++) {
+      while(plan[j] >= 0) {
+        overlap_add(dest.data, destOffset, dest.length, stSignals[j], tgt);
+        plan[j]--;
+      }
+    }
   }
 }
 
@@ -133,13 +155,9 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   float completeDuration = 0;
   each(target, [&](PhonemeInstance& p) { completeDuration += p.duration; });
   // preallocate the complete wave result
-  short* result = WaveData::allocate(completeDuration).data;
+  WaveData result = WaveData::allocate(completeDuration);
   do_resynthesis(result, waveData);
 
-  each(waveData, N,
-       [&](SpeechWaveData& swd) {
-         wb.append(swd);
-       });
-
+  wb.append(result);
   return wb.build();
 }

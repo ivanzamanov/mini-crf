@@ -21,7 +21,7 @@ struct SpeechWaveSynthesis {
 
   Wave get_resynthesis();
 private:
-  void do_resynthesis(short*, SpeechWaveData*);
+  void do_resynthesis(WaveData, SpeechWaveData*);
 };
 
 #endif
