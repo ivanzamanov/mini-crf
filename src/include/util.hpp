@@ -35,9 +35,28 @@ namespace util {
   }
 
   template<class T, class Func>
+  void each2(T* ptr, int length, Func f) {
+    for(int i = 0; i < length; i++)
+      f(i, ptr[i]);
+  }
+
+  template<class T, class Func>
+  void transform(T* ptr, int length, Func f) {
+    for(int i = 0; i < length; i++)
+      ptr[i] = f(i, ptr[i]);
+  }
+
+  template<class T, class Func>
   void each(std::vector<T> &v, Func f) {
     for(auto& el : v)
       f(el);
+  }
+
+  template<class T, class Func>
+  void each2(std::vector<T> &v, Func f) {
+    int i = 0;
+    for(auto& el : v)
+      f(i++, el);
   }
 };
 

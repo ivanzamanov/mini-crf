@@ -28,6 +28,7 @@ struct WaveData {
   float duration() const { return length / DEFAULT_SAMPLE_RATE; }
   short* begin() const { return data; }
   short* end() const { return data + length; }
+  short& operator[](int i) const { return data[offset + i]; }
   unsigned size() const { return length; }
 
   static WaveData copy(WaveData& origin) {
@@ -45,16 +46,16 @@ struct WaveData {
 
 struct SpeechWaveData : WaveData {
   SpeechWaveData(): WaveData::WaveData() { }
-  SpeechWaveData(WaveData& data): WaveData::WaveData(data) { }
+  SpeechWaveData(WaveData data): WaveData::WaveData(data) { }
   // Sample indexes that are pitch marks
   std::vector<int> marks;
 
   // simply the first mark
   int mark() const { return marks[0]; }
-  float localDuration(int right) const { return (marks[right] - marks[right - 1]) / DEFAULT_SAMPLE_RATE; }
-  float localPitch(int right) const { return 1 / localDuration(right); }
+  float localDuration() const { return ((float)length / 2) / DEFAULT_SAMPLE_RATE; }
+  float localPitch() const { return 1 / localDuration(); }
 
-  const SpeechWaveData& operator=(const WaveData& wd) const {
+  const SpeechWaveData& copy_from(const WaveData& wd) const {
     *( (WaveData*) this) = wd;
     return *this;
   }
