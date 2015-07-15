@@ -40,6 +40,7 @@ struct WaveData {
   static WaveData allocate(float duration) {
     int samples = duration * DEFAULT_SAMPLE_RATE;
     short* data = new short[samples];
+    memset(data, 0, samples * sizeof(data[0]));
     return WaveData(data, 0, samples);
   }
 };

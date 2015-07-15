@@ -195,13 +195,20 @@ for i to semiPhonCount
   endif
 endfor
 
-selectObject: pointProcess
+# Extract pulses to be used to determine cut points
+# Ok, sooo I need to know which parts are voiced/unvoiced, hence I can't use the
+# 'forced' version above
+selectObject: soundObj
+pitch = To Pitch... timeStep 75 600
+pointProcess = To PointProcess
 pointsCount = Get number of points
 appendFileLine: outputFile$, "pulses=", pointsCount
 for i to pointsCount
   value = Get time from index... i
   appendFileLine: outputFile$, "p=", value
 endfor
+value = Get total duration
+appendFileLine: outputFile$, "p=", value
 
 # And clean up a bit
 selectObject: mfccObj

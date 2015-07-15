@@ -62,10 +62,11 @@ vector<STSignal> extractSTSignals(const SpeechWaveData& swd) {
     result.push_back(sig);
   }
 
-  // Edge case of having too little pitch marks... bad case!
-  if(swd.marks.size() < 3) {
+  // Edge case of having too little pitch marks... bad case
+  // but we should still be ok with a single piece
+  if(swd.marks.size() <= 2) {
     int stLength = swd.length;
-    WaveData d(swd.data, swd.marks[0], swd.marks[1]);
+    WaveData d(swd.data, swd.marks[0], stLength);
     d = WaveData::copy(d);
     float window[stLength]; gen_window(window, stLength);
     transform(d.data, stLength, [&](int i, short& v) { return v * window[i]; });
@@ -76,9 +77,9 @@ vector<STSignal> extractSTSignals(const SpeechWaveData& swd) {
   return result;
 }
 
-vector<int> create_plan(vector<STSignal>& stSignals, const PhonemeInstance& tgt) {
+vector<int> create_plan(vector<STSignal>& stSignals, frequency targetPitch,
+                        const PhonemeInstance& tgt) {
   vector<int> plan; plan.resize(stSignals.size()); each(plan, [](int& i) { i = 0; });
-  float targetPitch = (tgt.pitch_contour[0] + tgt.pitch_contour[1]) / 2;
 
   float dur = 0;
   while(dur < tgt.duration) {
@@ -90,37 +91,46 @@ vector<int> create_plan(vector<STSignal>& stSignals, const PhonemeInstance& tgt)
   return plan;
 }
 
-void overlap_add(short* dest, int& offset, int max_offset, STSignal& st, PhonemeInstance& tgt) {
-  float targetPitch = (tgt.pitch_contour[0] + tgt.pitch_contour[1]) / 2;
-  int newLength = (1/targetPitch) * DEFAULT_SAMPLE_RATE;
-  int halfLength = st.length / 2;
-  int index = std::min(newLength, halfLength);
+void overlap_add(short* dest, int& lastPulse,
+                 int max_offset, STSignal& st, frequency targetPitch) {
+  const int overlapCount = (1/targetPitch) * DEFAULT_SAMPLE_RATE;
 
-  while(index <= halfLength && offset < max_offset) {
+  int destIndex = lastPulse - (st.length / 2 - overlapCount);
+
+  int i = 0;
+  //std::cerr << "From " << destIndex << " to " << lastPulse + overlapCount << std::endl;
+  while(i < st.length && destIndex < max_offset) {
     // Actual overlap-add here
     // How to normalize energy, i.e account for energy distortion
     // caused by the -add
-    dest[offset + index] += st[index];
-    index++;
+    dest[destIndex] += st[i++];
+    destIndex++;
   }
-  offset += halfLength;
+  lastPulse += overlapCount;
 }
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) {
-  int destOffset = 0;
+  int lastPulse = 0;
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
+    frequency targetPitch = ( std::exp(tgt.pitch_contour[0]) +
+                              std::exp(tgt.pitch_contour[1]) ) / 2;
 
     // Hann-windowed short-term signals to be recombined
     vector<STSignal> stSignals = extractSTSignals(p);
+    std::cerr << "sts: " << stSignals.size();
     // Create a resynthesis plan
-    vector<int> plan = create_plan(stSignals, tgt);
+    vector<int> plan = create_plan(stSignals, targetPitch, tgt);
+    std::cerr << " plan: ";
+    each(plan, [](int i) { std::cerr << i << " "; });
+    std::cerr << std::endl;
 
     // Now recombine
     for(unsigned j = 0; j < stSignals.size(); j++) {
-      while(plan[j] >= 0) {
-        overlap_add(dest.data, destOffset, dest.length, stSignals[j], tgt);
+      while(plan[j] > 0) {
+        overlap_add(dest.data, lastPulse,
+                    dest.length, stSignals[j], targetPitch);
         plan[j]--;
       }
     }
