@@ -10,6 +10,7 @@ typedef SpeechWaveData STSignal;
 extern vector<SpeechWaveData> extractSTSignals(const SpeechWaveData& swd);
 extern void gen_window(float* data, int size);
 extern vector<int> create_plan(vector<STSignal>& stSignals, const PhonemeInstance& tgt);
+extern void overlap_add(short* dest, int& offset, int max_offset, STSignal& st, PhonemeInstance& tgt);
 
 template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
@@ -55,7 +56,7 @@ void testPlanCreation() {
   target.start = 0; target.end = 1; target.duration = 1;
   target.pitch_contour[0] = 90;
   target.pitch_contour[1] = 110;
-  vector<STSignal> stSignals;stSignals.resize(2);
+  vector<STSignal> stSignals; stSignals.resize(2);
   each(stSignals, [](STSignal& s) { s.length = DEFAULT_SAMPLE_RATE * 0.3f; });
 
   float targetPitch = (target.pitch_contour[0] + target.pitch_contour[1]) / 2;
@@ -72,12 +73,36 @@ void testPlanCreation() {
   std::cerr << "Complete duration: " << targetDur << std::endl;
 }
 
+void testOverlapAdd() {
+  PhonemeInstance target;
+  target.start = 0; target.end = 1; target.duration = 1;
+  target.pitch_contour[0] = 90;
+  target.pitch_contour[1] = 110;
+  STSignal stSignal(WaveData::allocate(0.2f));
+  transform(stSignal.data, stSignal.length, [](int,short&) { return 1; });
+  WaveData dest = WaveData::allocate(1);
+
+  int destOffset = 0;
+  for(auto i = 0; i < 10; i++)
+    overlap_add(dest.data, destOffset, dest.length, stSignal, target);
+
+  each2(stSignal.data, stSignal.length, [](unsigned i, short& s) {
+      if(i <= DEFAULT_SAMPLE_RATE / 2 || i >= 0.9f * DEFAULT_SAMPLE_RATE)
+        assertEquals("beginning or end", 1, (int) s);
+      else
+        assertEquals("mid", 2, (int) s);
+    });
+}
+
 int main() {
   try {
     std::cerr << "Test ST Extraction" << std::endl;
     testSTExtraction();
     std::cerr << "Test Plan Creation" << std::endl;
     testPlanCreation();
+    std::cerr << "Test Overlap-add" << std::endl;
+    testOverlapAdd();
+    std::cerr << "Done" << std::endl;
   } catch(char const*) {
 
   }
