@@ -43,6 +43,14 @@ struct WaveData {
     memset(data, 0, samples * sizeof(data[0]));
     return WaveData(data, 0, samples);
   }
+
+  static float toDuration(int sampleCount) {
+    return (float) sampleCount / DEFAULT_SAMPLE_RATE;
+  }
+
+  static int toSamples(float duration) {
+    return duration * DEFAULT_SAMPLE_RATE;
+  }
 };
 
 struct SpeechWaveData : WaveData {

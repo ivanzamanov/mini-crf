@@ -91,9 +91,22 @@ vector<int> create_plan(vector<STSignal>& stSignals, frequency targetPitch,
   return plan;
 }
 
+struct PitchRange {
+  void set(frequency left, frequency right, int length) {
+    this->left = left;
+    this->right = right;
+    this->length = length;
+  }
+
+  frequency at(int index) { return left * (1 - length / (index+1)) + right * (length/(index+1)); }
+  frequency left;
+  frequency right;
+  int length;
+};
+
 void overlap_add(short* dest, int& lastPulse,
-                 int max_offset, STSignal& st, frequency targetPitch) {
-  const int overlapCount = (1/targetPitch) * DEFAULT_SAMPLE_RATE;
+                 int max_offset, STSignal& st, PitchRange pr) {
+  const int overlapCount = WaveData::toSamples(1/targetPitch);
 
   int destIndex = lastPulse - (st.length / 2 - overlapCount);
 
@@ -109,31 +122,53 @@ void overlap_add(short* dest, int& lastPulse,
   lastPulse += overlapCount;
 }
 
+void initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
+  unsigned i = 0;
+  frequency left = std::exp(target[i].pitch_contour[0]);
+  frequency right = std::exp(target[i].pitch_contour[1]);
+  tier[i].set(left, right, WaveData::toSamples(target[i].duration));
+
+  for(; i < target.size(); i++) {
+    left = (std::exp(target[i].pitch_contour[0]) + tier[i-1].right) / 2;
+    // Smooth out pitch at the concatenation points
+    tier[i-1].right = left;
+    right = std::exp(target[i].pitch_contour[1]);
+
+    tier[i].set(left, right, WaveData::toSamples(target[i].duration));
+  }
+}
+
+WaveData scaleToPitchAndDuration(SpeechWaveData& source, PitchRange pitch, float duration) {
+  WaveData result = WaveData::allocate(duration);
+  float scale = result.length / source.length;
+  vector<float> scaledMarks;
+  each(source.marks, [&](float mark) { scaledMarks.push_back(scale * mark); });
+  if(scaledMarks.size() == 0)
+    scaledMarks.push_back(duration + 1/pitch.at(WaveData::toSamples(duration)));
+
+  int offset = 0;
+  float mark = scaledMarks[0];
+  int destNoiseStart = 0;
+  int destNoiseEnd = WaveData::toSamples(mark - pitch.at(mark));
+  while(offset < result.length) {
+    
+  }
+  
+  return result;
+}
+
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) {
-  int lastPulse = 0;
+  PitchRange pitchTier[target.size()];
+  initPitchTier(pitchTier, target);
+
+  int offset = 0;
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
-    frequency targetPitch = ( std::exp(tgt.pitch_contour[0]) +
-                              std::exp(tgt.pitch_contour[1]) ) / 2;
-
-    // Hann-windowed short-term signals to be recombined
-    vector<STSignal> stSignals = extractSTSignals(p);
-    std::cerr << "sts: " << stSignals.size();
-    // Create a resynthesis plan
-    vector<int> plan = create_plan(stSignals, targetPitch, tgt);
-    std::cerr << " plan: ";
-    each(plan, [](int i) { std::cerr << i << " "; });
-    std::cerr << std::endl;
-
-    // Now recombine
-    for(unsigned j = 0; j < stSignals.size(); j++) {
-      while(plan[j] > 0) {
-        overlap_add(dest.data, lastPulse,
-                    dest.length, stSignals[j], targetPitch);
-        plan[j]--;
-      }
-    }
+    WaveData modded = scaleToPitchAndDuration(p, pitchTier[i], tgt.duration);
+    for(auto k = 0; k < modded.length; k++)
+      dest[offset + k] = modded[k];
+    delete modded.data;
   }
 }
 

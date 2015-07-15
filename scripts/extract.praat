@@ -198,8 +198,8 @@ endfor
 # Extract pulses to be used to determine cut points
 # Ok, sooo I need to know which parts are voiced/unvoiced, hence I can't use the
 # 'forced' version above
-selectObject:
-pitch = To Pitch...
+selectObject: soundObj
+pitch = To Pitch... timeStep 75 600
 pointProcess = To PointProcess
 pointsCount = Get number of points
 appendFileLine: outputFile$, "pulses=", pointsCount
