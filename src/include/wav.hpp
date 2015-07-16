@@ -21,10 +21,7 @@ struct WaveData {
   short* data;
   int offset, length;
 
-  WaveData range(int offset, int length) {
-    return WaveData(data, this->offset + offset, length);
-  }
-
+  WaveData range(int offset, int length) { return WaveData(data, this->offset + offset, length); }
   float duration() const { return length / DEFAULT_SAMPLE_RATE; }
   short* begin() const { return data; }
   short* end() const { return data + length; }
@@ -127,10 +124,12 @@ struct Wave {
     return ((short*) data)[i];
   }
 
-  WaveData extract(float start, float end) {
-    unsigned startSample = at_time(start),
-      endSample = at_time(end);
+  WaveData extractBySample(int startSample, float endSample) {
     return WaveData((short*) data, startSample, (endSample - startSample));
+  }
+
+  WaveData extractByTime(float start, float end) {
+    return extractBySample(at_time(start), at_time(end) - 1);
   }
 };
 
