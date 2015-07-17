@@ -117,8 +117,8 @@ void overlapAddAroundMark(SpeechWaveData& source, int currentMark,
   float window[sampleCount];
   gen_window(window, sampleCount);
 
-  int bot = std::max(0, currentMark - (sampleCount / 2));
-  int top = std::min(currentMark + (sampleCount / 2), dest.length);
+  int bot = std::max(0, currentMark - sampleCount);
+  int top = std::min(currentMark + sampleCount, dest.length);
 
   for(int i = bot, j = 0; i < top; i++, j++)
     dest[destOffset + i] += source[j];
