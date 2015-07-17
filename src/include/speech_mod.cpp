@@ -14,6 +14,8 @@ static unsigned from_chars(Arr arr) {
   return result;
 }
 
+int totalMarksBalance = 0;
+
 static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* destParts) {
   Wave* ptr = dest;
   SpeechWaveData* destPtr = destParts;
@@ -28,8 +30,10 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
     // copy pitch marks
     each(fileData.pitch_marks,
          [&](float& mark) {
-           if(mark >= p.start && mark <= p.end)
+           if(mark >= p.start && mark < p.end) {
              destPtr -> marks.push_back(ptr -> at_time(mark) - ptr -> at_time(p.start));
+             totalMarksBalance--;
+           }
          });
     // and move on
     ptr++;
@@ -77,20 +81,6 @@ vector<STSignal> extractSTSignals(const SpeechWaveData& swd) {
   return result;
 }
 
-vector<int> create_plan(vector<STSignal>& stSignals, frequency targetPitch,
-                        const PhonemeInstance& tgt) {
-  vector<int> plan; plan.resize(stSignals.size()); each(plan, [](int& i) { i = 0; });
-
-  float dur = 0;
-  while(dur < tgt.duration) {
-    for(unsigned i = 0; i < stSignals.size() && dur < tgt.duration; i++) {
-      dur += 1 / targetPitch;
-      plan[i]++;
-    }
-  }
-  return plan;
-}
-
 struct PitchRange {
   void set(frequency left, frequency right, int length) {
     this->left = left;
@@ -121,18 +111,19 @@ void initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
   }
 }
 
-void copyAroundMark(SpeechWaveData& source, float currentMark,
+void overlapAddAroundMark(SpeechWaveData& source, int currentMark,
                     WaveData dest, int destOffset, float localPeriod) {
   int sampleCount = WaveData::toSamples(localPeriod);
   float window[sampleCount];
   gen_window(window, sampleCount);
 
-  int peak = currentMark;
-  int bot = std::max(0, peak - (sampleCount / 2));
-  int top = std::min(peak + (sampleCount / 2), dest.length);
+  int bot = std::max(0, currentMark - (sampleCount / 2));
+  int top = std::min(currentMark + (sampleCount / 2), dest.length);
 
   for(int i = bot, j = 0; i < top; i++, j++)
     dest[destOffset + i] += source[j] * window[j];
+
+  ++totalMarksBalance;
 }
 
 void scaleToPitchAndDuration(WaveData dest, int destOffset,
@@ -158,14 +149,22 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
   } else
     targetMarks.push_back(duration + 1/pitch.at(WaveData::toSamples(duration)));
 
-  each2(source.marks, [&](int index, int currentMark) {
-      int scaledMark = scaledMarks[index];
-      while(currentMark <= scaledMark) {
-        float period = 1 / (WaveData::toDuration(currentMark) + pitch.at(currentMark));
-        copyAroundMark(source, currentMark, dest, destOffset, period);
-        currentMark += WaveData::toSamples(period);
-      }
-    });
+  int copiedMarks = 0;
+  for(unsigned index = 0; index < source.marks.size(); index++) {
+    int currentMark = source.marks[index];
+    int scaledMark = scaledMarks[index];
+    while(currentMark <= scaledMark) {
+      float period = 1 / (WaveData::toDuration(currentMark) + pitch.at(currentMark));
+      overlapAddAroundMark(source, currentMark, dest, destOffset, period);
+      
+      destOffset += WaveData::toSamples(period);
+      currentMark += WaveData::toSamples(period);
+      copiedMarks++;
+    }
+  }
+
+  /*std::cerr << "Copied: " << copiedMarks << std::endl
+    << "Source: " << source.marks.size() << std::endl;*/
 }
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) {
@@ -210,7 +209,9 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   each(target, [&](PhonemeInstance& p) { completeDuration += p.duration; });
   // preallocate the complete wave result
   WaveData result = WaveData::allocate(completeDuration);
+  std::cerr << "Expected marks: " << totalMarksBalance << std::endl;
   do_resynthesis(result, waveData);
+  std::cerr << "Marks balance: " << totalMarksBalance << std::endl;
 
   wb.append(result);
   return wb.build();

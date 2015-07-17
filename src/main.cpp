@@ -52,7 +52,7 @@ int resynthesize(Options& opts) {
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << alphabet_test.old_file_of(input[0].id) << std::endl;
+  std::cerr << "Input file: " << alphabet_test.file_data_of(input[0]).file << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 
@@ -64,7 +64,7 @@ int resynthesize(Options& opts) {
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
   SynthPrinter sp(crf.alphabet(), labels_all);
-  sp.print_synth(path, input);
+  //sp.print_synth(path, input);
   sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
@@ -130,7 +130,7 @@ void resynth_index(ResynthParams* params) {
   
   std::vector<PhonemeInstance> input = corpus_test.input(index);
   std::string sentence_string = to_text_string(input);
-  std::string input_file = alphabet_test.old_file_of(input[0].id);
+  std::string input_file = alphabet_test.file_data_of(input[0]).file;
   std::vector<int> path;
 
   outputStream << input_file << std::endl;
@@ -197,7 +197,7 @@ int baseline(const Options& opts) {
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << alphabet_test.old_file_of(input[0].id) << std::endl;
+  std::cerr << "Input file: " << alphabet_test.file_data_of(input[0]).file << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
 

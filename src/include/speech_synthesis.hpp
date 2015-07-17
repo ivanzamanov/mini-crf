@@ -20,36 +20,14 @@ namespace tool {
     vector<int> file_indices;
     vector<int> old_file_indices;
     vector<unsigned> old_ids;
+    vector<unsigned> new_ids;
 
     const LabelAlphabet<PhonemeInstance>::LabelClass& get_class(const PhonemeInstance& phon) const {
       return classes[phon.label];
     }
 
-    std::string file_of(PhonemeInstance& phon) { return file_of(phon.id); }
-    std::string file_of(int phonId) { return file_data_of(phonId).file; }
-    FileData file_data_of(PhonemeInstance& phon) { return file_data_of(phon.id); }
-    FileData file_data_of(int phonId) { return files[file_indices[phonId]]; }
-
-    std::string old_file_of(int phonId) {
-      auto index = old_file_indices[phonId];
-      return files[index].file;
-    }
-
-    int first_by_label(char label) {
-      LabelClass& clazz = classes[label];
-      return clazz.front();
-    }
-
-    std::vector<Label> to_sequence(const std::string str) {
-      std::vector<Label> result(str.length());
-      std::cerr << "Input phoneme ids: ";
-      for(unsigned i = 0; i < str.length(); i++) {
-        int first = first_by_label(str[i]);
-        result[i] = fromInt(first);
-        std::cerr << first << " ";
-      }
-      std::cerr << std::endl;
-      return result;
+    FileData file_data_of(const PhonemeInstance& phon) {
+      return files[ file_indices[ phon.id ] ];
     }
 
     std::vector<PhonemeInstance> to_phonemes(const std::vector<int>& ids) {
@@ -72,6 +50,10 @@ namespace tool {
       return old_ids[id];
     }
 
+    unsigned new_id(unsigned id) {
+      return new_ids[id];
+    }
+
     void optimize() {
       build_classes();
       vector<PhonemeInstance> new_labels;
@@ -84,6 +66,9 @@ namespace tool {
 
           new_file_indices.push_back(file_indices[obj.id]);
           old_ids.push_back(obj.id);
+          
+          new_ids.reserve(obj.id + 1);
+          new_ids[obj.id] = old_ids.size() - 1;
 
           obj.id = index;
           new_labels.push_back(obj);
@@ -122,7 +107,7 @@ namespace tool {
       for(unsigned i = 0; i < path.size(); i++) {
         int id = path[i];
         const PhonemeInstance& phon = alphabet.fromInt(id);
-        std::string file = alphabet.file_of(id);
+        std::string file = alphabet.file_data_of(phon).file;
         out << "File=" << file << " ";
         out << "Start=" << phon.start << " ";
         out << "End=" << phon.end << " ";

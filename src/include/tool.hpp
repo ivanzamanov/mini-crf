@@ -20,6 +20,7 @@ namespace tool {
   void build_data(const Options& opts);
   void consolidate_labels(PhonemeAlphabet& alphabet, StringLabelProvider& original,
                           StringLabelProvider& cons);
+  void remap(PhonemeAlphabet& alph, Corpus& corp);
 
   bool init_tool(int argc, const char** argv) {
     Options opts = parse_options(argc, argv);
@@ -32,7 +33,10 @@ namespace tool {
     pre_process(alphabet_test, corpus_test);
   
     alphabet_synth.optimize();
+    remap(alphabet_synth, corpus_synth);
+
     alphabet_test.optimize();
+    remap(alphabet_test, corpus_test);
 
     return true;
   }
@@ -60,6 +64,17 @@ namespace tool {
       p.ctx_left = (p.ctx_left == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_left));
       p.ctx_right = (p.ctx_right == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_right));
       ++it;
+    }
+  }
+  
+  void remap(PhonemeAlphabet& alph, Corpus& corp) {
+    for(unsigned i = 0; i < corp.size(); i++) {
+      for(auto& p : corp.label(i)) {
+        p.id = alph.new_id(p.id);
+      }
+      for(auto& p : corp.input(i)) {
+        p.id = alph.new_id(p.id);
+      }
     }
   }
 }
