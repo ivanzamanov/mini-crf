@@ -47,6 +47,12 @@ namespace util {
   }
 
   template<class T, class Func>
+  void transform(std::vector<T>& v, Func f) {
+    for(unsigned i = 0; i < v.size(); i++)
+      v[i] = f(i, v[i]);
+  }
+
+  template<class T, class Func>
   void each(std::vector<T> &v, Func f) {
     for(auto& el : v)
       f(el);

@@ -42,7 +42,6 @@ procedure getPulseBoundaries
 
   # Required for edge cases such as start and end of file
   startIndex = minStartIndex
-  startIndex = max(startIndex, 1)
   endIndex = max(startIndex + 1, endIndex)
 
   startIndex = min(maxIndex_ - 1, startIndex)
@@ -54,7 +53,11 @@ procedure getPulseBoundaries
   minStartIndex = endIndex
 
   #appendInfoLine: i, ": ", startIndex, " ", endIndex
-  startPulsePoint = Get time from index... startIndex
+  if startIndex != 0
+    startPulsePoint = Get time from index... startIndex
+  else
+    startPulsePoint = startIndex
+  endif
   endPulsePoint = Get time from index... endIndex
 
   #selectObject: soundObj

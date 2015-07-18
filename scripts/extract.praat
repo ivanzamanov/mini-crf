@@ -244,6 +244,10 @@ procedure outputEntry
   for k to 2
     frame = featureFrames[k]
     selectObject: mfccObj
+    if frame < 1
+      frame = 1
+    endif
+
     pitchPoint = Get time from frame... frame
     selectObject: pitch
     pitchValue = Get value at time: pitchPoint, "Hertz", "Linear"

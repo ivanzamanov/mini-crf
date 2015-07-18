@@ -101,6 +101,11 @@ struct Wave {
     istr.read((char*) data, h.samplesBytes);
   }
 
+  void write(std::string file) {
+    std::ofstream str(file);
+    write(str);
+  }
+
   void write(std::ofstream& ostr) {
     ostr.write((char*) &h, sizeof(h));
     ostr.write((char*) data, h.samplesBytes);
@@ -124,7 +129,7 @@ struct Wave {
     return ((short*) data)[i];
   }
 
-  WaveData extractBySample(int startSample, float endSample) {
+  WaveData extractBySample(int startSample, int endSample) {
     return WaveData((short*) data, startSample, (endSample - startSample));
   }
 
