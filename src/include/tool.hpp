@@ -69,12 +69,13 @@ namespace tool {
   
   void remap(PhonemeAlphabet& alph, Corpus& corp) {
     for(unsigned i = 0; i < corp.size(); i++) {
-      for(auto& p : corp.label(i)) {
+      auto& labels = corp.label(i);
+      for(auto& p : labels)
         p.id = alph.new_id(p.id);
-      }
-      for(auto& p : corp.input(i)) {
+
+      auto& inputs = corp.label(i);
+      for(auto& p : inputs)
         p.id = alph.new_id(p.id);
-      }
     }
   }
 }

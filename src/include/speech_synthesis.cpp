@@ -49,10 +49,10 @@ void tool::build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus
 
   DEBUG(std::cerr << "Read " << alphabet.size() << " phonemes, " << r.bytes << " bytes\n");
   r >> alphabet.files;
-  unsigned length;
+  unsigned length = 0;
   DEBUG(std::cerr << "Read " << alphabet.files.length << " file names, " << r.bytes << " bytes" << std::endl);
 
-  unsigned corpus_size;
+  unsigned corpus_size = 0;
   r >> corpus_size;
   for(unsigned i = 0; i < corpus_size; i++) {
     r >> length;

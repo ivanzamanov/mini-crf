@@ -67,7 +67,7 @@ namespace tool {
           new_file_indices.push_back(file_indices[obj.id]);
           old_ids.push_back(obj.id);
           
-          new_ids.reserve(obj.id + 1);
+          new_ids.resize(std::max((int) obj.id + 1, (int) new_ids.size()));
           new_ids[obj.id] = old_ids.size() - 1;
 
           obj.id = index;

@@ -119,7 +119,7 @@ struct BinaryReader {
 
   template<class T>
   BinaryReader& rVec(T& val) {
-    unsigned len;
+    unsigned len = 0;
     (*this) >> len;
     val.resize(len);
     for(auto& el : val)

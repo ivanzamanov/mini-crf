@@ -39,13 +39,13 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
 }
 
 void gen_window(float* data, int size) {
-  transform(data, size, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * i / size)); });
-  //transform(data, size, [&](int i, float&) { return 1; });
+  //transform(data, size, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * i / size)); });
+  transform(data, size, [&](int i, float&) { return 1; });
 }
 
 void gen_fall(float* data, int size) {
-  //transform(data, size, [&](int i, float&) { return 1; });
-  transform(data, size / 2, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * (i - size/2 ) / size)); });
+  transform(data, size, [&](int i, float&) { return 1; });
+  //transform(data, size / 2, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * (i - size/2 ) / size)); });
 }
 
 void gen_rise(float* data, int size) {
@@ -102,7 +102,7 @@ void overlapAddAroundMark(SpeechWaveData& source, int currentMark,
         si = sourceBot,
         wi = 0; di < destTop && si < sourceTop; di++, si++, wi++)
     dest[di] += source[si] * window[wi];
-
+  return;
   // And Fall
   destBot = std::max(0, destOffset);
   destTop = std::min(dest.length, destOffset + samplesRight);
@@ -159,9 +159,8 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
 
   // Ok, this takes care of the voiced parts
   int voicedDestOffset = destOffset;
-  for(unsigned i = 0; i < source.marks.size(); i++) {
+  for(unsigned i = 0; i < source.marks.size(); i++)
     copyVoicedPart(source, i, scale, pitch, dest, voicedDestOffset);
-  }
 
   // Locate voiceless intervals
   const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f); // F0 of less than 50 Hz
@@ -172,6 +171,11 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
     voicelessStart = source.marks[i], voicelessEnd = source.marks[i + 1];
     if(voicelessEnd - voicelessStart > MAX_VOICELESS_SAMPLES)
       copyVoicelessPart(source, voicelessStart, voicelessEnd, scale, dest, destOffset);
+  }
+  if(voicelessEnd < source.length) {
+    voicelessStart = voicelessEnd;
+    voicelessEnd = source.length;
+    copyVoicelessPart(source, voicelessStart, voicelessEnd, scale, dest, destOffset);
   }
 }
 
