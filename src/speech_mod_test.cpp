@@ -5,8 +5,6 @@
 using std::vector;
 using namespace util;
 
-typedef SpeechWaveData STSignal;
-
 template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
   if(!(expected == actual)) {
@@ -17,8 +15,9 @@ void assertEquals(std::string msg, T expected, T actual) {
   }
 }
 
+const int VOICELESS_MULT = 2;
 void testCopyVoicelessPlain() {
-  float srcDuration = 0.1,
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
     scale = 1.0,
     destDuration = scale * srcDuration;
 
@@ -28,10 +27,12 @@ void testCopyVoicelessPlain() {
 
   copyVoicelessPart(source, &destOffset, 0, source.length, scale, dest);
   assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
 void testCopyVoicelessUpscale() {
-  float srcDuration = 0.1,
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
     scale = 2.0,
     destDuration = scale * srcDuration;
 
@@ -41,10 +42,12 @@ void testCopyVoicelessUpscale() {
 
   copyVoicelessPart(source, &destOffset, 0, source.length, scale, dest);
   assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
 void testCopyVoicelessDownscale() {
-  float srcDuration = 0.2,
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
     scale = 1 / 2.0,
     destDuration = scale * srcDuration;
 
@@ -54,10 +57,12 @@ void testCopyVoicelessDownscale() {
 
   copyVoicelessPart(source, &destOffset, 0, source.length, scale, dest);
   assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
 void testCopyVoicedPlain() {
-  float srcDuration = 0.1,
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
     scale = 1,
     destDuration = scale * srcDuration;
 
@@ -66,71 +71,284 @@ void testCopyVoicedPlain() {
   source.marks.push_back(0);
   source.marks.push_back(source.length);
   PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
   pitch.set(1/period, 1/period, 0, WaveData::toSamples(destDuration));
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 1, scale, pitch, dest);
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
 void testCopyVoicedUpscaleDuration() {
-  float srcDuration = 0.1,
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
     scale = 2,
     destDuration = scale * srcDuration;
 
   SpeechWaveData source(WaveData::allocate(srcDuration));
-  float period = srcDuration;
+  float period = srcDuration / 2;
   source.marks.push_back(0);
+  //source.marks.push_back(source.length / 2);
   source.marks.push_back(source.length);
   PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
   pitch.set(1/period, 1/period, 0, WaveData::toSamples(destDuration));
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 1, scale, pitch, dest);
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
 void testCopyVoicedDownscaleDuration() {
-  float srcDuration = 0.2,
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
     scale = 0.5,
     destDuration = scale * srcDuration;
 
   SpeechWaveData source(WaveData::allocate(srcDuration));
-  float period = srcDuration;
+  float period = srcDuration / 2.0;
   source.marks.push_back(0);
+  //source.marks.push_back(source.length / 2);
   source.marks.push_back(source.length);
   PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
   pitch.set(1/period, 1/period, 0, WaveData::toSamples(destDuration));
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 1, scale, pitch, dest);
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
-void testDurationScale() {
+void testVoicedUpscalePitch() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 4,
+    scale = 1,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(0);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 1);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 2);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD / 2);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", WaveData::toSamples(2 * (1 / newPitch)), destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testVoicedDownscalePitch() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 4,
+    scale = 1,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(0);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 1);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 2);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD * 2);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testVoicedUpscalePitchDownscaleDuration() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 4,
+    scale = 1 / 2.0,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(0);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 1);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 2);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD / 2);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testVoicedDownscalePitchUpscaleDuration() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 4,
+    scale = 2,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(0);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 1);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 2);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD * 2.0);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testVoicedDownscalePitchDownscaleDuration() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 4,
+    scale = 1/2.0,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(0);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 1);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 2);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD * 2.0);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testVoicedUpscalePitchUpscaleDuration() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 4,
+    scale = 2.0,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(0);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 1);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 2);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD / 2);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", WaveData::toSamples(4 * 1 / newPitch), destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testScaleToPitch() {
+  float srcDuration = MAX_VOICELESS_PERIOD * 10,
+    scale = 2.0,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 4);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 4.5);
+  source.marks.push_back(MAX_VOICELESS_SAMPLES * 5.0);
+
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  float newPitch = 1 / (MAX_VOICELESS_PERIOD / 4);
+  pitch.set(newPitch,
+            newPitch,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  scaleToPitchAndDuration(dest, &destOffset, source, pt, destDuration);
+  // Slight rounding error
+  assertEquals("end offset", WaveData::toSamples(destDuration) + 1, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
 }
 
 int main() {
   try {
-    //testDurationScale();
-    std::cerr << "voiceless plain" << std::endl;
-    testCopyVoicelessPlain();
-    std::cerr << "voiceless upscale" << std::endl;
-    testCopyVoicelessUpscale();
-    std::cerr << "voiceless downscale" << std::endl;
-    testCopyVoicelessDownscale();
-    std::cerr << "voiced plain" << std::endl;
-    testCopyVoicedPlain();
-    std::cerr << "voiced upscale duration" << std::endl;
-    testCopyVoicedUpscaleDuration();
-    std::cerr << "voiced downscale duration" << std::endl;
-    //testCopyVoicedDownscaleDuration();
+    TEST(testCopyVoicelessPlain);
+    TEST(testCopyVoicelessUpscale);
+    TEST(testCopyVoicelessDownscale);
+    TEST(testCopyVoicedPlain);
+    TEST(testCopyVoicedUpscaleDuration);
+    TEST(testCopyVoicedDownscaleDuration);
+    TEST(testVoicedUpscalePitch);
+    TEST(testVoicedDownscalePitch);
 
-    std::cerr << "voiced upscale pitch" << std::endl;
-    std::cerr << "voiced downscale pitch" << std::endl;
+    TEST(testVoicedUpscalePitchDownscaleDuration);
+    TEST(testVoicedDownscalePitchUpscaleDuration);
+    TEST(testVoicedUpscalePitchUpscaleDuration);
+    TEST(testVoicedDownscalePitchDownscaleDuration);
+
+    TEST(testScaleToPitch);
 
     std::cerr << "All tests passed" << std::endl;
   } catch(char const*) {

@@ -56,6 +56,8 @@ struct SpeechWaveData : WaveData {
   // Sample indexes that are pitch marks
   std::vector<int> marks;
 
+  frequency markFrequency;
+
   // simply the first mark
   int mark() const { return marks[0]; }
   float localDuration() const { return ((float)length / 2) / DEFAULT_SAMPLE_RATE; }

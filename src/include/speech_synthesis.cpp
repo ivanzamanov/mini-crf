@@ -50,7 +50,7 @@ void tool::build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus
   DEBUG(std::cerr << "Read " << alphabet.size() << " phonemes, " << r.bytes << " bytes\n");
   r >> alphabet.files;
   unsigned length = 0;
-  DEBUG(std::cerr << "Read " << alphabet.files.length << " file names, " << r.bytes << " bytes" << std::endl);
+  DEBUG(std::cerr << "Read " << alphabet.files.size() << " file names, " << r.bytes << " bytes" << std::endl);
 
   unsigned corpus_size = 0;
   r >> corpus_size;

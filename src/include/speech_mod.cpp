@@ -30,6 +30,7 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
         if(mark >= p.start && mark <= p.end)
           destPtr -> marks.push_back(ptr -> at_time(mark) - ptr -> at_time(p.start));
       });
+    destPtr -> markFrequency = p.pitch_contour[0];
     // and move on
     ptr++;
     destPtr++;
@@ -43,12 +44,16 @@ void gen_window(float* data, int size) {
 
 void gen_fall(float* data, int size) {
   //transform(data, size, [&](int, float&) { return 1; });
-  transform(data, size / 2, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * (i - size/2 ) / size)); });
+  transform(data, size / 2, [=](int i, float&) {
+      return 0.5 * (1 - cos(2 * M_PI * (i - size/2 ) / size));
+    });
 }
 
 void gen_rise(float* data, int size) {
   //transform(data, size, [&](int, float&) { return 1; });
-  transform(data, size/2, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * i / size)); });
+  transform(data, size/2, [&](int i, float&) {
+      return 0.5 * (1 - cos(2 * M_PI * i / size));
+    });
 }
 
 struct PitchRange {
@@ -71,7 +76,19 @@ struct PitchRange {
   int offset;
 };
 
-void initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
+struct PitchTier {
+  PitchRange* ranges;
+  int length;
+  frequency at(int sample) const {
+    for(int i = 0; i < length; i++)
+      if( ranges[i].offset + ranges[i].length > sample)
+        return ranges[i].at(sample);
+    // Shouldn't happen so this will break stuff
+    return 0;
+  }
+};
+
+PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
   unsigned i = 0;
   frequency left = std::exp(target[i].pitch_contour[0]);
   frequency right = std::exp(target[i].pitch_contour[1]);
@@ -89,11 +106,17 @@ void initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
     duration = target[i].end - target[i].start;
     tier[i].set(left, right, offset, WaveData::toSamples(duration));
   }
+  return
+    PitchTier {
+  ranges: tier,
+      length: (int) target.size()
+      };
 }
 
 void overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
                           WaveData dest, const int destOffset,
                           const float periodLeft, const float periodRight) {
+  DEBUG(std::cerr << "Mark " << destOffset << std::endl);
   int samplesLeft = WaveData::toSamples(periodLeft);
   int samplesRight = WaveData::toSamples(periodRight);
   // Will reuse window space...
@@ -133,12 +156,16 @@ void overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
 
 void copyVoicedPart(SpeechWaveData& source, int* destOffset,
                     int sourceMarkIndex, float scale,
-                    const PitchRange pitch, WaveData dest) {  
+                    const PitchTier pitch, WaveData dest) {  
   // Voiced, so at least one of the neighboring pitch marks can determine the source pitch
+  int mark = source.marks[sourceMarkIndex];
+
   int nearestMark;
-  if(sourceMarkIndex == 0) // At the start, only valid neighbouring pitch mark is the next one
+  if(source.marks.size() == 1)
+    nearestMark = mark + WaveData::toSamples(1 / source.markFrequency);
+  else if(sourceMarkIndex == 0) // At the start, only valid neighbouring pitch mark is the next one
     nearestMark = source.marks[1];
-  else if(sourceMarkIndex == (int)source.marks.size())
+  else if(sourceMarkIndex == (int)source.marks.size() - 1)
     nearestMark = sourceMarkIndex - 1;
   else {
     int left = source.marks[sourceMarkIndex] - source.marks[sourceMarkIndex - 1],
@@ -146,22 +173,21 @@ void copyVoicedPart(SpeechWaveData& source, int* destOffset,
     nearestMark = (left > right) ? source.marks[sourceMarkIndex - 1] : source.marks[sourceMarkIndex + 1];
   }
   
-  int mark = source.marks[sourceMarkIndex];
   int sourcePeriodSamples = std::abs(nearestMark - mark);
   mark -= sourcePeriodSamples;
   int scaledMark = mark + sourcePeriodSamples * scale;
 
-  while(mark <= scaledMark) {
-    const float periodLeft = pitch.at(*destOffset);
-    const float periodRight = pitch.at(*destOffset);
-    const int periodSamples = WaveData::toSamples(1 / periodRight);
+  while(mark < scaledMark) {
+    const float periodLeft = 1 / pitch.at(*destOffset);
+    const float periodRight = 1 / pitch.at(*destOffset);
+    const int periodSamples = WaveData::toSamples(periodRight);
     /*std::cerr << "(" << WaveData::toDuration(*destOffset - WaveData::toSamples(period)) << " - "
       << WaveData::toDuration(*destOffset + WaveData::toSamples(period)) << ")" << std::endl;*/
     overlapAddAroundMark(source, mark, dest, *destOffset, periodLeft, periodRight);
 
     //std::cerr << *destOffset << " -> " << *destOffset + periodSamples << std::endl;
     mark += periodSamples;
-    if(mark <= scaledMark)
+    //    if(mark <= scaledMark)
       *destOffset += periodSamples;
   }
 }
@@ -174,7 +200,7 @@ void copyVoicelessPart(SpeechWaveData& source, int* const destOffset,
                        const float scale, WaveData dest) {
   int mark = voicelessStart;
   const int scaledVoicelessEnd = voicelessStart + (voicelessEnd - voicelessStart) * scale;
-  while(mark <= scaledVoicelessEnd) {
+  while(mark < scaledVoicelessEnd) {
     //const float period = distribution(generator);
     const float period = MAX_VOICELESS_PERIOD;
     const int periodSamples = WaveData::toSamples(period);
@@ -184,13 +210,13 @@ void copyVoicelessPart(SpeechWaveData& source, int* const destOffset,
 
     //std::cerr << *destOffset << " -> " << *destOffset + periodSamples << std::endl;
     mark += periodSamples;
-    if(mark <= scaledVoicelessEnd)
+    //if(mark <= scaledVoicelessEnd)
       *destOffset += periodSamples;
   }
 }
 
 void scaleToPitchAndDuration(WaveData dest, int* destOffset,
-                             SpeechWaveData& source, PitchRange pitch, float duration) {
+                             SpeechWaveData& source, PitchTier pitch, float duration) {
   // Time scale
   float scale = duration / WaveData::toDuration(source.length);
   std::cerr << "Scale: " << scale << " duration: " << duration << std::endl;
@@ -201,22 +227,23 @@ void scaleToPitchAndDuration(WaveData dest, int* destOffset,
   sourceMarks.push_back(source.length);
 
   // Ok, this takes care of the voiced parts
-  for(unsigned i = 1; i < sourceMarks.size(); i++) {
-    if(sourceMarks[i] - sourceMarks[i - 1] > MAX_VOICELESS_SAMPLES || sourceMarks.size() == 2) {
+  for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
+    if(i == sourceMarks.size() - 2
+       || sourceMarks[i + 1] - sourceMarks[i] > MAX_VOICELESS_SAMPLES) {
       int voicelessStart, voicelessEnd;
-      voicelessStart = sourceMarks[i - 1];
+      voicelessStart = sourceMarks[i];
       do {
         voicelessEnd = voicelessStart + MAX_VOICELESS_SAMPLES;
         copyVoicelessPart(source, destOffset, voicelessStart, voicelessEnd, scale, dest);
         voicelessStart = voicelessEnd;
-        //std::cerr << "end voiceless at time: " << WaveData::toDuration(*destOffset) << std::endl;
-      } while(voicelessEnd <= sourceMarks[i]);
+        std::cerr << "end voiceless at time: " << WaveData::toDuration(*destOffset) << std::endl;
+      } while(voicelessEnd <= sourceMarks[i + 1]);
     } else {
       // Need:
       // source pitch to tell bell width
       // target pitch to tell next bell offset
       copyVoicedPart(source, destOffset, i - 1, scale, pitch, dest);
-      //std::cerr << "end voiced at time: " << WaveData::toDuration(*destOffset) << std::endl;
+      std::cerr << "end voiced at time: " << WaveData::toDuration(*destOffset) << std::endl;
     }
   }
   std::cerr << "end at time: " << WaveData::toDuration(*destOffset) << std::endl;
@@ -224,14 +251,15 @@ void scaleToPitchAndDuration(WaveData dest, int* destOffset,
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) {
   PitchRange pitchTier[target.size()];
-  initPitchTier(pitchTier, target);
+  
+  PitchTier pt = initPitchTier(pitchTier, target);
 
   int offset = 0;
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
     float duration = tgt.end - tgt.start;
-    scaleToPitchAndDuration(dest, &offset, p, pitchTier[i], duration);
+    scaleToPitchAndDuration(dest, &offset, p, pt, duration);
   }
 }
 

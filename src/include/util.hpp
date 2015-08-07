@@ -7,7 +7,8 @@
 #include<limits>
 #include<vector>
 
-#define DEBUG(x)
+#define DEBUG(x) ;
+#define TEST(x) std::cerr << #x << ":\n" ; x(); std::cerr << "OK" << std::endl;
 #define MY_E 2.71828182845904523536028747135266250 // e
 
 template<class Key, class Value>
