@@ -73,7 +73,7 @@ namespace tool {
       for(auto& p : labels)
         p.id = alph.new_id(p.id);
 
-      auto& inputs = corp.label(i);
+      auto& inputs = corp.input(i);
       for(auto& p : inputs)
         p.id = alph.new_id(p.id);
     }

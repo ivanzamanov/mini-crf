@@ -15,6 +15,24 @@ void assertEquals(std::string msg, T expected, T actual) {
   }
 }
 
+void testOverlapAddAroundMark() {
+  float srcDuration = MAX_VOICELESS_PERIOD,
+    scale = 1.0,
+    destDuration = scale * srcDuration;
+
+  int mark = WaveData::toSamples(srcDuration) / 2;
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  for(int i = 0; i < source.length; i++)
+    source[i] = i;
+  WaveData dest = WaveData::allocate(destDuration);
+
+  float period = WaveData::toDuration(mark);
+  overlapAddAroundMark(source, mark, dest, mark, period, period);
+
+  //  for(int i = 1; i < source.length; i++)
+    //    assertEquals("Copied value", source[i - 1], dest[i]);
+}
+
 const int VOICELESS_MULT = 2;
 void testCopyVoicelessPlain() {
   float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
@@ -73,6 +91,30 @@ void testCopyVoicedPlain() {
   PitchRange pitch;
   PitchTier pt {
   ranges: &pitch,
+      length: 1
+  };
+  pitch.set(1/period, 1/period, 0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  copyVoicedPart(source, &destOffset, 1, scale, pt, dest);
+  assertEquals("end offset", dest.length, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
+void testCopyVoicedEdge() {
+  float srcDuration = MAX_VOICELESS_PERIOD * VOICELESS_MULT,
+    scale = 1,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  float period = srcDuration / 10;
+  source.marks.push_back(0);
+  source.marks.push_back(source.length);
+  PitchRange pitch;
+  PitchTier pt {
+      ranges: &pitch,
       length: 1
   };
   pitch.set(1/period, 1/period, 0, WaveData::toSamples(destDuration));
@@ -309,6 +351,8 @@ void testScaleToPitch() {
     destDuration = scale * srcDuration;
 
   SpeechWaveData source(WaveData::allocate(srcDuration));
+  for(int i = 0; i < source.length; i++)
+    source[i] = i;
   source.marks.push_back(MAX_VOICELESS_SAMPLES * 4);
   source.marks.push_back(MAX_VOICELESS_SAMPLES * 4.5);
   source.marks.push_back(MAX_VOICELESS_SAMPLES * 5.0);
@@ -332,8 +376,42 @@ void testScaleToPitch() {
   delete[] dest.data;
 }
 
+void testScaleToPitchEdge() {
+  float srcDuration = 0.0615833327,
+    scale = 1.0,
+    destDuration = scale * srcDuration;
+
+  SpeechWaveData source(WaveData::allocate(srcDuration));
+  for(int i = 0; i < source.length; i++)
+    source[i] = i;
+  source.marks.push_back(779);
+  source.marks.push_back(893);
+  source.marks.push_back(1009);
+  source.marks.push_back(1125);
+  source.marks.push_back(1242);
+  source.marks.push_back(1359);
+  source.marks.push_back(1476);
+  PitchRange pitch;
+  PitchTier pt {
+  ranges: &pitch,
+      length: 1
+  };
+  pitch.set(229,
+            204,
+            0, WaveData::toSamples(destDuration));
+  WaveData dest = WaveData::allocate(destDuration);
+  int destOffset = 0;
+
+  scaleToPitchAndDuration(dest, &destOffset, source, pt, destDuration);
+  // Slight rounding error
+  assertEquals("end offset", WaveData::toSamples(destDuration) + 1, destOffset);
+  delete[] source.data;
+  delete[] dest.data;
+}
+
 int main() {
   try {
+    TEST(testOverlapAddAroundMark);
     TEST(testCopyVoicelessPlain);
     TEST(testCopyVoicelessUpscale);
     TEST(testCopyVoicelessDownscale);
@@ -349,9 +427,10 @@ int main() {
     TEST(testVoicedDownscalePitchDownscaleDuration);
 
     TEST(testScaleToPitch);
+    TEST(testScaleToPitchEdge);
 
     std::cerr << "All tests passed" << std::endl;
-  } catch(char const*) {
-
+  } catch(char const* err) {
+    std::cerr << err << std::endl;
   }
 }

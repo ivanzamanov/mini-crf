@@ -1,3 +1,4 @@
+#include<exception>
 #include"speech_mod.hpp"
 #include"util.hpp"
 
@@ -18,11 +19,14 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
   Wave* ptr = dest;
   SpeechWaveData* destPtr = destParts;
   // TODO: possibly avoid reading a file multiple times...
+  int i = 0;
   for(auto& p : w.source) {
     FileData fileData = w.origin.file_data_of(p);
     std::ifstream str(fileData.file);
     ptr -> read(str);
-
+    if(p.start <= 0.8 && p.end >= 0.8) {
+      std::cerr << "Error" << std::endl;
+    }
     // extract wave data
     destPtr->copy_from(ptr -> extractByTime(p.start, p.end));
     // copy pitch marks, translating to part-local time
@@ -31,28 +35,34 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
           destPtr -> marks.push_back(ptr -> at_time(mark) - ptr -> at_time(p.start));
       });
     destPtr -> markFrequency = p.pitch_contour[0];
+
     // and move on
     ptr++;
     destPtr++;
+    i++;
   }
 }
 
-void gen_window(float* data, int size) {
-  //transform(data, size, [&](int i, float&) { return 0.5 * (1 - cos(2 * M_PI * i / size)); });
-  transform(data, size, [&](int, float&) { return 1; });
+float hann(int i, int size) {
+  return 0.5 * (1 - cos(2 * M_PI * i / size));
 }
 
 void gen_fall(float* data, int size) {
   //transform(data, size, [&](int, float&) { return 1; });
-  transform(data, size / 2, [=](int i, float&) {
-      return 0.5 * (1 - cos(2 * M_PI * (i - size/2 ) / size));
+  size = size * 2;
+  transform(data, size / 2, [=](int i, float) {
+      //return 1;
+      i += size/2;
+      return hann(i, size);
     });
 }
 
 void gen_rise(float* data, int size) {
   //transform(data, size, [&](int, float&) { return 1; });
-  transform(data, size/2, [&](int i, float&) {
-      return 0.5 * (1 - cos(2 * M_PI * i / size));
+  size = size * 2;
+  transform(data, size / 2, [=](int i, float) {
+      //return 1;
+      return hann(i, size);
     });
 }
 
@@ -84,7 +94,7 @@ struct PitchTier {
       if( ranges[i].offset + ranges[i].length > sample)
         return ranges[i].at(sample);
     // Shouldn't happen so this will break stuff
-    return 0;
+    throw std::out_of_range("Out of range " + std::to_string(sample));
   }
 };
 
@@ -174,7 +184,7 @@ void copyVoicedPart(SpeechWaveData& source, int* destOffset,
   }
   
   int sourcePeriodSamples = std::abs(nearestMark - mark);
-  mark -= sourcePeriodSamples;
+  //mark -= sourcePeriodSamples;
   int scaledMark = mark + sourcePeriodSamples * scale;
 
   while(mark < scaledMark) {
@@ -225,8 +235,8 @@ void scaleToPitchAndDuration(WaveData dest, int* destOffset,
   sourceMarks.push_back(1);
   each(source.marks, [&](int v) { sourceMarks.push_back(v); });
   sourceMarks.push_back(source.length);
+  int startOffset = *destOffset;
 
-  // Ok, this takes care of the voiced parts
   for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
     if(i == sourceMarks.size() - 2
        || sourceMarks[i + 1] - sourceMarks[i] > MAX_VOICELESS_SAMPLES) {
@@ -236,17 +246,21 @@ void scaleToPitchAndDuration(WaveData dest, int* destOffset,
         voicelessEnd = voicelessStart + MAX_VOICELESS_SAMPLES;
         copyVoicelessPart(source, destOffset, voicelessStart, voicelessEnd, scale, dest);
         voicelessStart = voicelessEnd;
-        std::cerr << "end voiceless at time: " << WaveData::toDuration(*destOffset) << std::endl;
+        //std::cerr << "end voiceless at time: " << WaveData::toDuration(*destOffset) << std::endl;
       } while(voicelessEnd <= sourceMarks[i + 1]);
     } else {
       // Need:
       // source pitch to tell bell width
       // target pitch to tell next bell offset
       copyVoicedPart(source, destOffset, i - 1, scale, pitch, dest);
-      std::cerr << "end voiced at time: " << WaveData::toDuration(*destOffset) << std::endl;
+      //std::cerr << "end voiced at time: " << WaveData::toDuration(*destOffset) << std::endl;
     }
   }
-  std::cerr << "end at time: " << WaveData::toDuration(*destOffset) << std::endl;
+  *destOffset = startOffset + WaveData::toSamples(duration);
+  std::cerr << "end at time: " << WaveData::toDuration(*destOffset)
+            << ", copied time " << WaveData::toDuration(*destOffset - startOffset)
+            << " expected time " << duration
+            << std::endl;
 }
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) {
@@ -254,12 +268,16 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) 
   
   PitchTier pt = initPitchTier(pitchTier, target);
 
-  int offset = 0;
+  float dur = 0;
   for(unsigned i = 0; i < target.size(); i++) {
+    int offset = WaveData::toSamples(dur);
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
     float duration = tgt.end - tgt.start;
     scaleToPitchAndDuration(dest, &offset, p, pt, duration);
+    if(offset > WaveData::toSamples(dur + duration + 1 / pt.ranges[i].right))
+      std::cerr << "Error" << std::endl;
+    dur += duration;
   }
 }
 
