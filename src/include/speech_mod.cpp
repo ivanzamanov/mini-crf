@@ -170,30 +170,15 @@ void copyVoicedPart(SpeechWaveData& source, int* destOffset,
   // Voiced, so at least one of the neighboring pitch marks can determine the source pitch
   int mark = source.marks[sourceMarkIndex];
 
-  int nearestMark;
-  if(source.marks.size() == 1)
-    nearestMark = mark + WaveData::toSamples(1 / source.markFrequency);
-  else if(sourceMarkIndex == 0) // At the start, only valid neighbouring pitch mark is the next one
-    nearestMark = source.marks[1];
-  else if(sourceMarkIndex == (int)source.marks.size() - 1)
-    nearestMark = sourceMarkIndex - 1;
-  else {
-    int left = source.marks[sourceMarkIndex] - source.marks[sourceMarkIndex - 1],
-      right = source.marks[sourceMarkIndex + 1] - source.marks[sourceMarkIndex];
-    nearestMark = (left > right) ? source.marks[sourceMarkIndex - 1] : source.marks[sourceMarkIndex + 1];
-  }
-  
-  int sourcePeriodSamples = std::abs(nearestMark - mark);
-  //mark -= sourcePeriodSamples;
+  int sourcePeriodSamples = source.marks[sourceMarkIndex + 1] - mark;
   int scaledMark = mark + sourcePeriodSamples * scale;
 
   while(mark < scaledMark) {
-    const float periodLeft = 1 / pitch.at(*destOffset);
-    const float periodRight = 1 / pitch.at(*destOffset);
-    const int periodSamples = WaveData::toSamples(periodRight);
     /*std::cerr << "(" << WaveData::toDuration(*destOffset - WaveData::toSamples(period)) << " - "
       << WaveData::toDuration(*destOffset + WaveData::toSamples(period)) << ")" << std::endl;*/
-    overlapAddAroundMark(source, mark, dest, *destOffset, periodLeft, periodRight);
+    float copyPeriod = WaveData::toDuration(sourcePeriodSamples);
+    const int periodSamples = WaveData::toSamples(1 / pitch.at(*destOffset));
+    overlapAddAroundMark(source, mark, dest, *destOffset, copyPeriod, copyPeriod);
 
     //std::cerr << *destOffset << " -> " << *destOffset + periodSamples << std::endl;
     mark += periodSamples;
@@ -274,6 +259,8 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) 
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
     float duration = tgt.end - tgt.start;
+    if(tgt.start < 2.615 && 2.615 < tgt.end)
+      std::cerr << "Here\n";
     scaleToPitchAndDuration(dest, &offset, p, pt, duration);
     if(offset > WaveData::toSamples(dur + duration + 1 / pt.ranges[i].right))
       std::cerr << "Error" << std::endl;
@@ -316,6 +303,7 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   each(target, [&](PhonemeInstance& p) { completeDuration += p.duration; });
   // preallocate the complete wave result
   WaveData result = WaveData::allocate(completeDuration);
+  result.print(0,0);
   do_resynthesis(result, waveData);
 
   wb.append(result);

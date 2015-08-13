@@ -28,6 +28,13 @@ struct WaveData {
   short& operator[](int i) const { return data[offset + i]; }
   unsigned size() const { return length; }
 
+  void print(int start=0, int end=-1) const {
+    end = (end == -1) ? this->length : end;
+    std::ofstream str("range");
+    for(int i = offset + start; i < offset + end; i++)
+      str << data[i] << '\n';
+  }
+
   static WaveData copy(WaveData& origin) {
     short* newData = new short[origin.length];
     memcpy(newData, origin.data, origin.length * sizeof(data[0]));
