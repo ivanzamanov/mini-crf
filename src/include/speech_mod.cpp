@@ -220,12 +220,17 @@ void scaleToPitchAndDuration(WaveData dest, int* destOffset,
   sourceMarks.push_back(1);
   each(source.marks, [&](int v) { sourceMarks.push_back(v); });
   sourceMarks.push_back(source.length);
+
+  vector<int> scaledMarks;
+  each(sourceMarks, [&](int v) { scaledMarks.push_back(v * scale); });
+
   int startOffset = *destOffset;
 
   for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
     if(i == sourceMarks.size() - 2
        || sourceMarks[i + 1] - sourceMarks[i] > MAX_VOICELESS_SAMPLES) {
-      int voicelessStart, voicelessEnd;
+      int voicelessStart, voicelessEnd,
+        scaledEnd = scale * sourceMarks[i + 1];
       voicelessStart = sourceMarks[i];
       do {
         voicelessEnd = voicelessStart + MAX_VOICELESS_SAMPLES;
@@ -233,11 +238,14 @@ void scaleToPitchAndDuration(WaveData dest, int* destOffset,
         voicelessStart = voicelessEnd;
         //std::cerr << "end voiceless at time: " << WaveData::toDuration(*destOffset) << std::endl;
       } while(voicelessEnd <= sourceMarks[i + 1]);
+      *destOffset = startOffset + scaledEnd;
     } else {
       // Need:
       // source pitch to tell bell width
-      // target pitch to tell next bell offset
+      // target pitch to tell next bell offset,
+      int scaledEnd = scale * sourceMarks[i + 1];
       copyVoicedPart(source, destOffset, i - 1, scale, pitch, dest);
+      *destOffset = startOffset + scaledEnd;
       //std::cerr << "end voiced at time: " << WaveData::toDuration(*destOffset) << std::endl;
     }
   }
@@ -253,18 +261,19 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) 
   
   PitchTier pt = initPitchTier(pitchTier, target);
 
-  float dur = 0;
+  float totalDuration = 0;
   for(unsigned i = 0; i < target.size(); i++) {
-    int offset = WaveData::toSamples(dur);
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
-    float duration = tgt.end - tgt.start;
-    if(tgt.start < 2.615 && 2.615 < tgt.end)
-      std::cerr << "Here\n";
-    scaleToPitchAndDuration(dest, &offset, p, pt, duration);
-    if(offset > WaveData::toSamples(dur + duration + 1 / pt.ranges[i].right))
+    float targetDuration = tgt.end - tgt.start;
+
+    int startOffset = WaveData::toSamples(totalDuration);
+    scaleToPitchAndDuration(dest, &startOffset, p, pt, targetDuration);
+
+    if(startOffset > WaveData::toSamples(totalDuration + targetDuration + 1 / pt.ranges[i].right))
       std::cerr << "Error" << std::endl;
-    dur += duration;
+
+    totalDuration += targetDuration;
   }
 }
 
