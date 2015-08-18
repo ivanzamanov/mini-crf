@@ -106,6 +106,7 @@ struct Wave {
 
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
+    if(data) delete data;
     data = new unsigned char[h.samplesBytes];
     istr.read((char*) data, h.samplesBytes);
   }
