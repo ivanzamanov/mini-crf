@@ -26,6 +26,9 @@ struct WaveData {
   short* begin() const { return data; }
   short* end() const { return data + length; }
   short& operator[](int i) const { return data[offset + i]; }
+  void plus(int i, short val) {
+    (*this)[i] += val;
+  }
   unsigned size() const { return length; }
 
   void print(int start=0, int end=-1) const {
