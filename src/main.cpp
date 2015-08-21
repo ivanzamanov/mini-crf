@@ -68,7 +68,7 @@ int resynthesize(Options& opts) {
   sp.print_textgrid(path, input, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
-  std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
+  std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << std::endl;
 
   std::ofstream wav_output("resynth.wav");
   SpeechWaveSynthesis(output, input, crf.alphabet())
