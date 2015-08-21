@@ -65,6 +65,34 @@ procedure getPulseBoundaries
   #endPulsePoint = Get nearest zero crossing... 1 endPulsePoint
 endproc
 
+procedure forcePointProcess
+  selectObject: pointProcess
+  p1 = 0
+  p2 = Get time from index... 1
+  while p2 - p1 > 0.02
+    p1 = p1 + 0.02
+    Add point... p1
+  endwhile
+
+  pCount = Get number of points
+  i = 1
+  while i < pCount
+    p1 = Get time from index... i
+    p2 = Get time from index... (i+1)
+    while p2 - p1 > 0.02
+      p1 = p1 + 0.02
+      Add point... p1
+    endwhile
+    i += 1
+  endwhile
+
+  p1 = p2
+  p2 = Get end time
+  while p2 - p1 > 0.02
+    p1 = p1 + 0.02
+    Add point... p1
+  endwhile
+endproc
 
 # TODO
 procedure getFrameBoundaries

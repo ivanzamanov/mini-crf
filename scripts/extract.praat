@@ -36,9 +36,12 @@ selectObject: soundObj
 Rename... Sound
 
 # Extract pitch tier
-pitch = To Pitch (ac)... timeStep 75 20 1 0 0 0.01 0.35 0.14 600
+#pitch = To Pitch (ac)... timeStep 75 20 1 0 0 0.01 0.35 0.14 600
+pitch = To Pitch (ac)... timeStep 75 20 1 0.03 0.45 0.01 0.35 0.14 600
 # Extract pulses to be used to determine cut points
 pointProcess = To PointProcess
+
+@forcePointProcess
 
 # generate MFCC
 soundObjOriginal = soundObj
@@ -200,7 +203,8 @@ endfor
 # 'forced' version above
 selectObject: soundObj
 pitch = To Pitch... timeStep 75 600
-pointProcess = To PointProcess
+#pointProcess = To PointProcess
+selectObject: pointProcess
 pointsCount = Get number of points
 appendFileLine: outputFile$, "pulses=", pointsCount
 for i to pointsCount
