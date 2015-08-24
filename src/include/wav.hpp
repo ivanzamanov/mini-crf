@@ -27,7 +27,11 @@ struct WaveData {
   short* end() const { return data + length; }
   short& operator[](int i) const { return data[offset + i]; }
   void plus(int i, short val) {
-    (*this)[i] += val;
+    int newVal = (*this)[i];
+    newVal += val;
+    newVal = std::max(newVal, -32768);
+    newVal = std::min(newVal, 32767);
+    (*this)[i] = newVal;
   }
   unsigned size() const { return length; }
 
