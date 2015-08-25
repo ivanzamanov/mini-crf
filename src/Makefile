@@ -30,7 +30,7 @@ db-stats: $(MAIN_DEPS) db-stats.cpp
 	$(CMD) $(CLIB) -Ofast -mtune=native -fopenmp db-stats.cpp $(CPP_FILES) -o db-stats -lpthread
 
 main-opt: $(MAIN_DEPS)
-	$(CC) $(CLIB) -std=c++11 -Wall -I./include -Ofast -mtune=native main.cpp $(CPP_FILES) -o main-opt -lpthread
+	$(CC) $(CLIB) -std=c++11 -Wall -g -I./include -Ofast -mtune=native main.cpp $(CPP_FILES) -o main-opt -lpthread
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) $(CLIB) text2bin.cpp -g $(CPP_FILES) -o text2bin -lpthread

@@ -65,7 +65,7 @@ int resynthesize(Options& opts) {
 
   SynthPrinter sp(crf.alphabet(), labels_all);
   //sp.print_synth(path, input);
-  sp.print_textgrid(path, input, opts.text_grid);
+  sp.print_textgrid(path, input, labels_synth, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << std::endl;
@@ -74,41 +74,6 @@ int resynthesize(Options& opts) {
   SpeechWaveSynthesis(output, input, crf.alphabet())
     .get_resynthesis()
     .write(wav_output);
-  return 0;
-}
-
-int synthesize(Options& opts) {
-  for(unsigned i = 0; i < opts.input.length(); i++)
-    if(opts.input[i] == ' ') opts.input.at(i) = '_';
-
-  std::vector<int> path;
-
-  std::istream* input_stream;
-  if(opts.input == "-")
-    input_stream = &std::cin;
-  else {
-    std::ifstream ifs(opts.input);
-    input_stream = &ifs;
-  }
-
-  std::vector<PhonemeInstance> desired_phonemes;
-
-  if(opts.phon_id) {
-    std::vector<std::string> id_strings = split_string(opts.input, ',');
-    path.resize(id_strings.size());
-    std::transform(id_strings.begin(), id_strings.end(), path.begin(), util::parse_int);
-    for(auto it = path.begin(); it != path.end(); it++)
-      desired_phonemes.push_back(crf.alphabet().fromInt( *it ));
-  } else {
-    desired_phonemes = parse_synth_input_csv(*input_stream);
-    std::string sentence_string = to_text_string(desired_phonemes);
-    std::cerr << "Input: " << sentence_string << std::endl;
-    max_path(desired_phonemes, crf, crf.lambda, crf.mu, &path);
-  }
-
-  SynthPrinter sp(crf.alphabet(), labels_all);
-  sp.print_synth(path, desired_phonemes);
-  sp.print_textgrid(path, desired_phonemes, opts.text_grid);
   return 0;
 }
 

@@ -5,6 +5,9 @@
 using namespace util;
 using std::vector;
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 template<class Arr>
 static unsigned from_chars(Arr arr) {
   unsigned result = 0;
@@ -207,8 +210,8 @@ void copyVoicelessPart(SpeechWaveData& source, int& destOffset, const int destOf
     int periodSamples = WaveData::toSamples(period);
     overlapAddAroundMark(source, mark, dest, destOffset, period, period);
 
-    periodSamples = std::min(periodSamples, source.length - mark);
-    mark += periodSamples;
+    //periodSamples = std::min(periodSamples, source.length - mark);
+    mark += periodSamples / scale;
     destOffset += periodSamples;
   }
 }
@@ -294,7 +297,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) 
     prog.update();
   }
   prog.finish();
-
+  return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
   for(unsigned i = 1; i < target.size(); i++) {
@@ -350,3 +353,5 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   wb.append(result);
   return wb.build();
 }
+
+#pragma GCC pop_options

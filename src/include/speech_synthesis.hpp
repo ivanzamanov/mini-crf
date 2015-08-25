@@ -136,12 +136,12 @@ namespace tool {
       return str.str();
     }
 
-    void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, const std::string file) {
+    void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, StringLabelProvider& lp, const std::string file) {
       std::ofstream out(file);
-      print_textgrid(path, input, out);
+      print_textgrid(path, input, lp, out);
     }
-
-    void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, std::ostream& out) {
+    
+    void print_textgrid(std::vector<int> &path, std::vector<PhonemeInstance> &input, StringLabelProvider& lp, std::ostream& out) {
       TextGrid grid(path.size());
       unsigned i = 0;
       stime_t time_offset = 0;
@@ -154,7 +154,7 @@ namespace tool {
         grid[i].xmax = time_offset;
 
         std::stringstream str;
-        str << phon.label << "= " << path[i] << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch << ", dp=" << desired_pitch(input[i]);
+        str << lp.convert(phon.label) << " =" << path[i] << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch << ", dp=" << desired_pitch(input[i]);
         grid[i].text = str.str();
       }
       out << grid;
