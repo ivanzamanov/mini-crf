@@ -147,7 +147,7 @@ struct Wave {
   }
 
   WaveData extractBySample(int startSample, int endSample) {
-    return WaveData((short*) data, startSample, (endSample - startSample));
+    return WaveData((short*) data, startSample, (endSample - startSample) - 1);
   }
 
   WaveData extractByTime(float start, float end) {

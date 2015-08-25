@@ -43,7 +43,7 @@ void testCopyVoicelessPlain() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicelessPart(source, &destOffset, 0, source.length, scale, dest);
+  copyVoicelessPart(source, destOffset, dest.length, 0, source.length, scale, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -58,7 +58,7 @@ void testCopyVoicelessUpscale() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicelessPart(source, &destOffset, 0, source.length, scale, dest);
+  copyVoicelessPart(source, destOffset, dest.length, 0, source.length, scale, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -73,7 +73,7 @@ void testCopyVoicelessDownscale() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicelessPart(source, &destOffset, 0, source.length, scale, dest);
+  copyVoicelessPart(source, destOffset, dest.length, 0, source.length, scale, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -97,7 +97,7 @@ void testCopyVoicedPlain() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -121,7 +121,7 @@ void testCopyVoicedEdge() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -146,7 +146,7 @@ void testCopyVoicedUpscaleDuration() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -171,7 +171,7 @@ void testCopyVoicedDownscaleDuration() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", dest.length, destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -199,7 +199,7 @@ void testVoicedUpscalePitch() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", WaveData::toSamples(2 * (1 / newPitch)), destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -227,7 +227,7 @@ void testVoicedDownscalePitch() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -255,7 +255,7 @@ void testVoicedUpscalePitchDownscaleDuration() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -283,7 +283,7 @@ void testVoicedDownscalePitchUpscaleDuration() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -311,7 +311,7 @@ void testVoicedDownscalePitchDownscaleDuration() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", WaveData::toSamples(1 / newPitch), destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -339,7 +339,7 @@ void testVoicedUpscalePitchUpscaleDuration() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  copyVoicedPart(source, &destOffset, 0, scale, pt, dest);
+  copyVoicedPart(source, destOffset, dest.length, 0, scale, pt, dest);
   assertEquals("end offset", WaveData::toSamples(4 * 1 / newPitch), destOffset);
   delete[] source.data;
   delete[] dest.data;
@@ -369,7 +369,7 @@ void testScaleToPitch() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  scaleToPitchAndDuration(dest, &destOffset, source, pt, destDuration);
+  scaleToPitchAndDuration(dest, destOffset, source, pt, destDuration);
   // Slight rounding error
   assertEquals("end offset", WaveData::toSamples(destDuration), destOffset);
   delete[] source.data;
@@ -402,7 +402,7 @@ void testScaleToPitchEdge() {
   WaveData dest = WaveData::allocate(destDuration);
   int destOffset = 0;
 
-  scaleToPitchAndDuration(dest, &destOffset, source, pt, destDuration);
+  scaleToPitchAndDuration(dest, destOffset, source, pt, destDuration);
   // Slight rounding error
   assertEquals("end offset", WaveData::toSamples(destDuration), destOffset);
   delete[] source.data;

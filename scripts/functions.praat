@@ -79,7 +79,7 @@ procedure forcePointProcess
   while i < pCount
     p1 = Get time from index... i
     p2 = Get time from index... (i+1)
-    while p2 - p1 > 0.02
+    while p2 - p1 > 2 * 0.02
       p1 = p1 + 0.02
       Add point... p1
     endwhile
@@ -88,7 +88,7 @@ procedure forcePointProcess
 
   p1 = p2
   p2 = Get end time
-  while p2 - p1 > 0.02
+  while p2 - p1 > 2 * 0.02
     p1 = p1 + 0.02
     Add point... p1
   endwhile
