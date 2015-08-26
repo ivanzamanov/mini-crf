@@ -174,7 +174,7 @@ void copyVoicedPart(SpeechWaveData& source, int& destOffset, const int destOffse
   int sourcePeriodSamplesLeft = nMark - mark;
   int scaledMark = mark + sourcePeriodSamplesRight * scale;
 
-  while(mark < scaledMark && destOffset < destOffsetBound) {
+  while(mark < scaledMark && destOffset <= destOffsetBound) {
     /*std::cerr << "(" << WaveData::toDuration(*destOffset - WaveData::toSamples(period)) << " - "
       << WaveData::toDuration(*destOffset + WaveData::toSamples(period)) << ")" << std::endl;*/
     int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
@@ -203,7 +203,7 @@ void copyVoicelessPart(SpeechWaveData& source, int& destOffset, const int destOf
   int mark = voicelessStart;
   const int scaledVoicelessEnd = voicelessStart + (voicelessEnd - voicelessStart) * scale;
   const int sourceMark = mark;
-  while(mark < scaledVoicelessEnd && destOffset < destOffsetBound && mark < source.length) {
+  while(mark < scaledVoicelessEnd && destOffset <= destOffsetBound && mark < source.length) {
     const float period = MAX_VOICELESS_PERIOD_COPY;
     int periodSamples = WaveData::toSamples(period);
     overlapAddAroundMark(source, sourceMark, dest, destOffset, period, period);
@@ -252,16 +252,16 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
 
 void smooth(WaveData dest, int offset, float pitch) {
   int samples = WaveData::toSamples(1 / pitch);
-  int low = std::max(0, offset - samples);
-  int high = std::min(dest.length, offset + samples);
-  int total = high - low;
-  total = std::min(offset - low, high - offset);
-  float t;
-  std::cerr << "From " << offset - total << " to " << offset + total << std::endl;
-  for(int i = offset - total; i <= offset + total; i++) {
-    t = (float) (i - offset + total) / (2.0 * total);
-    //std::cerr << "t = " << t << std::endl;
-    dest[i] = (1 - t) * dest[i] + t * dest[offset + total - i + offset - total];
+  int low = offset - samples;
+  int high = offset + samples;
+
+  std::cerr << WaveData::toDuration(low) << " " << WaveData::toDuration(high) << std::endl;
+
+  int hSize = 2 * (high - low);
+  for(int destOffset = low; destOffset <= high; destOffset++) {
+    int left = dest[destOffset - samples] * hann(hSize / 2 + destOffset - low, hSize);
+    int right = dest[destOffset + samples] * hann(destOffset - low, hSize);
+    dest[destOffset] = left + right;
   }
 }
 
@@ -285,10 +285,10 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) 
     prog.update();
   }
   prog.finish();
-  return;
+  //return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
-  for(unsigned i = 1; i < target.size(); i++) {
+  for(unsigned i = 1; i < target.size() - 1; i++) {
     int offset = WaveData::toSamples(totalDuration);
     smooth(dest, offset, pt.at(offset));
 
