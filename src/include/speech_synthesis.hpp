@@ -108,12 +108,13 @@ namespace tool {
         int id = path[i];
         const PhonemeInstance& phon = alphabet.fromInt(id);
         std::string file = alphabet.file_data_of(phon).file;
-        out << "File=" << file << " ";
-        out << "Start=" << phon.start << " ";
-        out << "End=" << phon.end << " ";
-        out << "Label=" << label_provider.convert(phon.label) << " ";
-        out << "Pitch=" << desired_pitch(desired[i]) << " ";
-        out << "Duration=" << desired[i].duration << '\n';
+        out << i << ": ";
+        out << "File= " << file << " ";
+        out << "Start= " << phon.start << " ";
+        out << "End= " << phon.end << " ";
+        out << "Label= " << label_provider.convert(phon.label) << " ";
+        out << "Pitch= " << desired_pitch(desired[i]) << " ";
+        out << "Duration= " << desired[i].duration << '\n';
 
         unsigned old_id = alphabet.old_id(id);
         phonemeIds << id << "=" << phon.label << " ";
@@ -154,7 +155,7 @@ namespace tool {
         grid[i].xmax = time_offset;
 
         std::stringstream str;
-        str << lp.convert(phon.label) << " =" << path[i] << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch << ", dp=" << desired_pitch(input[i]);
+        str << lp.convert(phon.label) << "=" << i << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch << ", dp=" << desired_pitch(input[i]);
         grid[i].text = str.str();
       }
       out << grid;

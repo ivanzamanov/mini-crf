@@ -64,7 +64,7 @@ int resynthesize(Options& opts) {
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
   SynthPrinter sp(crf.alphabet(), labels_all);
-  //sp.print_synth(path, input);
+  sp.print_synth(path, input);
   sp.print_textgrid(path, input, labels_synth, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
