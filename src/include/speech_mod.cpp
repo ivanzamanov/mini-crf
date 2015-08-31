@@ -174,21 +174,17 @@ void copyVoicedPart(SpeechWaveData& source, int& destOffset, const int destOffse
   int sourcePeriodSamplesRight = nMark - mark;
   int sourcePeriodSamplesLeft = nMark - mark;
   int scaledMark = mark + sourcePeriodSamplesRight * scale;
+  int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
+  int sourceMark = mark + periodSamples;
 
   while(mark < scaledMark && destOffset <= destOffsetBound) {
-    /*std::cerr << "(" << WaveData::toDuration(*destOffset - WaveData::toSamples(period)) << " - "
-      << WaveData::toDuration(*destOffset + WaveData::toSamples(period)) << ")" << std::endl;*/
-    int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
+    periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
 
-    //sourcePeriodSamplesRight = sourcePeriodSamplesLeft = (std::min(periodSamples, sourcePeriodSamplesRight));
     float copyPeriodRight = WaveData::toDuration(sourcePeriodSamplesRight);
     float copyPeriodLeft = WaveData::toDuration(sourcePeriodSamplesLeft);
-    overlapAddAroundMark(source, mark, dest, destOffset, copyPeriodLeft, copyPeriodRight);
+    overlapAddAroundMark(source, sourceMark, dest, destOffset, copyPeriodLeft, copyPeriodRight);
 
-    //std::cerr << *destOffset << " -> " << *destOffset + periodSamples << std::endl;
-    //periodSamples = std::min(periodSamples, source.length - mark);
     mark += periodSamples;
-    //    if(mark <= scaledMark)
     destOffset += periodSamples;
   }
 }
@@ -202,14 +198,13 @@ void copyVoicelessPart(SpeechWaveData& source, int& destOffset, const int destOf
                        const int voicelessStart, const int voicelessEnd,
                        const double scale, WaveData dest) {
   int mark = voicelessStart;
+  int sourceMark = mark + MAX_VOICELESS_PERIOD_COPY;
   const int scaledVoicelessEnd = voicelessStart + (voicelessEnd - voicelessStart) * scale;
-  while(mark < scaledVoicelessEnd && destOffset <= destOffsetBound && mark < source.length) {
+  while(mark < scaledVoicelessEnd && destOffset <= destOffsetBound) {
     const float period = MAX_VOICELESS_PERIOD_COPY;
     int periodSamples = WaveData::toSamples(period);
-    overlapAddAroundMark(source, mark, dest, destOffset, period, period);
+    overlapAddAroundMark(source, sourceMark, dest, destOffset, period, period);
 
-    //periodSamples = std::min(periodSamples, source.length - mark);
-    //sourceMark += periodSamples / scale;
     mark += periodSamples;
     destOffset += periodSamples;
   }
