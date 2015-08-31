@@ -79,7 +79,7 @@ struct FileData {
     return result;
   }
 
-  std::vector<float> pitch_marks;
+  std::vector<double> pitch_marks;
   std::string file;
 
   bool operator==(const FileData& o) const {
