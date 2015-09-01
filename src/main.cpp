@@ -71,7 +71,8 @@ int resynthesize(Options& opts) {
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << std::endl;
 
-  std::ofstream wav_output("resynth.wav");
+  std::string outputFile = opts.get_opt("--output");
+  std::ofstream wav_output(outputFile);
   SpeechWaveSynthesis(output, input, crf.alphabet())
     .get_resynthesis()
     .write(wav_output);
@@ -92,25 +93,34 @@ struct ResynthParams {
 
 void resynth_index(ResynthParams* params) {
   int index = params->index;
-  std::ostream& outputStream = *(params->os);
   
   std::vector<PhonemeInstance> input = corpus_test.input(index);
   std::string sentence_string = to_text_string(input);
-  std::string input_file = alphabet_test.file_data_of(input[0]).file;
   std::vector<int> path;
 
-  outputStream << input_file << std::endl;
   cost cost = max_path(input, crf, crf.lambda, crf.mu, &path);
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
   std::cerr << "Cost " << index << ": " << cost << std::endl;
 
-  SynthPrinter sp(crf.alphabet(), labels_all);
-  sp.print_synth(path, input, outputStream);
+  std::stringstream outputFile;
+  outputFile << "/tmp/resynth-" << params->index << ".wav";
+
+  std::ofstream wav_output(outputFile.str());
+  SpeechWaveSynthesis(output, input, crf.alphabet())
+    .get_resynthesis()
+    .write(wav_output);
+
+  std::string input_file = alphabet_test.file_data_of(input[0]).file;
+  std::ostream& outputStream = *(params->os);
+  outputStream << input_file << " " << outputFile.str();
+  outputStream.flush();
+
   *(params->flag) = 1;
 }
 
 int train(const Options&) {
+  Progress::enabled = false;
   PlainStreamConfig conf(std::cin);
 
   coefficient val;
@@ -149,7 +159,7 @@ int train(const Options&) {
 
   tp.destroy_threadpool();
 
-  const std::string delim = "----------";
+  const std::string delim = "\n";
   std::cout << streams[0].str() << std::endl;
   for(unsigned i = 1; i < count; i++) {
     std::cout << delim << streams[i].str() << std::endl;
@@ -178,6 +188,7 @@ int baseline(const Options& opts) {
   return 0;
 }
 
+bool Progress::enabled = true;
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
   if(!init_tool(argc, argv)) {

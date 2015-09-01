@@ -84,6 +84,8 @@ struct PitchRange {
 
   frequency at(int index) const {
     double c = (index+1 - offset); // centered
+    if(c < 0 || c > length)
+      throw std::out_of_range("Pitch from range");
     return left * (1 - c / length) + right * c / length;
   }
 
@@ -102,7 +104,10 @@ struct PitchTier {
       if( ranges[i].offset + ranges[i].length > sample)
         return ranges[i].at(sample);
     // Shouldn't happen so this will break stuff
-    throw std::out_of_range("Out of range " + std::to_string(sample));
+    throw std::out_of_range("Out of range " + sample);
+    /*int totalLen = ranges[length - 1].offset + ranges[length - 1].length;
+    std::cerr << "Out of range: " << sample << "/" << totalLen << std::endl;
+    return ranges[length - 1].at(ranges[length - 1].length - 1);*/
   }
 };
 
@@ -122,7 +127,8 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
     tier[i-1].right = left;
     right = std::exp(target[i].pitch_contour[1]);
 
-    totalDuration += target[i].end - target[i].start;
+    duration = target[i].end - target[i].start;
+    totalDuration += duration;
     tier[i].set(left, right, offset, WaveData::toSamples(duration));
   }
   PitchTier result =  {
@@ -181,10 +187,9 @@ void copyVoicedPart(SpeechWaveData& source, int& destOffset, const int destOffse
   int sourcePeriodSamplesLeft = nMark - mark;
   int scaledMark = mark + sourcePeriodSamplesRight * scale;
   int sourceMark = mark;
-  int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
 
   while(mark < scaledMark && destOffset <= destOffsetBound) {
-    periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
+    int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
 
     double copyPeriodRight = WaveData::toDuration(sourcePeriodSamplesRight);
     double copyPeriodLeft = WaveData::toDuration(sourcePeriodSamplesLeft);

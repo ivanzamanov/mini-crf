@@ -74,7 +74,6 @@ struct Options {
   bool sentence;
   bool concat_cost;
   bool text_input;
-  bool verbose_query;
 
   unsigned length;
   const char** args;
@@ -145,7 +144,6 @@ Options parse_options(unsigned argc, const char** argv) {
   opts.sentence = opts.has_opt("--sentence");
   opts.concat_cost = opts.has_opt("--concat-cost");
   opts.text_input = opts.has_opt("--text");
-  opts.verbose_query = opts.has_opt("verbose");
 
   return opts;
 }
