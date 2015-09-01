@@ -8,6 +8,12 @@ using std::vector;
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
+// F0 of less than 50 Hz will be considered voiceless
+const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f);
+const double MAX_VOICELESS_PERIOD = WaveData::toDuration(MAX_VOICELESS_SAMPLES);
+const int MAX_VOICELESS_SAMPLES_COPY = WaveData::toSamples(0.01f);
+const double MAX_VOICELESS_PERIOD_COPY = WaveData::toDuration(MAX_VOICELESS_SAMPLES_COPY);
+
 template<class Arr>
 static unsigned from_chars(Arr arr) {
   unsigned result = 0;
@@ -174,10 +180,11 @@ void copyVoicedPart(SpeechWaveData& source, int& destOffset, const int destOffse
   int sourcePeriodSamplesRight = nMark - mark;
   int sourcePeriodSamplesLeft = nMark - mark;
   int scaledMark = mark + sourcePeriodSamplesRight * scale;
-  int sourceMark = mark + sourcePeriodSamplesRight;
+  int sourceMark = mark;
+  int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
 
   while(mark < scaledMark && destOffset <= destOffsetBound) {
-    int periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
+    periodSamples = WaveData::toSamples(1 / pitch.at(destOffset));
 
     double copyPeriodRight = WaveData::toDuration(sourcePeriodSamplesRight);
     double copyPeriodLeft = WaveData::toDuration(sourcePeriodSamplesLeft);
@@ -188,22 +195,26 @@ void copyVoicedPart(SpeechWaveData& source, int& destOffset, const int destOffse
   }
 }
 
-// F0 of less than 50 Hz will be considered voiceless
-const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f);
-const double MAX_VOICELESS_PERIOD = WaveData::toDuration(MAX_VOICELESS_SAMPLES);
-const int MAX_VOICELESS_SAMPLES_COPY = WaveData::toSamples(0.01f);
-const double MAX_VOICELESS_PERIOD_COPY = WaveData::toDuration(MAX_VOICELESS_SAMPLES_COPY);
+float nextRandFloat() {
+  static int cycleMax = 10;
+  static int cycle = 0;
+  cycle = (cycle + 1) % cycleMax + 1;
+
+  return 0.5 + (float) cycle / cycleMax;
+}
+
 void copyVoicelessPart(SpeechWaveData& source, int& destOffset, const int destOffsetBound,
                        const int voicelessStart, const int voicelessEnd,
                        const double scale, WaveData dest) {
   int mark = voicelessStart;
-  int sourceMark = mark + MAX_VOICELESS_PERIOD_COPY;
+  int sourceMark = mark + MAX_VOICELESS_SAMPLES_COPY;
   const int scaledVoicelessEnd = voicelessStart + (voicelessEnd - voicelessStart) * scale;
   while(mark < scaledVoicelessEnd && destOffset <= destOffsetBound) {
-    const double period = MAX_VOICELESS_PERIOD_COPY;
-    int periodSamples = WaveData::toSamples(period);
+    int periodSamples = MAX_VOICELESS_SAMPLES_COPY;
+    const double period = WaveData::toDuration(periodSamples);
     overlapAddAroundMark(source, sourceMark, dest, destOffset, period, period);
 
+    periodSamples = MAX_VOICELESS_SAMPLES_COPY * nextRandFloat();
     mark += periodSamples;
     destOffset += periodSamples;
   }
@@ -229,7 +240,7 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
   //std::cerr << "Scale: " << scale << " duration: " << duration << std::endl;
   // Copy of the source marks, but with additional at 0 and length
   vector<int> sourceMarks;
-  sourceMarks.push_back(1);
+  sourceMarks.push_back(0);
   each(source.marks, [&](int v) { sourceMarks.push_back(v); });
   sourceMarks.push_back(source.length);
 
@@ -296,7 +307,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces) 
     prog.update();
   }
   prog.finish();
-  //return;
+  return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
   for(unsigned i = 1; i < target.size() - 1; i++) {

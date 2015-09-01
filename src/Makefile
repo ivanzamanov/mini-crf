@@ -35,9 +35,6 @@ main-opt: $(MAIN_DEPS)
 text2bin: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) $(CLIB) text2bin.cpp -g $(CPP_FILES) -o text2bin -lpthread
 
-text2bin-opt: $(MAIN_DEPS) text2bin.cpp
-	$(CMD) $(CLIB) -O3 text2bin.cpp $(CPP_FILES) -o text2bin-opt -lpthread
-
 all: clean main test main-opt text2bin text2bin-opt
 
 clean:
