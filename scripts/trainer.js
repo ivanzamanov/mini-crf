@@ -1,7 +1,6 @@
 var path = require('path'),
     fs = require('fs'),
     async = require('async'),
-    minimist = require('minimist'),
     _ = require('lodash'),
     search = require('./search'),
     printf = require('sprintf-js').sprintf;
@@ -15,7 +14,7 @@ var macConfig = {
   trainingCommand: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/src/main-opt',
   praatCommand: 'praat',
   compareScript: '/Users/ivanzamanov/SpeechSynthesis/mini-crf/scripts/cepstral-distance.praat',
-  valueCachePath: '/Users/ivanzamanov/SpeechSynthesis/values-cache.json'
+  valueCachePath: 'values-cache.json'
 };
 
 var linuxConfig = {
@@ -27,18 +26,11 @@ var linuxConfig = {
   trainingCommand: '/home/ivo/SpeechSynthesis/mini-crf/src/main-opt',
   praatCommand: 'praat',
   compareScript: '/home/ivo/SpeechSynthesis/mini-crf/scripts/cepstral-distance.praat',
-  valueCachePath: '/home/ivo/SpeechSynthesis/values-cache.json'
+  valueCachePath: 'values-cache.json'
 };
 
 var config = linuxConfig;
 config.trainingArguments = ['--mode', 'train', '--synth-database', config.synthDB, '--test-database', config.testDB ];
-
-function parseArguments() {
-  var opts = {
-    string: ""
-  };
-  var args = minimist(process.argv.slice(2), opts);
-}
 
 function isEmpty(line) {
   return !line;
@@ -112,8 +104,7 @@ function runComparison(originalSound, synthesizedSound, callback) {
   runCommand(getComparisonCommand(originalSound.trim(), synthesizedSound), '', callback);
 }
 
-function runSynthesis(runConfig, runSynthesisCallback) {
-  var comparisonConfigs = [];
+function runAllComparisons(runConfig, runAllComparisonsCallback) {
   var synthOutputs = runConfig.trainingOutput.split('\n');
   _.remove(synthOutputs, isEmpty);
   async.eachLimit(synthOutputs, config.parallelComparisons, function (synthOutput, synthCallback) {
@@ -129,9 +120,8 @@ function runSynthesis(runConfig, runSynthesisCallback) {
         if(isNaN(runConfig.result))
           runConfig.result = Number.POSITIVE_INFINITY;
         callback();
-      }],
-                    synthCallback);
-  }, runSynthesisCallback);
+      }], synthCallback);
+  }, runAllComparisonsCallback);
 }
 
 var allRunConfigs = [];
@@ -146,7 +136,7 @@ function trainWithCoefficients(coefs, callback) {
 
   async.waterfall([
     runTraining.bind(null, runConfig),
-    runSynthesis
+    runAllComparisons
   ], function() {
        console.log('Finished comparison for: ');
        delete runConfig.trainingOutput;
@@ -167,45 +157,6 @@ function mkRange(featureName, start, end, count) {
     result.values.push(start + step * i);
 
   return result;
-}
-
-var ranges = [
-  mkRange('trans-mfcc', 1, 2),
-  mkRange('trans-pitch', 999, 1000),
-  mkRange('state-pitch', 999, 1000),
-  mkRange('state-duration', 999, 1000)
-];
-
-function generateCoefficients(ranges, index, coefs, callback) {
-  if (index == ranges.length) {
-    callback(coefs);
-    return;
-  }
-
-  var range = ranges[index];
-  _.forEach(range.values, function(value) {
-    coefs[range.name] = value;
-    generateCoefficients(ranges, index + 1, coefs, callback);
-  });
-}
-
-function trainAll() {
-  var allCoefficients = [];
-  generateCoefficients(ranges, 0, {}, function(coef) { allCoefficients.push(coef); });
-  console.log('Combinations: ' + allCoefficients.length);
-  async.eachLimit(allCoefficients, config.parallelProcesses, trainWithCoefficients, onAllFinished);
-}
-
-function onAllFinished() {
-  console.log('All done');
-  var min;
-  _.forEach(allRunConfigs, function (config) {
-    if(!min || config.result < min.result)
-      min = config;
-  });
-  console.log('Best:');
-  delete min.trainingOutput;
-  console.log(min);
 }
 
 function goldenRange(from, to) {
@@ -233,16 +184,16 @@ function logConverged(ranges) {
 
 function trainGoldenSearch() {
   var ranges = [
-    { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
-    { name: 'trans-pitch', values: goldenRange(-1000, 1000) },
     { name: 'trans-ctx', values: goldenRange(-1000, 1000) },
+    { name: 'trans-pitch', values: goldenRange(-1000, 1000) },
     { name: 'state-pitch', values: goldenRange(-1000, 1000) },
+    { name: 'trans-mfcc', values: goldenRange(-1000, 1000) },
     { name: 'state-duration', values: goldenRange(-1000, 1000) }
   ];
   var dimension = 0;
   var iterations = 1000;
   var multiParamFunc = search.MultiParamFunction(trainWithCoefficients, config.valueCachePath);
-  
+
   var func = function(x, callback) {
     var args = collectArgs(ranges);
     args[dimension].value = x;
@@ -278,9 +229,90 @@ function isConverged(ranges) {
   return result;
 }
 
-var bruteForce = false;
-if(bruteForce) {
-  trainAll();
-} else {
-  trainGoldenSearch();
+function isBetter(newVal, oldVal) {
+  return !oldVal || (newVal && newVal > oldVal);
 }
+
+function nextVal(range) {
+  if(range.values.current < range.values.to)
+    return range.values.current = range.values.current + 1;
+  else
+    return range.values.current = undefined;
+}
+
+
+function seqRange(from, to) {
+  return { from: from,
+           to: to,
+           current: from };
+}
+
+function optimizeSequential(ranges, currentRange, multiParamFunc, optimizeCallback) {
+  var args = collectArgsSeq(ranges);
+  var best;
+  var bestVal;
+
+  // And begin...
+  multiParamFunc(args, onFunctionComplete);
+  function onFunctionComplete(err, value) {
+    if(err) {
+      optimizeCallback(err);
+      return;
+    }
+debugger
+    if(isBetter(value, bestVal)) {
+      best = currentRange.values.current;
+      bestVal = value;
+    }
+
+    if(nextVal(currentRange)) {
+      args = collectArgsSeq(ranges);
+      multiParamFunc(args, onFunctionComplete);
+    } else
+      optimizeCallback(null, best);
+  }
+}
+
+function collectArgsSeq(ranges) {
+  var args = [];
+  _.forEach(ranges, function(range) {
+    // The mid
+    args.push({
+      name: range.name,
+      value: range.values.current
+    });
+  });
+  return args;
+}
+
+function trainSequential() {
+  var ranges = [
+    { name: 'trans-ctx', values: seqRange(1, 3) },
+    { name: 'trans-pitch', values: seqRange(1, 3) },
+    { name: 'state-pitch', values: seqRange(1, 3) },
+    { name: 'trans-mfcc', values: seqRange(1, 3) },
+    { name: 'state-duration', values: seqRange(1, 3) }
+  ];
+
+  var multiParamFunc = search.MultiParamFunction(trainWithCoefficients, config.valueCachePath);
+  async.eachLimit(ranges, 1, function(range, callback) {
+    optimizeSequential(ranges, range, multiParamFunc, onOptimized);
+
+    function onOptimized(err, bestVal) {
+      if(err) {
+        callback(err);
+        return;
+      }
+      range.values.current = bestVal;
+      console.log(range.name + " best at " + range.current);
+      callback();
+    }
+  }, function(err) {
+       if(err)
+         console.log(err);
+       console.log("done");
+     });
+}
+
+trainSequential();
+//trainGoldenSearch();

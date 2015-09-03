@@ -27,8 +27,8 @@ struct WaveData {
   short* begin() const { return data; }
   short* end() const { return data + length; }
   short& operator[](int i) const { return data[offset + i]; }
-  #pragma GCC push_options
-#pragma GCC optimize ("O0")
+//  #pragma GCC push_options
+//#pragma GCC optimize ("O0")
   void plus(int i, short val) {
     int newVal = (*this)[i];
     newVal += val;
@@ -36,7 +36,7 @@ struct WaveData {
     newVal = std::min(newVal, SHRT_MAX);
     (*this)[i] = (short) newVal;
   }
-#pragma GCC pop_options
+//#pragma GCC pop_options
   unsigned size() const { return length; }
 
   void print(int start=0, int end=-1) const {

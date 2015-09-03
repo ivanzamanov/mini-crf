@@ -5,8 +5,8 @@
 using namespace util;
 using std::vector;
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
+//#pragma GCC push_options
+//#pragma GCC optimize ("O0")
 
 // F0 of less than 50 Hz will be considered voiceless
 const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f);
@@ -369,4 +369,4 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   return wb.build();
 }
 
-#pragma GCC pop_options
+//#pragma GCC pop_options

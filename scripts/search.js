@@ -42,7 +42,7 @@ function MultiParamFunction(reevaluate, valuesFilePath) {
         values = [];
     }
     values = _.filter(values, function(val) {
-      console.log('filter');
+      //console.log('filter');
       return val.value !== undefined;
     });
 
