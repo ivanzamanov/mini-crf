@@ -235,15 +235,16 @@ function isBetter(newVal, oldVal) {
 
 function nextVal(range) {
   if(range.values.current < range.values.to)
-    return range.values.current = range.values.current + 1;
+    return range.values.current += range.values.increment;
   else
     return range.values.current = undefined;
 }
 
 
-function seqRange(from, to) {
+function seqRange(from, to, inc) {
   return { from: from,
            to: to,
+           increment: inc,
            current: from };
 }
 
@@ -259,7 +260,7 @@ function optimizeSequential(ranges, currentRange, multiParamFunc, optimizeCallba
       optimizeCallback(err);
       return;
     }
-debugger
+
     if(isBetter(value, bestVal)) {
       best = currentRange.values.current;
       bestVal = value;
@@ -268,8 +269,10 @@ debugger
     if(nextVal(currentRange)) {
       args = collectArgsSeq(ranges);
       multiParamFunc(args, onFunctionComplete);
-    } else
+    } else {
+      debugger
       optimizeCallback(null, best);
+    }
   }
 }
 
@@ -287,11 +290,11 @@ function collectArgsSeq(ranges) {
 
 function trainSequential() {
   var ranges = [
-    { name: 'trans-ctx', values: seqRange(1, 3) },
-    { name: 'trans-pitch', values: seqRange(1, 3) },
-    { name: 'state-pitch', values: seqRange(1, 3) },
-    { name: 'trans-mfcc', values: seqRange(1, 3) },
-    { name: 'state-duration', values: seqRange(1, 3) }
+    { name: 'trans-ctx', values: seqRange(1, 100, 1) },
+    { name: 'trans-pitch', values: seqRange(1, 100, 1) },
+    { name: 'state-pitch', values: seqRange(1, 100, 1) },
+    { name: 'trans-mfcc', values: seqRange(1, 10, 0.1) },
+    { name: 'state-duration', values: seqRange(1, 100) }
   ];
 
   var multiParamFunc = search.MultiParamFunction(trainWithCoefficients, config.valueCachePath);
@@ -304,13 +307,14 @@ function trainSequential() {
         return;
       }
       range.values.current = bestVal;
-      console.log(range.name + " best at " + range.current);
+      console.log(range.name + " best at " + range.values.current);
       callback();
     }
   }, function(err) {
        if(err)
          console.log(err);
        console.log("done");
+       console.log(collectArgsSeq(ranges));
      });
 }
 
