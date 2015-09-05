@@ -155,7 +155,7 @@ namespace tool {
         grid[i].xmax = time_offset;
 
         std::stringstream str;
-        str << lp.convert(phon.label) << "=" << i << ", sp= " << phon.first().pitch << ", ep= " << phon.last().pitch << ", dp=" << desired_pitch(input[i]);
+        str << lp.convert(phon.label) << "=" << i << "=" << phon.id;
         grid[i].text = str.str();
       }
       out << grid;

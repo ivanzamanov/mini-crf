@@ -212,7 +212,7 @@ void copyVoicelessPart(SpeechWaveData& source, int& destOffset, const int destOf
                        const int voicelessStart, const int voicelessEnd,
                        const double scale, WaveData dest) {
   int mark = voicelessStart;
-  int sourceMark = mark + MAX_VOICELESS_SAMPLES_COPY;
+  int sourceMark = mark;
   const int scaledVoicelessEnd = voicelessStart + (voicelessEnd - voicelessStart) * scale;
   while(mark < scaledVoicelessEnd && destOffset <= destOffsetBound) {
     int periodSamples = MAX_VOICELESS_SAMPLES_COPY;
@@ -245,7 +245,7 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
   //std::cerr << "Scale: " << scale << " duration: " << duration << std::endl;
   // Copy of the source marks, but with additional at 0 and length
   vector<int> sourceMarks;
-  sourceMarks.push_back(0);
+  //sourceMarks.push_back(0);
   each(source.marks, [&](int v) { sourceMarks.push_back(v); });
   sourceMarks.push_back(source.length);
 
@@ -260,13 +260,23 @@ void scaleToPitchAndDuration(WaveData dest, int destOffset,
     int nMark = sourceMarks[i + 1];
     int scaledEnd = scale * nMark;
     destOffsetBound = startOffset + scaledEnd;
-    if(nMark - mark >= MAX_VOICELESS_SAMPLES_COPY) {
+    if(nMark - mark >= MAX_VOICELESS_SAMPLES) {
       copyVoicelessPart(source, destOffset, destOffsetBound, mark, nMark, scale, dest);
     } else {
       destOffsetBound = startOffset + scaledEnd;
       copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, scale, pitch, dest);
     }
   }
+
+  int i = sourceMarks.size() - 2;
+  int mark = sourceMarks[i];
+  int nMark = source.length;
+  destOffsetBound = startOffset + source.length * scale;
+  //  if(nMark - mark >= MAX_VOICELESS_SAMPLES) {
+  //copyVoicelessPart(source, destOffset, destOffsetBound, mark, nMark, scale, dest);
+    //  } else {
+   copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, scale, pitch, dest);
+    //}
   //*destOffset = startOffset + WaveData::toSamples(duration);
   /*std::cerr << "end at time: " << WaveData::toDuration(*destOffset)
             << ", copied time " << WaveData::toDuration(*destOffset - startOffset)

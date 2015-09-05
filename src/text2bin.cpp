@@ -149,6 +149,7 @@ void output_cache(std::string path) {
   prog.finish();
 }
 
+bool Progress::enabled = true;
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
 

@@ -69,9 +69,11 @@ procedure forcePointProcess
   selectObject: pointProcess
   p1 = 0
   p2 = Get time from index... 1
+  pCount_ = 0
   while p2 - p1 > 0.02
     p1 = p1 + 0.02
-    Add point... p1
+    pCount_ += 1
+    ps_[pCount_] = p1
   endwhile
 
   pCount = Get number of points
@@ -81,7 +83,8 @@ procedure forcePointProcess
     p2 = Get time from index... (i+1)
     while p2 - p1 > 2 * 0.02
       p1 = p1 + 0.02
-      Add point... p1
+      pCount_ += 1
+      ps_[pCount_] = p1
     endwhile
     i += 1
   endwhile
@@ -90,8 +93,14 @@ procedure forcePointProcess
   p2 = Get end time
   while p2 - p1 > 2 * 0.02
     p1 = p1 + 0.02
-    Add point... p1
+    pCount_ += 1
+    ps_[pCount_] = p1
   endwhile
+
+  for i to pCount_
+    point_ = ps_[i]
+    Add point... point_
+  endfor
 endproc
 
 # TODO
