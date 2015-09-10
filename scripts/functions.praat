@@ -67,40 +67,15 @@ endproc
 
 procedure forcePointProcess
   selectObject: pointProcess
-  p1 = 0
-  p2 = Get time from index... 1
-  pCount_ = 0
-  while p2 - p1 > 0.02
-    p1 = p1 + 0.02
-    pCount_ += 1
-    ps_[pCount_] = p1
-  endwhile
+  originalPointProcess = Copy... "PointProcessOriginal"
+  selectObject: pointProcess
+  Voice... 0.01 0.02000000001
+endproc
 
-  pCount = Get number of points
-  i = 1
-  while i < pCount
-    p1 = Get time from index... i
-    p2 = Get time from index... (i+1)
-    while p2 - p1 > 2 * 0.02
-      p1 = p1 + 0.02
-      pCount_ += 1
-      ps_[pCount_] = p1
-    endwhile
-    i += 1
-  endwhile
-
-  p1 = p2
-  p2 = Get end time
-  while p2 - p1 > 2 * 0.02
-    p1 = p1 + 0.02
-    pCount_ += 1
-    ps_[pCount_] = p1
-  endwhile
-
-  for i to pCount_
-    point_ = ps_[i]
-    Add point... point_
-  endfor
+procedure unforcePointProcess
+  selectObject: pointProcess
+  Remove
+  pointProcess = originalPointProcess
 endproc
 
 # TODO

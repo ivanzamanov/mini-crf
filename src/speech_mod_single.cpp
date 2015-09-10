@@ -30,9 +30,8 @@ int main(int argc, const char** argv) {
   outputPhon.pitch_contour = pi.pitch_contour;
   outputPhon.start = 0;
 
-  float duration = pi.duration;
-  outputPhon.end = duration;
-  outputPhon.duration = duration;
+  outputPhon.end = 0.1;
+  outputPhon.duration = outputPhon.end;
   
   output.push_back(outputPhon);
 

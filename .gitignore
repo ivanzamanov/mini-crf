@@ -42,6 +42,7 @@ text2bin-opt
 db-stats
 benchmark
 cygwin1.dll
+single
 
 *.bin
 *.csv
@@ -51,3 +52,4 @@ cygwin1.dll
 logs*
 *.conf
 *.json
+

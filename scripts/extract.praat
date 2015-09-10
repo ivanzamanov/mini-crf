@@ -177,6 +177,7 @@ appendFileLine: outputFile$, "timeStep=", timeStep
 appendFileLine: outputFile$, "mfcc=", mfccCount
 appendFileLine: outputFile$, "intervals=", phonemesCount
 
+@unforcePointProcess
 # Output all semiphons
 for i to semiPhonCount
   startPoint_ = semiPhonStart[i]

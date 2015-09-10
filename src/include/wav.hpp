@@ -8,6 +8,11 @@
 #include<vector>
 #include<climits>
 
+#include"types.hpp"
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 const unsigned DEFAULT_SAMPLE_RATE = 24000;
 
 // Does not own data
@@ -27,8 +32,6 @@ struct WaveData {
   short* begin() const { return data; }
   short* end() const { return data + length; }
   short& operator[](int i) const { return data[offset + i]; }
-//  #pragma GCC push_options
-//#pragma GCC optimize ("O0")
   void plus(int i, short val) {
     int newVal = (*this)[i];
     newVal += val;
@@ -36,7 +39,6 @@ struct WaveData {
     newVal = std::min(newVal, SHRT_MAX);
     (*this)[i] = (short) newVal;
   }
-//#pragma GCC pop_options
   unsigned size() const { return length; }
 
   void print(int start=0, int end=-1) const {
@@ -53,7 +55,7 @@ struct WaveData {
   }
 
   static WaveData allocate(float duration) {
-    int samples = duration * DEFAULT_SAMPLE_RATE;
+    int samples = duration * (int) DEFAULT_SAMPLE_RATE;
     short* data = new short[samples];
     memset(data, 0, samples * sizeof(data[0]));
     return WaveData(data, 0, samples);
@@ -106,19 +108,19 @@ struct WaveHeader {
 
 struct Wave {
   Wave(): data(0) { }
-  Wave(std::istream& istr) { read(istr); }
+  Wave(std::istream& istr) { data = 0; read(istr); }
   ~Wave() {
     if(data)
-      delete data;
+      free(data);
   }
 
   WaveHeader h;
-  unsigned char* data;
+  char* data;
 
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
-    if(data) delete data;
-    data = new unsigned char[h.samplesBytes];
+    if(data) free(data);
+    data = (char*) malloc(h.samplesBytes);
     istr.read((char*) data, h.samplesBytes);
   }
 
@@ -136,7 +138,7 @@ struct Wave {
   unsigned length() const { return h.samplesBytes / bytesPerSample(); }
   float duration() const { return (float) length() / h.sampleRate; }
   // The sample index at the given time
-  unsigned at_time(float time) const { return time * h.sampleRate; }
+  unsigned at_time(float time) const { return (double) time * h.sampleRate; }
 
   // Checked access to sample
   short get(int i) const {
@@ -165,18 +167,18 @@ struct WaveBuilder {
     this->h.samplesBytes = 0;
   }
   WaveHeader h;
-  unsigned char* data;
+  char* data;
 
   void append(WaveData& w) {
-    append((unsigned char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
+    append((char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
   }
   
   void append(Wave& w, int offset, int count) {
     append(w.data + offset, count * w.h.bitsPerSample / 8);
   }
 
-  void append(unsigned char* data, int count) {
-    this->data = (unsigned char*) realloc(this->data, h.samplesBytes + count);
+  void append(char* data, int count) {
+    this->data = (char*) realloc(this->data, h.samplesBytes + count);
     memcpy(this->data + h.samplesBytes, data, count);
 
     h.samplesBytes += count;
@@ -190,5 +192,7 @@ struct WaveBuilder {
     return result;
   }
 };
+
+#pragma GCC pop_options
 
 #endif
