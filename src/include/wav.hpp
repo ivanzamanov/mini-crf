@@ -10,8 +10,8 @@
 
 #include"types.hpp"
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
+//#pragma GCC push_options
+//#pragma GCC optimize ("O0")
 
 const unsigned DEFAULT_SAMPLE_RATE = 24000;
 
@@ -193,6 +193,6 @@ struct WaveBuilder {
   }
 };
 
-#pragma GCC pop_options
+//#pragma GCC pop_options
 
 #endif
