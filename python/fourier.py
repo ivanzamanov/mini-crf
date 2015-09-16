@@ -1,6 +1,7 @@
 from math import *
 from opster import command
 
+from functools import lru_cache
 import matplotlib.pyplot as plt
 
 def frange(start, end, step):
@@ -8,44 +9,60 @@ def frange(start, end, step):
 
 def myF(x):
     #return sin ( 2 * pi * x)
-    return cos(2 * pi * x) + 0.3
+    return cos(x * 2 * pi)
     #return sin(x * 2 * pi)
 
-def FF(func, freq, T, step=1.0):
+def FT(func, T, step=1.0):
     (sT, eT) = T
-    real = 0
-    img = 0
-    for t in frange(sT, eT, step):
-        val = func(t)
-        real = real + val * cos(2 * pi * t * freq) * step
-        img = img - val * sin(2 * pi * t * freq) * step
+    @lru_cache()
+    def result(freq):
+        real = 0
+        img = 0
+        for t in frange(sT, eT, step):
+            val = func(t)
+            real = real + val * cos(2 * pi * t * freq) * step
+            img = img - val * sin(2 * pi * t * freq) * step
+        return (real, img)
 
-    return (real, img)
-    #return func() * sqrt(real ** 2 + img ** 2)
+    return result
 
-def rFF(func, time, f, fStep, T, tStep):
-    (fMin, fMax) = f
-    result = 0
-    for f in frange(fMin, fMax, fStep):
-        (real, img) = FF(func, f, T, tStep)
-        result = result + real * cos(2 * pi * time * f) + img * sin (2 * pi * time * f)
+def rFT(func, F, step=1.0):
+    (fMin, fMax) = F
+    @lru_cache()
+    def result(time):
+        result = 0
+        for f in frange(fMin, fMax, step):
+            (real, img) = func(f)
+            real = real * cos(2 * pi * time * f)
+            img = img * sin (2 * pi * time * f)
+            result = result + real - img
+        return result / (2 * pi)
 
     return result
 
 @command()
 def main():
-    plot = plt.subplot(111)
+    freqStep = 0.01
+    freqRange = (-5, 5)
+    timeRange = (-1/2, 1/2)
+    timeStep = 0.01
 
-    step = 0.001
-    x = [x for x in frange(-pi / 2, pi / 2, step)]
-    y = [FF(myF, t, (-1/2, 1/2), step) for t in x]
+    ft = FT(myF, timeRange, timeStep)
+    rft = rFT(ft, freqRange, freqStep)
 
-    plot.plot(x, [a / 10 for (a,b) in y], 'b')
+    plot = plt.subplot(211)
+    x = [x for x in frange(freqRange[0], freqRange[1], freqStep)]
+    y = [ft(t) for t in x]
+
+    plot.plot(x, [a for (a,b) in y], 'b')
     plot.plot(x, [b for (a,b) in y], 'r')
 
-    x = [x for x in frange(-1 / 2, 1 / 2, step)]
-    y = [rFF(myF, xVal, (-1, 1), 0.1, (-1/2, 1/2), step) for xVal in x]
+    print("Computed FT")
 
+    x = [x for x in frange(timeRange[0], timeRange[1], timeStep)]
+    y = [rft(t) for t in x]
+
+    plot = plt.subplot(212)
     plot.plot(x, y, 'g')
     
     plt.show()
