@@ -12,9 +12,66 @@ def frange(start, end, step):
 
 def myF(t):
     #return 5 + 2 * cos(2 * pi * t - pi / 2) + 3 * cos(4 * pi * t)
-    return sin(t)
+    return cos(2 * t)
 
-def FT(func, T, step=1.0):
+def FT(values):
+    result = [0 for v in values]
+    period = float(len(values))
+    for f, _ in enumerate(result):
+        real = 0
+        img = 0
+        for t, val in enumerate(values):
+            t = float(t)
+            real += val * cos(2 * pi * t * float(f) / period)
+            img  -= val * sin(2 * pi * t * float(f) / period)
+
+        result[f] = (real / period, img / period)
+        #print(result[f])
+    return result
+
+def rFT(frequencies):
+    result = [0 for f in frequencies]
+    period = float(len(frequencies))
+    for t, _ in enumerate(result):
+        value = 0
+        for f, (real, img) in enumerate(frequencies):
+            real = real * cos(2 * pi * t * f / period)
+            img = img * sin (2 * pi * t * f / period)
+            value += real - img
+        result[t] = value
+    return result
+
+@command()
+def main():
+    period = pi
+    timeRange = (-period / 2, period / 2)
+    timeStep = 0.2
+
+    tVals = [myF(t) for t in frange(timeRange[0], timeRange[1], timeStep)]
+    tBins = range(0, len(tVals))
+    fVals = FT(tVals)
+
+    plot = plt.subplot(311)
+    plot.set_title("Fourier Domain")
+    plot.plot(tBins, [a for (a,b) in fVals], 'b')
+    plot.plot(tBins, [b for (a,b) in fVals], 'r')
+    #for v in fVals: print(v)
+
+    plot = plt.subplot(312)
+    plot.set_title("Time Domain Inversed")
+    iVals = rFT(fVals)
+    iVals2 = [0 for x in iVals]
+    for i, _ in enumerate(iVals[::-1]):
+        iVals2[i] = iVals[(i+5) % len(iVals)]
+    plot.plot(tBins, iVals2, 'g')
+
+    plot = plt.subplot(313)
+    plot.set_title("Time Domain Original")
+    plot.plot(tBins, tVals, 'b')
+
+    plt.show()
+
+'''def FT(func, T, step=1.0):
     (sT, eT) = T
     @lru_cache()
     def result(freq):
@@ -26,9 +83,9 @@ def FT(func, T, step=1.0):
             img = img - val * sin(2 * pi * t * freq) * step
         return (real, img)
 
-    return result
+    return result'''
 
-def rFT(func, F, step=1.0):
+'''def rFT(func, period, F, step=1.0):
     (fMin, fMax) = F
     @lru_cache()
     def result(time):
@@ -38,21 +95,21 @@ def rFT(func, F, step=1.0):
             real = real * cos(2 * pi * time * f)
             img = img * sin (2 * pi * time * f)
             result = result + real - img
-        return 1 / (2 * pi) * result
-    return result
+        return result / period
+    return result'''
 
-@command()
+'''@command()
 def main():
-    period = 2 * pi
+    period = pi
     timeRange = (-period / 2, period / 2)
     timeStep = 0.01
 
     freqStep = 1 / period
-    maxFreqComponents = 4
+    maxFreqComponents = 20
     freqRange = (- (maxFreqComponents / 2) / period, (maxFreqComponents / 2) / period)
 
     ft = FT(myF, timeRange, timeStep)
-    rft = rFT(ft, freqRange, freqStep)
+    rft = rFT(ft, period, freqRange, freqStep)
 
     tdVal = [myF(t) for t in frange(timeRange[0], timeRange[1], timeStep)]
     fdVal = [ft(f) for f in frange(freqRange[0], freqRange[1], freqStep)]
@@ -63,6 +120,7 @@ def main():
     y = fdVal
     plot.plot(x, [a for (a,b) in y], 'b')
     plot.plot(x, [b for (a,b) in y], 'r')
+    for v in fdVal: print(v)
 
     x = [x for x in frange(timeRange[0], timeRange[1], timeStep)]
     y = [rft(t) for t in x]
@@ -75,6 +133,6 @@ def main():
     plot.set_title("Time Domain Original")
     plot.plot(x, tdVal, 'b')
 
-    plt.show()
+    plt.show()'''
 
 main.command()
