@@ -24,7 +24,7 @@ void resynth(int argc, const char** argv) {
   outputPhon.pitch_contour = pi.pitch_contour;
   outputPhon.start = 0;
 
-  outputPhon.end = 1;
+  outputPhon.end = pi.duration;
   outputPhon.duration = outputPhon.end;
   
   output.push_back(outputPhon);
