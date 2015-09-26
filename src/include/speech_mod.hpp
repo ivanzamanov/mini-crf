@@ -26,9 +26,9 @@ private:
 };
 
 // F0 of less than 50 Hz will be considered voiceless
-const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f);
+const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f) * 0.9;
 const double MAX_VOICELESS_PERIOD = WaveData::toDuration(MAX_VOICELESS_SAMPLES);
-const int MAX_VOICELESS_SAMPLES_COPY = WaveData::toSamples(0.01f);
+const int MAX_VOICELESS_SAMPLES_COPY = WaveData::toSamples(0.01f) * 0.9;
 const double MAX_VOICELESS_PERIOD_COPY = WaveData::toDuration(MAX_VOICELESS_SAMPLES_COPY);
 
 struct PitchRange {

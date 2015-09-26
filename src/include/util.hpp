@@ -9,6 +9,8 @@
 
 #define DEBUG(x) ;
 #define TEST(x) std::cerr << #x << ":\n" ; x(); std::cerr << "OK" << std::endl;
+#define LOG(x) std::cerr << x << std::endl
+
 #define MY_E 2.71828182845904523536028747135266250 // e
 
 template<class Key, class Value>

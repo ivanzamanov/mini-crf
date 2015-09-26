@@ -55,7 +55,7 @@ struct WaveData {
   }
 
   static WaveData allocate(float duration) {
-    int samples = duration * (int) DEFAULT_SAMPLE_RATE;
+    int samples = duration * DEFAULT_SAMPLE_RATE;
     short* data = new short[samples];
     memset(data, 0, samples * sizeof(data[0]));
     return WaveData(data, 0, samples);
@@ -67,6 +67,15 @@ struct WaveData {
 
   static int toSamples(float duration) {
     return duration * DEFAULT_SAMPLE_RATE;
+  }
+};
+
+struct WaveDataTemp : public WaveData {
+  WaveDataTemp(WaveData data)
+    : WaveData(data.data, data.offset, data.length)
+  { }
+  ~WaveDataTemp() {
+    delete[] data;
   }
 };
 

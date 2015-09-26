@@ -5,8 +5,8 @@
 using namespace util;
 using std::vector;
 
-//#pragma GCC push_options
-//#pragma GCC optimize ("O0")
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 
 template<class Arr>
 static unsigned from_chars(Arr arr) {
@@ -132,4 +132,4 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   return wb.build();
 }
 
-//#pragma GCC pop_options
+#pragma GCC pop_options

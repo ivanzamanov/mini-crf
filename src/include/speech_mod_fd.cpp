@@ -3,13 +3,16 @@
 #include"util.hpp"
 #include"fourier.hpp"
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 using namespace util;
 using std::vector;
 
 static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
-                         WaveData dest, const int destOffset,
-                         const double periodLeft, const double periodRight) {
-  DEBUG(std::cerr << "Mark " << destOffset << std::endl);
+                                WaveData dest, const int destOffset,
+                                const double periodLeft, const double periodRight) {
+  DEBUG(LOG("Mark " << destOffset));
   int samplesLeft = WaveData::toSamples(periodLeft);
   int samplesRight = WaveData::toSamples(periodRight);
   // Will reuse window space...
@@ -36,29 +39,32 @@ static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
   sourceTop = std::min(currentMark + samplesRight, source.length);
   gen_fall(window, samplesRight);
 
+  int copied = 0;
   for(int di = destBot,
         si = sourceBot,
-        wi = 0; di < destTop && si < sourceTop; di++, si++, wi++)
+        wi = 0; di < destTop && si < sourceTop; di++, si++, wi++, copied++)
     dest.plus(di, source[si] * window[wi]);
 
-  return 0;
+  return copied;
 }
 
 const int I_NF = 500;
 static void copyVoicedPart(SpeechWaveData& oSource,
-                    int& destOffset,
-                    const int destOffsetBound,
-                    int mark,
-                    const int nMark,
-                    const PitchTier pitch,
-                    WaveData dest) {
+                           int& destOffset,
+                           const int destOffsetBound,
+                           int mark,
+                           const int nMark,
+                           frequency pitch,
+                           WaveData dest) {
   int NF = std::min(I_NF, nMark - mark);
   cdouble frequencies[NF];
   cdouble nFrequencies[NF];
 
-  double destPitch = pitch.at(destOffset);
+  double destPitch = pitch;
   double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
   double pitchScale = destPitch / sourcePitch;
+  if(std::abs(pitchScale - 1) < 0.1)
+    pitchScale = 1;
   int sourceLen = nMark - mark;
   int newLen = sourceLen / pitchScale;
   double values[std::max(sourceLen, newLen)];
@@ -70,16 +76,21 @@ static void copyVoicedPart(SpeechWaveData& oSource,
     int sIndex = (int) (std::round(i / pitchScale)) % NF;
     nFrequencies[i] = frequencies[sIndex];
   }
-  for(int i = 0; i < NF; i++) if(!(frequencies[i] == nFrequencies[i])) std::cerr << "Diff at " << i << std::endl;
-  ft::rFT(nFrequencies, NF, nValues, newLen);
   double err = 0;
+  for(int i = 0; i < NF; i++) {
+    err += std::abs(frequencies[i].real - nFrequencies[i].real) +
+      std::abs(frequencies[i].img - nFrequencies[i].img);
+  }
+  //std::cerr << "F Error: " << err << std::endl;
+  ft::rFT(nFrequencies, NF, nValues, newLen);
+
+  err = 0;
   for(int i = 0; i < std::min(newLen, sourceLen); i++)
     err += std::abs(nValues[i] - values[i]);
-  std::cerr << "Error: " << err << std::endl;
+  //std::cerr << "Error: " << err << std::endl;
 
   while(destOffset < dest.length && destOffset < destOffsetBound) {
-    for(int i = 0; i < newLen && destOffset < dest.length; i++, destOffset++)
-      dest[destOffset] = values[i];
+    for(int i = 0; i < newLen && destOffset < dest.length; i++, destOffset++) dest[destOffset] = values[i];
   }
 }
 
@@ -92,41 +103,44 @@ static float nextRandFloat() {
 }
 
 static void copyVoicelessPart(SpeechWaveData& source,
-                       int& destOffset,
-                       const int destOffsetBound,
-                       const int sourceOffset,
-                       int sMark,
-                       int sourceBound,
-                       WaveData dest) {
+                              int& destOffset,
+                              const int destOffsetBound,
+                              const int,
+                              int sMark,
+                              int sourceBound,
+                              WaveData dest) {
   int dLen = destOffsetBound - destOffset;
-  int sLen = sourceBound - sourceOffset;
-  float scale = (float) dLen / (sLen - sMark);
+  float scale = (float) dLen / (sourceBound - sMark);
 
-  while(destOffset <= destOffsetBound) {
+  while(destOffset < destOffsetBound) {
     int periodSamples = MAX_VOICELESS_SAMPLES_COPY * nextRandFloat();
     const double period = WaveData::toDuration(periodSamples);
-    overlapAddAroundMark(source, sMark, dest, destOffset, period, period);
+    int copied = overlapAddAroundMark(source, sMark, dest, destOffset, period, period);
+    if(copied == 0)
+      break;
 
-    sMark += periodSamples / scale;
-    destOffset += periodSamples;
+    sMark += copied / scale;
+    destOffset += copied;
   }
+  return;
 }
 
-static void scaleToPitchAndDurationSimple(WaveData dest, int startOffset,
-                                   SpeechWaveData& source, PitchTier pitch, double duration) {
+static void scaleToPitchAndDurationSimple(WaveData dest, int& startOffset,
+                                          SpeechWaveData& source, frequency pitch, double duration) {
   // I'd rather have it rounded up
-  int count = duration / WaveData::toDuration(source.length);
+  int count = std::ceil(duration / WaveData::toDuration(source.length));
 
   int destOffset = startOffset;
   for(int i = 0; i < count && destOffset < dest.length; i++) {
-    destOffset = startOffset + i * WaveData::toSamples(1 / pitch.at(destOffset));
+    destOffset = startOffset + i * WaveData::toSamples(1 / pitch);
     for(int j = 0; j < source.length && destOffset < dest.length; j++, destOffset++)
       dest.plus(destOffset, source[j]);
   }
 }
 
-static void scaleToPitchAndDuration(WaveData dest, int destOffset,
-                             SpeechWaveData& source, PitchTier pitch, double duration) {
+static void scaleToPitchAndDuration(WaveData dest,
+                                    int& destOffset,
+                                    SpeechWaveData& source, frequency pitch, double duration) {
   // Time scale
   double scale = duration / WaveData::toDuration(source.length);
 
@@ -137,7 +151,7 @@ static void scaleToPitchAndDuration(WaveData dest, int destOffset,
   vector<int> scaledMarks;
   each(sourceMarks, [&](int v) { scaledMarks.push_back(v * scale); });
 
-  int startOffset = destOffset;
+  int startOffset = 0;
   int destOffsetBound;
   
   int i = 0;
@@ -147,7 +161,7 @@ static void scaleToPitchAndDuration(WaveData dest, int destOffset,
   if(nMark - mark >= MAX_VOICELESS_SAMPLES)
     copyVoicelessPart(source, destOffset, destOffsetBound, 0, mark, nMark, dest);
   else
-    copyVoicedPart(source, destOffset, destOffsetBound, nMark, nMark + (nMark - mark), pitch, dest);
+    copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, pitch, dest);
 
   for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
     mark = sourceMarks[i];
@@ -172,7 +186,8 @@ static void scaleToPitchAndDuration(WaveData dest, int destOffset,
 }
 
 void smooth(WaveData dest, int offset, double pitch) {
-  int samples = WaveData::toSamples(1 / pitch);
+  int SMOOTHING_COUNT = 2;
+  int samples = WaveData::toSamples(1 / pitch) * SMOOTHING_COUNT;
   int low = offset - samples;
   int high = offset + samples;
 
@@ -191,23 +206,36 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
 
   double totalDuration = 0;
   Progress prog(target.size() - 2, "PSOLA: ");
+  int destOffset = 0;
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
-    double targetDuration = tgt.end - tgt.start;
+    frequency pitch = pt.at(destOffset);
 
-    int startOffset = WaveData::toSamples(totalDuration);
-    if(WaveData::toDuration(p.length) <= 1 / pt.at(WaveData::toSamples(totalDuration)))
-      scaleToPitchAndDurationSimple(dest, startOffset, p, pt, targetDuration);
+    int extraTime = 2 / pitch;
+    double targetDuration = tgt.end - tgt.start + extraTime;
+    int extra = WaveData::toSamples(extraTime);
+
+    WaveDataTemp tmp(WaveData::allocate(targetDuration));
+
+    //int startOffsetGuide = WaveData::toSamples(totalDuration);
+    int startOffset = 0;
+    if(WaveData::toDuration(p.length) <= 1 / pitch) {
+      scaleToPitchAndDurationSimple(tmp, startOffset, p, pitch, targetDuration);
+      LOG("Simple at " << i);
+    }
     else
-      scaleToPitchAndDuration(dest, startOffset, p, pt, targetDuration);
+      scaleToPitchAndDuration(tmp, startOffset, p, pitch, targetDuration);
 
-    totalDuration += targetDuration;
+    for(int i = 0; i < tmp.length - extra && destOffset < dest.length; i++, destOffset++)
+      dest[destOffset] = tmp[i];
+
+    totalDuration += targetDuration - extraTime;
 
     prog.update();
   }
   prog.finish();
-  //return;
+  return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
   for(unsigned i = 1; i < target.size() - 1; i++) {
@@ -221,3 +249,5 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
   }
   prog.finish();
 }
+
+#pragma GCC pop_options
