@@ -1,7 +1,6 @@
 from math import *
 from opster import command
 
-from functools import lru_cache
 import matplotlib.pyplot as plt
 
 def frange(start, end, step):
@@ -15,7 +14,7 @@ def myF(t):
     return cos(2 * t)
 
 def FT(values):
-    result = [0 for v in values]
+    result = [0 for v in range(0, len(values) // 2 + 1)]
     period = float(len(values))
     for f, _ in enumerate(result):
         real = 0
@@ -26,11 +25,11 @@ def FT(values):
             img  -= val * sin(2 * pi * t * float(f) / period)
 
         result[f] = (real / period, img / period)
-        #print(result[f])
     return result
 
 def rFT(frequencies):
-    result = [0 for f in frequencies]
+    result = [0 for f in range(0, len(frequencies) * 2 - 1)]
+    print len(result)
     period = float(len(frequencies))
     for t, _ in enumerate(result):
         value = 0
@@ -41,107 +40,84 @@ def rFT(frequencies):
         result[t] = value
     return result
 
+def subplot(i, I):
+    plot = plt.subplot(int(str(I) + '1' + str(i)))
+    plot.axhline(0, color='black')
+    plot.axvline(0, color='black')
+    return plot
+
+def formatC(c):
+  return "({:.3f}, {:.3f})".format(c[0], c[1])
+
 @command()
 def main():
+    PLOTS = 4
     period = pi
     timeRange = (-period / 2, period / 2)
-    timeStep = 0.2
+    timeStep = 0.1
 
     tVals = [myF(t) for t in frange(timeRange[0], timeRange[1], timeStep)]
     tBins = range(0, len(tVals))
     fVals = FT(tVals)
 
-    plot = plt.subplot(411)
+    plot = subplot(1, PLOTS)
     plot.set_title("Fourier Domain")
-    plot.plot(tBins, [a for (a,b) in fVals], 'b')
-    plot.plot(tBins, [b for (a,b) in fVals], 'r')
+    plot.plot(tBins[:len(fVals)], [a for (a,b) in fVals], 'b')
+    plot.plot(tBins[:len(fVals)], [b for (a,b) in fVals], 'r')
     #for v in fVals: print(v)
 
-    plot = plt.subplot(412)
+    plot = subplot(2, PLOTS)
     plot.set_title("Fourier Domain Modded")
-    modded = [0 for x in fVals]
-    scale = 2
-    for i, _ in enumerate(fVals):
-        ni = int(i / scale) % len(fVals)
-        modded[ni] = fVals[i];
-        print(str(i) + ' -> ' + str(ni))
+    scale = 1
+    newLen = int((len(fVals) - 1) * scale + 1)
+    modded = [(0,0) for x in range(0, newLen)]
 
-    plot.plot(tBins, [a for (a,b) in modded], 'b')
-    plot.plot(tBins, [b for (a,b) in modded], 'r')
+    '''for i, (real, img) in enumerate(fVals):
+        if(sqrt(real * real + img * img) > 0.001):
+            print("Phase " + str(i) + ": " + str( atan2(img, real) ))
+    for x, y in zip(fVals[1:], fVals[1:][::-1]):
+        print(str(x) + ' == ' + str(y) + ' = ' + str(x[0] == y[0] and x[1] == -y[1]))'''
 
-    plot = plt.subplot(413)
+    for i, _ in enumerate(modded):
+        ni = i / scale
+        nf = ni
+        ni = int(ni)
+        if ni > len(fVals) - 1:
+          continue
+        a = 0
+        a = ni - nf
+        c = modded[i]
+        c = (c[0] + (1 - a) * fVals[ni][0], c[1] + (1 - a) * fVals[ni][1])
+        str1 = formatC(c)
+        str2 = ''
+        if ni < len(fVals) - 1:
+          plus = (a * fVals[ni + 1][0], a * fVals[ni + 1][1])
+          c = (c[0] + plus[0], c[1] + plus[1])
+          str2 = formatC(plus)
+        #c = fVals[ni]
+        modded[i] = c
+        #print(str(i) + ' -> ' + str(ni) + ' , a = ' + str(a))
+
+    '''print
+    for i, c in enumerate(fVals): print(str(i) + ': ' + formatC(c))
+    print
+    for i, c in enumerate(modded): print(str(i) + ': ' + formatC(c))'''
+
+    mTBins = range(0, len(modded))
+    plot.plot(mTBins, [a for (a,_) in modded], 'b')
+    plot.plot(mTBins, [b for (_,b) in modded], 'r')
+
+    plot = subplot(3, PLOTS)
     plot.set_title("Time Domain Inversed")
     iVals = rFT(modded)
+    tBins = range(0, len(iVals))
     plot.plot(tBins, iVals, 'g')
 
-    plot = plt.subplot(414)
+    plot = subplot(4, PLOTS)
     plot.set_title("Time Domain Original")
+    tBins = range(0, len(tVals))
     plot.plot(tBins, tVals, 'b')
-
+    
     plt.show()
-
-'''def FT(func, T, step=1.0):
-    (sT, eT) = T
-    @lru_cache()
-    def result(freq):
-        real = 0
-        img = 0
-        for t in frange(sT, eT, step):
-            val = func(t)
-            real = real + val * cos(2 * pi * t * freq) * step
-            img = img - val * sin(2 * pi * t * freq) * step
-        return (real, img)
-
-    return result'''
-
-'''def rFT(func, period, F, step=1.0):
-    (fMin, fMax) = F
-    @lru_cache()
-    def result(time):
-        result = 0
-        for f in frange(fMin, fMax, step):
-            (real, img) = func(f)
-            real = real * cos(2 * pi * time * f)
-            img = img * sin (2 * pi * time * f)
-            result = result + real - img
-        return result / period
-    return result'''
-
-'''@command()
-def main():
-    period = pi
-    timeRange = (-period / 2, period / 2)
-    timeStep = 0.01
-
-    freqStep = 1 / period
-    maxFreqComponents = 20
-    freqRange = (- (maxFreqComponents / 2) / period, (maxFreqComponents / 2) / period)
-
-    ft = FT(myF, timeRange, timeStep)
-    rft = rFT(ft, period, freqRange, freqStep)
-
-    tdVal = [myF(t) for t in frange(timeRange[0], timeRange[1], timeStep)]
-    fdVal = [ft(f) for f in frange(freqRange[0], freqRange[1], freqStep)]
-
-    plot = plt.subplot(311)
-    plot.set_title("Fourier Domain")
-    x = [x for x in frange(freqRange[0], freqRange[1], freqStep)]
-    y = fdVal
-    plot.plot(x, [a for (a,b) in y], 'b')
-    plot.plot(x, [b for (a,b) in y], 'r')
-    for v in fdVal: print(v)
-
-    x = [x for x in frange(timeRange[0], timeRange[1], timeStep)]
-    y = [rft(t) for t in x]
-
-    plot = plt.subplot(312)
-    plot.set_title("Time Domain Inversed")
-    plot.plot(x, y, 'g')
-
-    plot = plt.subplot(313)
-    plot.set_title("Time Domain Original")
-    plot.plot(x, tdVal, 'b')
-
-    plt.show()'''
 
 main.command()
