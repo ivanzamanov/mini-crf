@@ -9,16 +9,9 @@ int main() {
     values[i] = cos(2.0 * t);
   }
 
+  const int F = 100;
   cdouble frequencies[T];
-  ft::FT(values, frequencies, T);
+  ft::FT(values, T, frequencies, F);
   double inversed[T];
-  ft::rFT(frequencies, inversed, T);
-
-  double err = 0;
-  for(int i = 0; i < T; i++) {
-    err += std::abs(inversed[i] - values[i]);
-    std::cout << frequencies[i].real << " " << frequencies[i].img << " " << inversed[i] <<  " " << values[i] << std::endl;
-  }
-
-  std::cout << "Error: " << err << std::endl;
+  ft::rFT(frequencies, F, inversed, T);
 }

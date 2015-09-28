@@ -18,22 +18,20 @@ static unsigned from_chars(Arr arr) {
   return result;
 }
 
-void gen_fall(double* data, int size) {
+void gen_fall(double* data, int size, bool window=true) {
   //transform(data, size, [&](int, double&) { return 1; });
   size = size * 2;
   transform(data, size / 2, [=](int i, double) {
-      //return 1;
       i += size/2;
-      return hann(i, size);
+      return window ? hann(i, size) : 1;
     });
 }
 
-void gen_rise(double* data, int size) {
+void gen_rise(double* data, int size, bool window=true) {
   //transform(data, size, [&](int, double&) { return 1; });
   size = size * 2;
   transform(data, size / 2, [=](int i, double) {
-      //return 1;
-      return hann(i, size);
+      return window ? hann(i, size) : 1;
     });
 }
 

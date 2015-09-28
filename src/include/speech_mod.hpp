@@ -73,7 +73,7 @@ struct PitchTier {
 
 PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target);
 double hann(int i, int size);
-void gen_rise(double* data, int size);
-void gen_fall(double* data, int size);
+void gen_rise(double* data, int size, bool);
+void gen_fall(double* data, int size, bool);
 
 #endif

@@ -1,4 +1,5 @@
 #include<exception>
+#include<climits>
 #include"speech_mod.hpp"
 #include"util.hpp"
 #include"fourier.hpp"
@@ -11,7 +12,7 @@ using std::vector;
 
 static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
                                 WaveData dest, const int destOffset,
-                                const double periodLeft, const double periodRight) {
+                                const double periodLeft, const double periodRight, bool win=true) {
   DEBUG(LOG("Mark " << destOffset));
   int samplesLeft = WaveData::toSamples(periodLeft);
   int samplesRight = WaveData::toSamples(periodRight);
@@ -21,7 +22,7 @@ static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
   // It's what they call...
   int destBot, destTop, sourceBot, sourceTop;
   // The Rise...
-  gen_rise(window, samplesLeft);
+  gen_rise(window, samplesLeft, win);
   destBot = std::max(0, destOffset - samplesLeft);
   destTop = std::min(dest.length, destOffset);
   sourceBot = std::max(0, currentMark - samplesLeft);
@@ -37,7 +38,7 @@ static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
   destTop = std::min(dest.length, destOffset + samplesRight);
   sourceBot = std::max(currentMark, 0);
   sourceTop = std::min(currentMark + samplesRight, source.length);
-  gen_fall(window, samplesRight);
+  gen_fall(window, samplesRight, win);
 
   int copied = 0;
   for(int di = destBot,
@@ -48,6 +49,12 @@ static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
   return copied;
 }
 
+short truncate(double v) {
+  v = std::max(v, (double) SHRT_MIN);
+  v = std::min(v, (double) SHRT_MAX);
+  return (short) v;
+}
+
 const int I_NF = 500;
 static void copyVoicedPart(SpeechWaveData& oSource,
                            int& destOffset,
@@ -56,42 +63,43 @@ static void copyVoicedPart(SpeechWaveData& oSource,
                            const int nMark,
                            frequency pitch,
                            WaveData dest) {
-  int NF = std::min(I_NF, nMark - mark);
-  cdouble frequencies[NF];
-  cdouble nFrequencies[NF];
-
   double destPitch = pitch;
   double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
   double pitchScale = destPitch / sourcePitch;
+
+  const int OVERLAP = 1;
+  int NF = nMark - mark; NF *= OVERLAP;
+  cdouble frequencies[NF + 1];
+  int NNF = NF / pitchScale;
+  cdouble nFrequencies[NNF + 1];
+
   if(std::abs(pitchScale - 1) < 0.1)
     pitchScale = 1;
-  int sourceLen = nMark - mark;
+  int sourceLen = nMark - mark; sourceLen *= OVERLAP;
   int newLen = sourceLen / pitchScale;
   double values[std::max(sourceLen, newLen)];
   double nValues[newLen];
+  
   for(int i = 0; i < sourceLen; i++) values[i] = (double) oSource[mark + i];
-
-  ft::FT(values, sourceLen, frequencies, NF);
-  for(int i = 0; i < NF; i++) {
-    int sIndex = (int) (std::round(i / pitchScale)) % NF;
-    nFrequencies[i] = frequencies[sIndex];
+  
+  if(pitchScale != 1) {
+    ft::FT(values, sourceLen, frequencies, NF);
+    for(int i = 0; i < NNF; i++) {
+      double k = i / pitchScale;
+      int si = std::floor(k);
+      double a = k - si;
+      nFrequencies[i] = (1 - a) * frequencies[si] + a * frequencies[si + 1];
+    }
+    ft::rFT(nFrequencies, NNF, nValues, newLen);
+  } else {
+    for(int i = 0; i < newLen; i++) nValues[i] = values[i];
   }
-  double err = 0;
-  for(int i = 0; i < NF; i++) {
-    err += std::abs(frequencies[i].real - nFrequencies[i].real) +
-      std::abs(frequencies[i].img - nFrequencies[i].img);
-  }
-  //std::cerr << "F Error: " << err << std::endl;
-  ft::rFT(nFrequencies, NF, nValues, newLen);
-
-  err = 0;
-  for(int i = 0; i < std::min(newLen, sourceLen); i++)
-    err += std::abs(nValues[i] - values[i]);
-  //std::cerr << "Error: " << err << std::endl;
 
   while(destOffset < dest.length && destOffset < destOffsetBound) {
-    for(int i = 0; i < newLen && destOffset < dest.length; i++, destOffset++) dest[destOffset] = values[i];
+    for(int i = 0; i < newLen && destOffset < dest.length; i++, destOffset++)
+      dest.plus(destOffset, truncate(nValues[i]));
   }
+  destOffset -= newLen / OVERLAP;
 }
 
 static float nextRandFloat() {
@@ -185,17 +193,24 @@ static void scaleToPitchAndDuration(WaveData dest,
   copyVoicelessPart(source, destOffset, destOffsetBound, mark, nMark, scale, dest);
 }
 
-void smooth(WaveData dest, int offset, double pitch) {
+void smooth(WaveData dest, int offset, double pitch,
+            PhonemeInstance& left, PhonemeInstance& right) {
+  //return;
   int SMOOTHING_COUNT = 2;
+  SMOOTHING_COUNT = std::min(left.duration / 2 - SMOOTHING_COUNT / pitch,
+                             right.duration / 2 - SMOOTHING_COUNT / pitch);
+
+  if(SMOOTHING_COUNT == 0)
+    return;
   int samples = WaveData::toSamples(1 / pitch) * SMOOTHING_COUNT;
   int low = offset - samples;
   int high = offset + samples;
 
-  int hSize = 2 * (high - low);
   for(int destOffset = low; destOffset <= high; destOffset++) {
-    int left = dest[destOffset - samples] * hann(hSize / 2 + destOffset - low, hSize);
-    int right = dest[destOffset + samples] * hann(destOffset - low, hSize);
-    dest[destOffset] = left + right;
+    double t = (destOffset - low) / (high - low);
+    int left = dest[destOffset - samples];
+    int right = dest[destOffset + samples];
+    dest[destOffset] = truncate(left * (1 - t) + right * t);
   }
 }
 
@@ -235,12 +250,13 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
     prog.update();
   }
   prog.finish();
-  return;
+  //return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
   for(unsigned i = 1; i < target.size() - 1; i++) {
     int offset = WaveData::toSamples(totalDuration);
-    smooth(dest, offset, pt.at(offset));
+
+    smooth(dest, offset, pt.at(offset), target[i], target[i+1]);
 
     PhonemeInstance& tgt = target[i];
     double targetDuration = tgt.end - tgt.start;

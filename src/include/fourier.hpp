@@ -12,7 +12,20 @@ struct cdouble {
   bool operator==(const cdouble& o) const {
     return real == o.real && img == o.img;
   }
+
+  cdouble operator+(const cdouble o) const {
+    return cdouble(real + o.real, img + o.img);
+  }
+
+  double magn() const {
+    return real * real + img * img;
+  }
 };
+
+template<class S>
+cdouble operator*(S scalar, cdouble c) {
+  return cdouble(scalar * c.real, scalar * c.img);
+}
 
 namespace ft {
   void FT(double* values, int T, cdouble* frequencies, int F, int offsetF=0) {

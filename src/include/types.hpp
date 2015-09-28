@@ -56,6 +56,7 @@ struct PhonemeInstance {
   { }
 
   FrameArray frames;
+  PitchContour pitch_contour_original;
   PitchContour pitch_contour;
   stime_t start;
   stime_t end;

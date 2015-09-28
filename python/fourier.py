@@ -51,21 +51,30 @@ def main():
     tBins = range(0, len(tVals))
     fVals = FT(tVals)
 
-    plot = plt.subplot(311)
+    plot = plt.subplot(411)
     plot.set_title("Fourier Domain")
     plot.plot(tBins, [a for (a,b) in fVals], 'b')
     plot.plot(tBins, [b for (a,b) in fVals], 'r')
     #for v in fVals: print(v)
 
-    plot = plt.subplot(312)
-    plot.set_title("Time Domain Inversed")
-    iVals = rFT(fVals)
-    iVals2 = [0 for x in iVals]
-    for i, _ in enumerate(iVals[::-1]):
-        iVals2[i] = iVals[(i+5) % len(iVals)]
-    plot.plot(tBins, iVals2, 'g')
+    plot = plt.subplot(412)
+    plot.set_title("Fourier Domain Modded")
+    modded = [0 for x in fVals]
+    scale = 2
+    for i, _ in enumerate(fVals):
+        ni = int(i / scale) % len(fVals)
+        modded[ni] = fVals[i];
+        print(str(i) + ' -> ' + str(ni))
 
-    plot = plt.subplot(313)
+    plot.plot(tBins, [a for (a,b) in modded], 'b')
+    plot.plot(tBins, [b for (a,b) in modded], 'r')
+
+    plot = plt.subplot(413)
+    plot.set_title("Time Domain Inversed")
+    iVals = rFT(modded)
+    plot.plot(tBins, iVals, 'g')
+
+    plot = plt.subplot(414)
     plot.set_title("Time Domain Original")
     plot.plot(tBins, tVals, 'b')
 

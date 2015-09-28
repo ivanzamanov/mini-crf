@@ -111,8 +111,10 @@ void tool::pre_process(PhonemeAlphabet& alphabet) {
     }
   }
 
-  for(unsigned i = 0; i < alphabet.labels.size(); i++)
+  for(unsigned i = 0; i < alphabet.labels.size(); i++) {
+    alphabet.labels[i].pitch_contour_original = to_pitch_contour<false>(alphabet.labels[i]);
     alphabet.labels[i].pitch_contour = to_pitch_contour<true>(alphabet.labels[i]);
+  }
 }
 
 static void pre_process(PhonemeAlphabet& alphabet, std::vector<PhonemeInstance>& v) {

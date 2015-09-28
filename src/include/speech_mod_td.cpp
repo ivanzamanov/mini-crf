@@ -17,7 +17,7 @@ static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
   // It's what they call...
   int destBot, destTop, sourceBot, sourceTop;
   // The Rise...
-  gen_rise(window, samplesLeft);
+  gen_rise(window, samplesLeft, true);
   destBot = std::max(0, destOffset - samplesLeft);
   destTop = std::min(dest.length, destOffset);
   sourceBot = std::max(0, currentMark - samplesLeft);
@@ -34,7 +34,7 @@ static int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
   destTop = std::min(dest.length, destOffset + samplesRight);
   sourceBot = std::max(currentMark, 0);
   sourceTop = std::min(currentMark + samplesRight, source.length);
-  gen_fall(window, samplesRight);
+  gen_fall(window, samplesRight, true);
 
   for(int di = destBot,
         si = sourceBot,
