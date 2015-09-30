@@ -11,7 +11,7 @@ def frange(start, end, step):
 
 def myF(t):
     #return 5 + 2 * cos(2 * pi * t - pi / 2) + 3 * cos(4 * pi * t)
-    return cos(2 * t)
+    return cos(2 * t * 2)
 
 def FT(values):
     result = [0 for v in range(0, len(values) // 2 + 1)]
@@ -27,10 +27,8 @@ def FT(values):
         result[f] = (real / period, img / period)
     return result
 
-def rFT(frequencies):
-    result = [0 for f in range(0, len(frequencies) * 2 - 1)]
-    print len(result)
-    period = float(len(frequencies))
+def rFT(frequencies, period, resultLength):
+    result = [0 for f in range(0, resultLength)]
     for t, _ in enumerate(result):
         value = 0
         for f, (real, img) in enumerate(frequencies):
@@ -68,9 +66,11 @@ def main():
 
     plot = subplot(2, PLOTS)
     plot.set_title("Fourier Domain Modded")
-    scale = 1
-    newLen = int((len(fVals) - 1) * scale + 1)
+    scale = 2
+    newLen = len(fVals)
+    #newLen = int((len(fVals) - 1) * scale + 1)
     modded = [(0,0) for x in range(0, newLen)]
+    modded = [x for x in fVals]
 
     '''for i, (real, img) in enumerate(fVals):
         if(sqrt(real * real + img * img) > 0.001):
@@ -78,7 +78,7 @@ def main():
     for x, y in zip(fVals[1:], fVals[1:][::-1]):
         print(str(x) + ' == ' + str(y) + ' = ' + str(x[0] == y[0] and x[1] == -y[1]))'''
 
-    for i, _ in enumerate(modded):
+    '''for i, _ in enumerate(modded):
         ni = i / scale
         nf = ni
         ni = int(ni)
@@ -96,7 +96,7 @@ def main():
           str2 = formatC(plus)
         #c = fVals[ni]
         modded[i] = c
-        #print(str(i) + ' -> ' + str(ni) + ' , a = ' + str(a))
+        #print(str(i) + ' -> ' + str(ni) + ' , a = ' + str(a))'''
 
     '''print
     for i, c in enumerate(fVals): print(str(i) + ': ' + formatC(c))
@@ -109,7 +109,7 @@ def main():
 
     plot = subplot(3, PLOTS)
     plot.set_title("Time Domain Inversed")
-    iVals = rFT(modded)
+    iVals = rFT(modded, int(len(tVals) / scale), len(tVals))
     tBins = range(0, len(iVals))
     plot.plot(tBins, iVals, 'g')
 
