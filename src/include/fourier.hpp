@@ -28,11 +28,11 @@ cdouble operator*(S scalar, cdouble c) {
 }
 
 namespace ft {
-  void FT(double* values, int T, cdouble* frequencies, int F, int offsetF=0) {
+  void FT(double* values, int T, cdouble* frequencies, int F) {
     double period = T;
     double real, img;
     for(int f = 0; f < F; f++) {
-      double freq = f + offsetF;
+      double freq = f;
       real = img = 0;
       for(int t = 0; t < T; t++) {
         double arg = 2 * M_PI * t * freq / period;
@@ -43,12 +43,11 @@ namespace ft {
     }
   }
 
-  void rFT(cdouble* frequencies, int F, double* values, int T, int offsetF=0) {
-    double period = T;
+  void rFT(cdouble* frequencies, int F, double* values, int T, int period) {
     for(int t = 0; t < T; t++) {
       double val = 0;
       for(int f = 0; f < F; f++) {
-        double freq = f + offsetF;
+        double freq = f;
         double arg = 2 * M_PI * t * freq / period;
         val += frequencies[f].real * cos(arg) - frequencies[f].img * sin(arg);
       }
