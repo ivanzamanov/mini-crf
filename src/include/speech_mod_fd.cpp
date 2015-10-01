@@ -73,6 +73,8 @@ static void copyVoicedPart(SpeechWaveData& oSource,
 
   if(std::abs(pitchScale - 1) < 0.1)
     pitchScale = 1;
+  if(pitchScale >= 2 || pitchScale <= 0.5)
+    LOG("WARN: Pitch scale outside sane bounds");
   int sourceLen = nMark - mark;
   int newPeriod = sourceLen / pitchScale;
   double values[sourceLen];
@@ -88,7 +90,6 @@ static void copyVoicedPart(SpeechWaveData& oSource,
     for(int i = 0; i < sourceLen && destOffset < dest.length; i++, destOffset++)
       dest.plus(destOffset, truncate(values[i]));
   }
-  //destOffset -= newLen / OVERLAP;
 }
 
 static float nextRandFloat() {
@@ -123,13 +124,13 @@ static void copyVoicelessPart(SpeechWaveData& source,
 }
 
 static void scaleToPitchAndDurationSimple(WaveData dest, int& startOffset,
-                                          SpeechWaveData& source, frequency pitch, double) {
-  copyVoicedPart(source, startOffset, dest.length, 0, dest.length, pitch, dest);
+                                          SpeechWaveData& source, PitchRange pitch, double) {
+  copyVoicedPart(source, startOffset, dest.length, 0, dest.length, pitch.at_mid(), dest);
 }
 
 static void scaleToPitchAndDuration(WaveData dest,
                                     int& destOffset,
-                                    SpeechWaveData& source, frequency pitch, double duration) {
+                                    SpeechWaveData& source, PitchRange pitch, double duration) {
   // Time scale
   double scale = duration / WaveData::toDuration(source.length);
 
@@ -147,10 +148,11 @@ static void scaleToPitchAndDuration(WaveData dest,
   int mark = 0;
   int nMark = sourceMarks[i];
   destOffsetBound = startOffset + nMark * scale;
-  if(nMark - mark >= MAX_VOICELESS_SAMPLES)
+  frequency targetPitch = pitch.at(destOffset);
+  if(nMark - mark >= MAX_VOICELESS_SAMPLES || sourceMarks.size() == 1)
     copyVoicelessPart(source, destOffset, destOffsetBound, 0, mark, nMark, dest);
   else
-    copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, pitch, dest);
+    copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, targetPitch, dest);
 
   for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
     mark = sourceMarks[i];
@@ -158,11 +160,12 @@ static void scaleToPitchAndDuration(WaveData dest,
 
     int scaledEnd = scale * nMark;
     destOffsetBound = startOffset + scaledEnd;
+    targetPitch = pitch.at(destOffset);
 
     if(nMark - mark >= MAX_VOICELESS_SAMPLES)
       copyVoicelessPart(source, destOffset, destOffsetBound, mark, mark, nMark, dest);
     else
-      copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, pitch, dest);
+      copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, targetPitch, dest);
   }
 
   if(sourceMarks.size() == 1)
@@ -206,9 +209,9 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
-    frequency pitch = pt.at(destOffset);
+    PitchRange pitch = pt.ranges[i];
 
-    int extraTime = 2 / pitch;
+    int extraTime = 2 / pitch.right;
     double targetDuration = tgt.end - tgt.start + extraTime;
     int extra = WaveData::toSamples(extraTime);
 
@@ -216,10 +219,8 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
     int startOffset = 0;
-    if(WaveData::toDuration(p.length) <= 1 / pitch) {
+    if(WaveData::toDuration(p.length) <= 1 / pitch.at_mid())
       scaleToPitchAndDurationSimple(tmp, startOffset, p, pitch, targetDuration);
-      LOG("Simple at " << i);
-    }
     else
       scaleToPitchAndDuration(tmp, startOffset, p, pitch, targetDuration);
 
@@ -231,7 +232,7 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
     prog.update();
   }
   prog.finish();
-  return;
+  //return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
   for(unsigned i = 1; i < target.size() - 1; i++) {

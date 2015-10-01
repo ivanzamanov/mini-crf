@@ -49,7 +49,8 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
   tier[i].set(left, right, offset, WaveData::toSamples(duration));
 
   for(i++; i < target.size(); i++) {
-    offset = WaveData::toSamples(totalDuration);
+    //offset = WaveData::toSamples(totalDuration);
+    offset = 0;
     left = (std::exp(target[i].pitch_contour[0]) + tier[i-1].right) / 2;
     // Smooth out pitch at the concatenation points
     tier[i-1].right = left;
@@ -84,7 +85,12 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
         if(mark > p.start && mark < p.end)
           destPtr -> marks.push_back(ptr -> at_time(mark) - ptr -> at_time(p.start));
       });
-    destPtr -> markFrequency = p.pitch_contour[0];
+    if(destPtr -> marks.size() > 1 && destPtr -> marks[0] < MAX_VOICELESS_SAMPLES) {
+      int diff = destPtr -> marks[1] - destPtr -> marks[0];
+      int count = (destPtr -> marks[0] - diff) / diff;
+      for(int j = 0; j < count; j++)
+        destPtr -> marks.insert(destPtr -> marks.begin(), (count - j) * diff);
+    }
 
     // and move on
     ptr++;

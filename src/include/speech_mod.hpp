@@ -40,13 +40,15 @@ struct PitchRange {
   }
 
   frequency at(int index) const {
-    double c = (index+1 - offset); // centered
+    double c = (index - offset); // centered
     if(c < 0 || c > length)
-      throw std::out_of_range("Pitch from range");
+      throw std::out_of_range("Pitch outside range");
     return left * (1 - c / length) + right * c / length;
   }
-
+  
   frequency at(double time) const { return at(WaveData::toSamples(time)); }
+  frequency at_mid() const { return at(length / 2); }
+
   frequency left;
   frequency right;
   int length;

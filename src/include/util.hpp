@@ -153,14 +153,14 @@ struct Progress {
 
   void update() {
     if(Progress::enabled) {
-      std::cerr << '\r' << prefix << progress++ << '/' << total;
+      std::cerr << '\r' << prefix << progress++ << '/' << total << " ";
       std::cerr.flush();
     }
   }
   
   void finish() {
     if(Progress::enabled)
-      std::cerr << " Done" << std::endl;
+      std::cerr << " Done " << std::endl;
   }
 };
 

@@ -13,7 +13,7 @@
 void resynth(int argc, const char** argv) {
   Options opts = parse_options(argc, argv);
 
-  int inputIds[1] = { 2260 };
+  int inputIds[1] = { 508 };
 
   std::vector<PhonemeInstance> input;
   for(auto phonId : inputIds) {
@@ -30,8 +30,6 @@ void resynth(int argc, const char** argv) {
   for(auto p : input) {
     PhonemeInstance outputPhon;
     outputPhon.pitch_contour = p.pitch_contour;
-    outputPhon.pitch_contour[0] += std::log(1.5);
-    outputPhon.pitch_contour[1] += std::log(1.5);
     outputPhon.start = 0;
 
     outputPhon.end = p.duration;

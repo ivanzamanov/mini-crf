@@ -81,6 +81,19 @@ void tool::build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus
   DEBUG(std::cerr << "Read " << r.bytes << " bytes" << std::endl;);
 }
 
+static void smear_pitch(PhonemeInstance& phi, frequency& last_pitch) {
+  frequency& f1 = phi.frames[0].pitch;
+  frequency& f2 = phi.frames[1].pitch;
+  if(f1 == 0 && f2 == 0)
+    f1 = f2 = last_pitch;
+  else if(f1 == 0)
+    f1 = f2;
+  else if(f2 == 0)
+    f2 = f1;
+
+  last_pitch = f2;
+}
+
 void tool::pre_process(PhonemeAlphabet& alphabet) {
   // phonemes without pitch - assign that of the nearest neightbor with pitch
   for(unsigned i = 0; i < alphabet.files.size(); i++) {
@@ -89,25 +102,13 @@ void tool::pre_process(PhonemeAlphabet& alphabet) {
     frequency last_pitch = 0;
     for(auto it = phonemes.begin(); it != phonemes.end(); it++) {
       PhonemeInstance& phi = alphabet.fromInt(*it);
-      for(auto frame_it = phi.frames.begin(); frame_it != phi.frames.end(); ++frame_it) {
-        Frame& frame = *frame_it;
-        if(frame.pitch == 0)
-          frame.pitch = last_pitch;
-        else
-          last_pitch = frame.pitch;
-      }
+      smear_pitch(phi, last_pitch);
     }
 
     last_pitch = 0;
     for(auto it = phonemes.rbegin(); it != phonemes.rend(); it++) {
       PhonemeInstance& phi = alphabet.fromInt(*it);
-      for(auto frame_it = phi.frames.rbegin(); frame_it != phi.frames.rend(); ++frame_it) {
-        Frame& frame = *frame_it;
-        if(frame.pitch == 0)
-          frame.pitch = last_pitch;
-        else
-          last_pitch = frame.pitch;
-      }
+      smear_pitch(phi, last_pitch);
     }
   }
 
