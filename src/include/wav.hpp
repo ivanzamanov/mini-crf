@@ -48,6 +48,10 @@ struct WaveData {
       str << data[i] << '\n';
   }
 
+  void extract(short* dest, int count, int sourceOffset) {
+    std::memcpy(dest, data + sourceOffset, sizeof(data[0]) * count);
+  }
+
   static WaveData copy(WaveData& origin) {
     short* newData = new short[origin.length];
     memcpy(newData, origin.data, origin.length * sizeof(data[0]));

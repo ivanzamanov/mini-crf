@@ -177,24 +177,39 @@ static void scaleToPitchAndDuration(WaveData dest,
   copyVoicelessPart(source, destOffset, destOffsetBound, mark, nMark, scale, dest);
 }
 
-void smooth(WaveData dest, int offset, double pitch,
+int getSmoothingCount(double duration, frequency pitch) {
+  int MAX_SMOOTHING_COUNT = 1;
+  int count = 1;
+  while((count <= MAX_SMOOTHING_COUNT) & (duration / 2 > 1 / pitch * count))
+    count++;
+  count--;
+  return std::max(count, 0);
+}
+
+void smooth(WaveData dest, int offset, frequency pitch,
             PhonemeInstance& left, PhonemeInstance& right) {
-  //return;
-  int SMOOTHING_COUNT = 2;
-  SMOOTHING_COUNT = std::min(left.duration / 2 - SMOOTHING_COUNT / pitch,
-                             right.duration / 2 - SMOOTHING_COUNT / pitch);
+  int countLeft = getSmoothingCount(left.duration, pitch);
+  int countRight = getSmoothingCount(right.duration, pitch);
 
-  if(SMOOTHING_COUNT == 0)
-    return;
-  int samples = WaveData::toSamples(1 / pitch) * SMOOTHING_COUNT;
-  int low = offset - samples;
-  int high = offset + samples;
+  int valuesCount = WaveData::toSamples(1 / pitch);
+  short valuesLeft[valuesCount];
+  dest.extract(valuesLeft, valuesCount, offset - countLeft * valuesCount);
+  short valuesRight[valuesCount];
+  dest.extract(valuesRight, valuesCount, offset + (countRight - 1) * valuesCount);
 
-  for(int destOffset = low; destOffset <= high; destOffset++) {
-    double t = (destOffset - low) / (high - low);
-    int left = dest[destOffset - samples];
-    int right = dest[destOffset + samples];
-    dest[destOffset] = truncate(left * (1 - t) + right * t);
+  int startDestOffset = offset + (countRight - 1) * valuesCount;
+  int totalCount = countLeft + countRight;
+  short combined[valuesCount];
+  for(int i = 0; i < totalCount; i++) {
+    // combine left and right
+    float t = (float) i / totalCount;
+    for(int j = 0; j < valuesCount; j++)
+      combined[j] = valuesLeft[j] * (1 - t) + valuesRight[j] * t;
+
+    // and copy
+    for(int j = 0; j < valuesCount; j++)
+      dest[startDestOffset + j] = combined[j];
+    startDestOffset += valuesCount;
   }
 }
 
@@ -211,11 +226,15 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
     PhonemeInstance& tgt = target[i];
     PitchRange pitch = pt.ranges[i];
 
-    int extraTime = 2 / pitch.right;
+    int extraTime = 0;
     double targetDuration = tgt.end - tgt.start + extraTime;
     int extra = WaveData::toSamples(extraTime);
 
     WaveDataTemp tmp(WaveData::allocate(targetDuration));
+
+    double durationScale = targetDuration / WaveData::toDuration(p.length);
+    if(durationScale < 0.5 || durationScale > 2)
+      LOG("WARN: Duration scale outside sane bounds");
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
     int startOffset = 0;

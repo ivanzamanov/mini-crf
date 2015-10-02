@@ -151,10 +151,15 @@ int train(const Options&) {
 
   bool done;
   do {
-    sleep(1);
+    sleep(5);
     done = true;
     for(unsigned i = 0; i < count; i++)
       done &= flags[i];
+    cerr << "Unfinished: ";
+    for(unsigned i = 0; i < count; i++)
+      if(!flags[i])
+        cerr << i << " ";
+    cerr << std::endl;
   } while(!done);
 
   tp.destroy_threadpool();
