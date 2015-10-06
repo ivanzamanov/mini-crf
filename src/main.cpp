@@ -7,8 +7,8 @@
 #include"tool.hpp"
 #include"crf.hpp"
 #include"features.hpp"
-#include"threadpool.h"
 #include"speech_mod.hpp"
+#include"gridsearch.hpp"
 
 void print_usage() {
     std::cerr << "Usage: <cmd> <options>\n";
@@ -20,17 +20,8 @@ void print_usage() {
     std::cerr << "--phonid (query only)\n";
     std::cerr << "--sentence (query only)\n";
     std::cerr << "--concat-cost (query only)\n";
+    std::cerr << "--verbose\n";
     std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
-}
-
-std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
-  std::string result(1, ' ');
-  for(auto it = vec.begin(); it != vec.end(); it++) {
-    result.push_back('|');
-    result.append(labels_all.convert((*it).label) );
-    result.push_back('|');
-  }
-  return result;
 }
 
 stime_t get_total_duration(std::vector<PhonemeInstance> input) {
@@ -49,13 +40,13 @@ int resynthesize(Options& opts) {
   unsigned index = util::parse<int>(opts.input);
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
-  std::string sentence_string = to_text_string(input);
-  std::cerr << "Input file: " << alphabet_test.file_data_of(input[0]).file << std::endl;
-  std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
-  std::cerr << "Input: " << sentence_string << '\n';
+  std::string sentence_string = gridsearch::to_text_string(input);
+  INFO("Input file: " << alphabet_test.file_data_of(input[0]).file);
+  INFO("Total duration: " << get_total_duration(input));
+  INFO("Input: " << sentence_string);
 
-  std::cerr << "Original trans cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
-  std::cerr << "Original state cost: " << state_cost(input, crf, crf.lambda, crf.mu, input) << '\n';
+  INFO("Original trans cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input));
+  INFO("Original state cost: " << state_cost(input, crf, crf.lambda, crf.mu, input));
   std::vector<int> path;
   cost resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
 
@@ -65,9 +56,9 @@ int resynthesize(Options& opts) {
   if(opts.has_opt("verbose"))
     sp.print_synth(path, input);
   sp.print_textgrid(path, input, labels_synth, opts.text_grid);
-  std::cerr << "Resynth. cost: " << resynth_cost << '\n';
-  std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
-  std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << std::endl;
+  INFO("Resynth. cost: " << resynth_cost);
+  INFO("Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input));
+  INFO("Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input));
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
@@ -77,103 +68,11 @@ int resynthesize(Options& opts) {
   return 0;
 }
 
-struct ResynthParams {
-  void init(int index, std::ostream* os, bool* flag) {
-    this->index = index;
-    this->os = os;
-    this->flag = flag;
-  }
-
-  int index;
-  std::ostream *os;
-  bool* flag;
-};
-
-void resynth_index(ResynthParams* params) {
-  int index = params->index;
-  
-  std::vector<PhonemeInstance> input = corpus_test.input(index);
-  std::string sentence_string = to_text_string(input);
-  std::vector<int> path;
-
-  cost cost = max_path(input, crf, crf.lambda, crf.mu, &path);
-  std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
-
-  std::cerr << "Cost " << index << ": " << cost << std::endl;
-
-  std::stringstream outputFile;
-  outputFile << "/tmp/resynth-" << params->index << ".wav";
-
-  std::ofstream wav_output(outputFile.str());
-  SpeechWaveSynthesis(output, input, crf.alphabet())
-    .get_resynthesis()
-    .write(wav_output);
-
-  std::string input_file = alphabet_test.file_data_of(input[0]).file;
-  std::ostream& outputStream = *(params->os);
-  outputStream << input_file << " " << outputFile.str();
-  outputStream.flush();
-
-  *(params->flag) = 1;
-}
-
-int train(const Options& opts) {
-  Progress::enabled = false;
-
-  crf.mu[0] = opts.get_opt<coefficient>("state-pitch", 0);
-  crf.mu[1] = opts.get_opt<coefficient>("state-duration", 0);
-  crf.lambda[0] = opts.get_opt<coefficient>("trans-pitch", 0);
-  crf.lambda[1] = opts.get_opt<coefficient>("trans-mfcc", 0);
-  crf.lambda[2] = opts.get_opt<coefficient>("trans-ctx", 0);
-
-  unsigned count = corpus_test.size();
-  std::stringstream streams[count];
-  bool flags[count];
-  //#pragma omp parallel for
-  ThreadPool tp(8);
-  int ret = tp.initialize_threadpool();
-  if (ret == -1) {
-    cerr << "Failed to initialize thread pool!" << endl;
-    return 0;
-  }
-
-  ResynthParams params[count];
-  for(unsigned i = 0; i < count; i++) {
-    flags[i] = 0;
-    params[i].init(i, &streams[i], &flags[i]);
-    Task* t = new ParamTask<ResynthParams>(&resynth_index, &params[i]);
-    tp.add_task(t);
-  }
-
-  bool done;
-  do {
-    sleep(5);
-    done = true;
-    for(unsigned i = 0; i < count; i++)
-      done &= flags[i];
-    cerr << "Unfinished: ";
-    for(unsigned i = 0; i < count; i++)
-      if(!flags[i])
-        cerr << i << " ";
-    cerr << std::endl;
-  } while(!done);
-
-  tp.destroy_threadpool();
-
-  const std::string delim = "\n";
-  std::cout << streams[0].str() << std::endl;
-  for(unsigned i = 1; i < count; i++) {
-    std::cout << delim << streams[i].str() << std::endl;
-  }
-
-  return 0;
-}
-
 int baseline(const Options& opts) {
   unsigned index = opts.get_opt<int>("input", 0);
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
-  std::string sentence_string = to_text_string(input);
+  std::string sentence_string = gridsearch::to_text_string(input);
   std::cerr << "Input file: " << alphabet_test.file_data_of(input[0]).file << std::endl;
   std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
   std::cerr << "Input: " << sentence_string << '\n';
@@ -204,15 +103,15 @@ int main(int argc, const char** argv) {
   crf.lambda[1] = 1;
   crf.lambda[2] = 1;
 
-  switch(get_mode(opts.mode)) {
-  case Mode::RESYNTH:
+  switch(opts.get_mode()) {
+  case Options::Mode::RESYNTH:
     return resynthesize(opts);
-  case Mode::TRAIN:
-    return train(opts);
-  case Mode::BASELINE:
+  case Options::Mode::TRAIN:
+    return gridsearch::train(opts);
+  case Options::Mode::BASELINE:
     return baseline(opts);
   default:
-    std::cerr << "Unrecognized mode " << opts.mode << std::endl;
+    ERROR("Unrecognized mode " << opts.mode);
     return 1;
   }
 

@@ -128,6 +128,11 @@ struct Wave {
   WaveHeader h;
   char* data;
 
+  void read(std::string file) {
+    std::ifstream str(file);
+    read(str);
+  }
+  
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
     if(data) free(data);

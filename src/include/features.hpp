@@ -7,12 +7,13 @@
 
 using namespace tool;
 
+#define FEATURES_COUNT 2
+
 enum FunctionId {
   pitch = 0,
   mfcc = 1
 };
 
-static const unsigned FEATURES_COUNT = 2;
 struct FeatureValues : public std::array<float, FEATURES_COUNT> {
   int diff(const FeatureValues& o) const {
     for(unsigned i = 0; i < size(); i++) {
@@ -28,99 +29,92 @@ struct FeatureValues : public std::array<float, FEATURES_COUNT> {
   }
 };
 
-struct FeatureValuesKey {
-  FeatureValuesKey(PhoneticLabel src, PhoneticLabel dest): src(src), dest(dest) { }
-  FeatureValuesKey(): src(0), dest(0) { }
-
-  PhoneticLabel src;
-  PhoneticLabel dest;
-
-  bool operator==(const FeatureValuesKey& other) {
-    return src == other.src && dest == other.dest;
-  }
-};
-
-struct FeatureValuesCache {
-  FeatureValuesKey key;
-  Matrix<cost> *values;
-
-  void init(int srcSize, int destSize) {
-    values = new Matrix<cost>(srcSize, destSize);
+struct Features {
+  static cost Pitch(const PhonemeInstance& prev,
+                    const PhonemeInstance& next,
+                    int,
+                    const vector<PhonemeInstance>&) {
+    return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
   }
 
-  cost& operator()(unsigned srcId, unsigned destId) {
-    return (*values)(srcId, destId);
+  static cost LeftContext(const PhonemeInstance& prev,
+                          const PhonemeInstance& next,
+                          int,
+                          const vector<PhonemeInstance>&) {
+    return prev.label != next.ctx_left;
   }
-};
 
-struct FeatureValuesCacheProvider {
-  std::vector<FeatureValuesCache> values;
-
-  FeatureValuesCache& get(PhoneticLabel src, PhoneticLabel dest) {
-    FeatureValuesKey key(src, dest);
-
-    for(auto it = values.begin(); it != values.end(); it++)
-      if((*it).key == key) {
-        return *it;
-      }
-
-    FeatureValuesCache result;
-    result.key = key;
-    result.values = 0;
-    values.push_back(result);
-    return values[values.size() - 1];
+  static cost PitchState(const PhonemeInstance& p1,
+                         int pos,
+                         const vector<PhonemeInstance>& x) {
+    const PhonemeInstance& p2 = x[pos];
+    return p1.pitch_contour.diff(p2.pitch_contour);
   }
-};
 
-cost Pitch(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
-}
-
-cost LeftContext(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  return prev.label != next.ctx_left;
-}
-
-cost PitchState(const PhonemeInstance& p1, int pos, const vector<PhonemeInstance>& x) {
-  const PhonemeInstance& p2 = x[pos];
-  return p1.pitch_contour.diff(p2.pitch_contour);
-}
-
-cost MFCCDist(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  const MfccArray& mfcc1 = prev.last().mfcc;
-  const MfccArray& mfcc2 = next.first().mfcc;
-  cost result = 0;
-  std::array<mfcc_t, MFCC_N> tmp;
-  for (unsigned i = 0; i < mfcc1.size(); i++) {
-    auto diff = mfcc1[i] - mfcc2[i];
-    tmp[i] = diff;
-  }
-  for (unsigned i = 0; i < mfcc1.size(); i++)
-    result += tmp[i] * tmp[i];
+  static cost MFCCDist(const PhonemeInstance& prev,
+                       const PhonemeInstance& next,
+                       int, const vector<PhonemeInstance>&) {
+    const MfccArray& mfcc1 = prev.last().mfcc;
+    const MfccArray& mfcc2 = next.first().mfcc;
+    cost result = 0;
+    std::array<mfcc_t, MFCC_N> tmp;
+    for (unsigned i = 0; i < mfcc1.size(); i++) {
+      auto diff = mfcc1[i] - mfcc2[i];
+      tmp[i] = diff;
+    }
+    for (unsigned i = 0; i < mfcc1.size(); i++)
+      result += tmp[i] * tmp[i];
   
-  return std::sqrt(result);
-}
-
-cost MFCCDistL1(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  const MfccArray& mfcc1 = prev.last().mfcc;
-  const MfccArray& mfcc2 = next.first().mfcc;
-  mfcc_t result = 0;
-  for (unsigned i = 0; i < mfcc1.size(); i++) {
-    mfcc_t diff = mfcc1[i] - mfcc2[i];
-    result += std::abs(diff);
+    return std::sqrt(result);
   }
-  return result;
-}
 
-cost Duration(const PhonemeInstance& prev, int pos, const vector<PhonemeInstance>& x) {
-  const PhonemeInstance& next = x[pos];
-  stime_t d1 = prev.end - prev.start;
-  stime_t d2 = next.end - next.start;
-  return std::abs(d1 - d2);
-}
+  static cost MFCCDistL1(const PhonemeInstance& prev,
+                         const PhonemeInstance& next,
+                         int,
+                         const vector<PhonemeInstance>&) {
+    const MfccArray& mfcc1 = prev.last().mfcc;
+    const MfccArray& mfcc2 = next.first().mfcc;
+    mfcc_t result = 0;
+    for (unsigned i = 0; i < mfcc1.size(); i++) {
+      mfcc_t diff = mfcc1[i] - mfcc2[i];
+      result += std::abs(diff);
+    }
+    return result;
+  }
 
-cost BaselineFunction(const PhonemeInstance& prev, const PhonemeInstance& next, int, const vector<PhonemeInstance>&) {
-  return (prev.id + 1 == next.id) ? 0 : 1;
-}
+  static cost Duration(const PhonemeInstance& prev,
+                       int pos,
+                       const vector<PhonemeInstance>& x) {
+    const PhonemeInstance& next = x[pos];
+    stime_t d1 = prev.end - prev.start;
+    stime_t d2 = next.end - next.start;
+    return std::abs(d1 - d2);
+  }
+
+  static cost BaselineFunction(const PhonemeInstance& prev,
+                               const PhonemeInstance& next,
+                               int,
+                               const vector<PhonemeInstance>&) {
+    return (prev.id + 1 == next.id) ? 0 : 1;
+  }
+
+  template<class Eval>
+  cost feature_value(const PhonemeInstance& p1, const PhonemeInstance& p2) {
+    Eval eval;
+    vector<PhonemeInstance> empty;
+    return eval(p1, p2, 0, empty);
+  }
+
+  FeatureValues get_feature_values(const PhonemeInstance& p1, const PhonemeInstance& p2) {
+    FeatureValues result;
+    vector<PhonemeInstance> dummy;
+    result.populate(
+                    Pitch(p1, p2, 0, dummy),
+                    MFCCDist(p1, p2, 0, dummy)
+                    );
+    return result;
+  }
+};
 
 struct PhoneticFeatures;
 typedef CRandomField<PhonemeAlphabet, PhonemeInstance, PhoneticFeatures> CRF;
@@ -129,8 +123,25 @@ struct PhoneticFeatures {
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
-  const _EdgeFeature f[3] = { Pitch, MFCCDist, LeftContext };
-  const _VertexFeature g[2] = { Duration, PitchState };
+  const std::string enames[3] = {
+    "trans-pitch",
+    "trans-mfcc",
+    "tranx-ctx"
+  };
+  const _EdgeFeature f[3] = {
+    Features::Pitch,
+    Features::MFCCDist,
+    Features::LeftContext
+  };
+
+  const std::string vnames[2] = {
+    "state-duration",
+    "state-pitch"
+  };
+  const _VertexFeature g[2] = {
+    Features::Duration,
+    Features::PitchState
+  };
 };
 
 struct BaselineFeatures;
@@ -140,26 +151,13 @@ struct BaselineFeatures {
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
-  const _EdgeFeature f[1] = { BaselineFunction };
+  const std::string enames[1] = {
+    "trans-baseline"
+  };
+  const _EdgeFeature f[1] = { Features::BaselineFunction };
+
+  const std::string vnames[0] = {};
   const _VertexFeature g[0] = { };
 };
 
-template<class Eval>
-cost feature_value(const PhonemeInstance& p1, const PhonemeInstance& p2) {
-  Eval eval;
-  vector<PhonemeInstance> empty;
-  return eval(p1, p2, 0, empty);
-}
-
-FeatureValues get_feature_values(const PhonemeInstance& p1, const PhonemeInstance& p2) {
-  FeatureValues result;
-  vector<PhonemeInstance> dummy;
-  result.populate(
-                  Pitch(p1, p2, 0, dummy),
-                  MFCCDist(p1, p2, 0, dummy)
-                  );
-  return result;
-}
-
 #endif
-

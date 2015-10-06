@@ -2,6 +2,7 @@
 #define __UTIL_HPP__
 
 #include<iostream>
+#include<sstream>
 #include<cmath>
 #include<cstring>
 #include<limits>
@@ -77,6 +78,9 @@ namespace util {
     for(auto& el : v)
       f(i++, el);
   }
+
+  std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
+  std::vector<std::string> split_string(const std::string &s, char delim);
 };
 
 bool compare(std::string &, std::string&);
