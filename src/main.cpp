@@ -40,15 +40,13 @@ stime_t get_total_duration(std::vector<PhonemeInstance> input) {
 }
 
 int resynthesize(Options& opts) {
-  PlainStreamConfig conf(std::cin);
-  coefficient val;
-  crf.mu[0] = conf.get("state-pitch", val);
-  crf.mu[1] = conf.get("state-duration", val);
-  crf.lambda[0] = conf.get("trans-pitch", val);
-  crf.lambda[1] = conf.get("trans-mfcc", val);
-  crf.lambda[2] = conf.get("trans-ctx", val);
+  crf.mu[0] = opts.get_opt<double>("state-pitch", 0);
+  crf.mu[1] = opts.get_opt<double>("state-duration", 0);
+  crf.lambda[0] = opts.get_opt<double>("trans-pitch", 0);
+  crf.lambda[1] = opts.get_opt<double>("trans-mfcc", 0);
+  crf.lambda[2] = opts.get_opt<double>("trans-ctx", 0);
 
-  unsigned index = util::parse_int(opts.input);
+  unsigned index = util::parse<int>(opts.input);
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = to_text_string(input);
@@ -64,14 +62,14 @@ int resynthesize(Options& opts) {
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
   SynthPrinter sp(crf.alphabet(), labels_all);
-  if(opts.has_opt("--verbose"))
+  if(opts.has_opt("verbose"))
     sp.print_synth(path, input);
   sp.print_textgrid(path, input, labels_synth, opts.text_grid);
   std::cerr << "Resynth. cost: " << resynth_cost << '\n';
   std::cerr << "Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input) << '\n';
   std::cerr << "Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input) << std::endl;
 
-  std::string outputFile = opts.get_opt("--output");
+  std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
   SpeechWaveSynthesis(output, input, crf.alphabet())
     .get_resynthesis()
@@ -119,16 +117,14 @@ void resynth_index(ResynthParams* params) {
   *(params->flag) = 1;
 }
 
-int train(const Options&) {
+int train(const Options& opts) {
   Progress::enabled = false;
-  PlainStreamConfig conf(std::cin);
 
-  coefficient val;
-  crf.mu[0] = conf.get("state-pitch", val);
-  crf.mu[1] = conf.get("state-duration", val);
-  crf.lambda[0] = conf.get("trans-pitch", val);
-  crf.lambda[1] = conf.get("trans-mfcc", val);
-  crf.lambda[2] = conf.get("trans-ctx", val);
+  crf.mu[0] = opts.get_opt<coefficient>("state-pitch", 0);
+  crf.mu[1] = opts.get_opt<coefficient>("state-duration", 0);
+  crf.lambda[0] = opts.get_opt<coefficient>("trans-pitch", 0);
+  crf.lambda[1] = opts.get_opt<coefficient>("trans-mfcc", 0);
+  crf.lambda[2] = opts.get_opt<coefficient>("trans-ctx", 0);
 
   unsigned count = corpus_test.size();
   std::stringstream streams[count];
@@ -174,7 +170,7 @@ int train(const Options&) {
 }
 
 int baseline(const Options& opts) {
-  unsigned index = util::parse_int(opts.input);
+  unsigned index = opts.get_opt<int>("input", 0);
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = to_text_string(input);
@@ -196,7 +192,8 @@ int baseline(const Options& opts) {
 bool Progress::enabled = true;
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  if(!init_tool(argc, argv)) {
+  Options opts;
+  if(!init_tool(argc, argv, &opts)) {
     print_usage();
     return 1;
   }
@@ -207,7 +204,6 @@ int main(int argc, const char** argv) {
   crf.lambda[1] = 1;
   crf.lambda[2] = 1;
 
-  Options opts = parse_options(argc, argv);
   switch(get_mode(opts.mode)) {
   case Mode::RESYNTH:
     return resynthesize(opts);

@@ -22,12 +22,12 @@ namespace tool {
                           StringLabelProvider& cons);
   void remap(PhonemeAlphabet& alph, Corpus& corp);
 
-  bool init_tool(int argc, const char** argv) {
-    Options opts = parse_options(argc, argv);
-    if(!has_required(opts))
+  bool init_tool(int argc, const char** argv, Options* opts) {
+    *opts = parse_options(argc, argv);
+    if(!has_required(*opts))
       return false;
     crf.label_alphabet = &alphabet_synth;
-    build_data(opts);
+    build_data(*opts);
 
     pre_process(alphabet_synth, corpus_synth);
     pre_process(alphabet_test, corpus_test);

@@ -7,9 +7,13 @@
 #include<limits>
 #include<vector>
 
-#define DEBUG(x) ;
 #define TEST(x) std::cerr << #x << ":\n" ; x(); std::cerr << "OK" << std::endl;
+
+#define DEBUG(x) ;
 #define LOG(x) std::cerr << x << std::endl
+#define INFO(x) std::cerr << "INFO: " << x << std::endl
+#define WARN(x) std::cerr << "INFO: " << x << std::endl
+#define ERROR(x) std::cerr << "INFO: " << x << std::endl
 
 #define MY_E 2.71828182845904523536028747135266250 // e
 
@@ -29,7 +33,13 @@ namespace util {
   float sum_log(float x, float y);
   float sum(float x, float y);
 
-  int parse_int(const std::string& str);
+  template<class T>
+  T parse(const std::string& str) {
+    T result;
+    std::stringstream stream(str);
+    stream >> result;
+    return result;
+  }
 
   template<class T, class Func>
   void each(T* ptr, int length, Func f) {

@@ -84,13 +84,6 @@ namespace util {
 
     return std::exp(result) * sign;
   }
-
-  int parse_int(const std::string& str) {
-    int result;
-    std::stringstream stream(str);
-    stream >> result;
-    return result;
-  }
 }
 
 bool compare(std::string &s1, std::string &s2) {

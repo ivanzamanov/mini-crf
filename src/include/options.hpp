@@ -1,10 +1,14 @@
 #ifndef __OPTIONS_H__
 #define __OPTIONS_H__
 
+#include<unistd.h>
+
 #include<iostream>
 #include<sstream>
 #include<vector>
 #include<string>
+
+#include"util.hpp"
 
 unsigned MIN_OPTS = 2;
 
@@ -19,46 +23,28 @@ Mode get_mode(std::string str) {
   return Mode::INVALID;
 }
 
-struct PlainStreamConfig {
-  struct ConfigValue {
-    std::string key, value;
-
-    template<class T>
-    void get(T& val) {
-      std::stringstream sstream(value);
-      sstream >> val;
-    }
-  };
-
-  PlainStreamConfig(std::istream& str) {
-    std::string buffer;
-    while(str >> buffer) {
-      ConfigValue v;
-      int index = buffer.find_first_of('=');
-      v.key = buffer.substr(0, index);
-      v.value = buffer.substr(index + 1);
-      values.push_back(v);
-    }
-  }
-
-  std::vector<ConfigValue> values;
-
-  template<class T>
-  T& get(std::string key, T& val) {
-    for(auto it = values.begin(); it != values.end(); it++)
-      if( (*it).key == key) { (*it).get(val); break; }
-    return val;
-  }
-
-  bool has(std::string key) {
-    for(auto it = values.begin(); it != values.end(); it++)
-      if( (*it).key == key) { return true; }
-    return false;
-  }
-};
-
 struct Options {
-  Options(unsigned l, const char** args): length(l), args(args) { }
+  Options() { }
+
+  Options(unsigned l, const char** argv) {
+    for(unsigned i = 0; i < l; i++)
+      args.push_back(argv[i]);
+
+    if(isatty(STDIN_FILENO))
+      return;
+    
+    std::string buffer;
+    //std::cout << (char) std::cin.get() << std::endl;
+    while(std::cin >> buffer) {
+      int index = buffer.find_first_of('=');
+      if(index >= 0) {
+        args.push_back(std::string("--") + buffer.substr(0, index));
+        args.push_back(buffer.substr(index + 1));
+      } else {
+        args.push_back(std::string("--") + buffer);
+      }
+    }
+  }
 
   // Common
   std::string synth_db;
@@ -75,11 +61,11 @@ struct Options {
   bool concat_cost;
   bool text_input;
 
-  unsigned length;
-  const char** args;
+  std::vector<std::string> args;
 
   bool has_opt(std::string opt) const {
-    for(unsigned i = 0; i < length; i++) {
+    opt = std::string("--") + opt;
+    for(unsigned i = 0; i < args.size(); i++) {
       std::string test(args[i]);
       if(opt == test) {
         return true;
@@ -88,23 +74,31 @@ struct Options {
     return false;
   }
 
-  std::string get_opt(std::string opt, bool* found=0) {
+  std::string get_string(std::string opt, bool* found=0) const {
     if(found) *found = false;
-    for(unsigned i = 0; i < length - 1; i++) {
+    for(unsigned i = 0; i < args.size() - 1; i++) {
       std::string test(args[i]);
       if(opt == test) {
         std::string result(args[i + 1]);
         if(found) *found = true;
-        std::cerr << opt << " = " << result << std::endl;
+        INFO(opt << " = " << result);
         return result;
       }
     }
     return std::string("");
   }
 
-  bool check_opt(std::string opt) {
+  template<class T>
+  T get_opt(std::string opt, T def) const {
+    opt = std::string("--") + opt;
+    bool found;
+    std::string val = get_string(opt, &found);
+    return found ? util::parse<T>(val) : def;
+  }
+
+  bool check_opt(std::string opt) const {
     if(!has_opt(opt)) {
-      std::cerr << "Missing required option " << opt << std::endl;
+      ERROR("Missing required option " << opt);
       return false;
     }
     return true;
@@ -131,25 +125,25 @@ Options parse_options(unsigned argc, const char** argv) {
   Options opts(argc, argv);
 
   // common
-  opts.synth_db = opts.get_opt("--synth-database");
-  opts.test_db = opts.get_opt("--test-database");
-  opts.mode = opts.get_opt("--mode");
-  opts.input = opts.get_opt("--input");
+  opts.synth_db = opts.get_opt<std::string>("synth-database", "");
+  opts.test_db = opts.get_opt<std::string>("test-database", "");
+  opts.mode = opts.get_opt<std::string>("mode", "");
+  opts.input = opts.get_opt<std::string>("input", "");
 
   // synth
-  opts.text_grid = opts.get_opt("--textgrid");
+  opts.text_grid = opts.get_opt<std::string>("textgrid", "resynth.TextGrid");
 
   // query
-  opts.phon_id = opts.has_opt("--phonid");
-  opts.sentence = opts.has_opt("--sentence");
-  opts.concat_cost = opts.has_opt("--concat-cost");
-  opts.text_input = opts.has_opt("--text");
+  opts.phon_id = opts.has_opt("phonid");
+  opts.sentence = opts.has_opt("sentence");
+  opts.concat_cost = opts.has_opt("concat-cost");
+  opts.text_input = opts.has_opt("text");
 
   return opts;
 }
 
 bool has_required(Options& opts) {
-  return opts.check_opt("--synth-database")
-    && opts.check_opt("--test-database");
+  return opts.check_opt("synth-database")
+    && opts.check_opt("test-database");
 }
 #endif
