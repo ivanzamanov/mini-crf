@@ -3,6 +3,7 @@
 
 #include<cmath>
 #include<vector>
+#include<string>
 #include<array>
 
 static const int MFCC_N = 12;
