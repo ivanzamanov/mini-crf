@@ -40,10 +40,11 @@ namespace gridsearch {
     }
 
     const Comparisons operator+(const Comparisons o) const {
-      return Comparisons {
-      ItakuraSaito: ItakuraSaito + o.ItakuraSaito,
-      LogSpectrum: LogSpectrum + o.LogSpectrum,
+      Comparisons result = {
+        .ItakuraSaito = ItakuraSaito + o.ItakuraSaito,
+        .LogSpectrum = LogSpectrum + o.LogSpectrum
       };
+      return result;
     }
 
     double value() const {

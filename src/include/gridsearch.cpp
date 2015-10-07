@@ -53,9 +53,10 @@ namespace gridsearch {
     each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
         const int T = f1.size();
         const int F = T / 2;
-        double values[T];
-        cdouble freqs1[F];
-        cdouble freqs2[F];
+        const int TF_SIZE_MAX = 5000;
+        double values[TF_SIZE_MAX];
+        cdouble freqs1[TF_SIZE_MAX];
+        cdouble freqs2[TF_SIZE_MAX];
 
         f1.extract(values, T, 0);
         ft::FT(values, T, freqs1, F);
@@ -182,13 +183,13 @@ namespace gridsearch {
       return ret;
     }
 
-    std::array<Range, FC> ranges = {
-      Range("trans-ctx", 100, 100, 1),
-      Range("trans-pitch", 1, 100, 1),
-      Range("state-pitch", 1, 100, 1),
-      Range("trans-mfcc", 1, 10, 0.1),
-      Range("state-duration", 1, 100, 1)
-    };
+    std::array<Range, FC> ranges = {{
+        Range("trans-ctx", 100, 100, 1),
+        Range("trans-pitch", 1, 100, 1),
+        Range("state-pitch", 1, 100, 1),
+        Range("trans-mfcc", 1, 10, 0.1),
+        Range("state-duration", 1, 100, 1)
+      }};
     for(auto it : ranges)
       INFO("Range " << it.to_string());
 

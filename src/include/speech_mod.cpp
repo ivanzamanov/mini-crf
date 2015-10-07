@@ -61,8 +61,8 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
     tier[i].set(left, right, offset, WaveData::toSamples(duration));
   }
   PitchTier result =  {
-  ranges: tier,
-  length: (int) target.size()
+    .ranges = tier,
+    .length = (int) target.size()
   };
   return result;
 }
@@ -101,26 +101,26 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
 Wave SpeechWaveSynthesis::get_resynthesis() {
   // First off, prepare for output, build some default header...
   WaveHeader h = {
-  chunkId: from_chars("RIFF"),
-  chunkSize: sizeof(WaveHeader) - 2 * sizeof(unsigned),
-  format: from_chars("WAVE"),
-  subchunkId: from_chars("fmt "),
-  subchunk1Size: 16,
-  audioFormat: 1,
-  channels: 1,
-  sampleRate: DEFAULT_SAMPLE_RATE,
-  byteRate: DEFAULT_SAMPLE_RATE * 2,
-  blockAlign: 2,
-  bitsPerSample: 16,
-  subchunk2Id: from_chars("data"),
-  samplesBytes: 0
+    .chunkId = from_chars("RIFF"),
+    .chunkSize = sizeof(WaveHeader) - 2 * sizeof(unsigned),
+    .format = from_chars("WAVE"),
+    .subchunkId = from_chars("fmt "),
+    .subchunk1Size = 16,
+    .audioFormat = 1,
+    .channels = 1,
+    .sampleRate = DEFAULT_SAMPLE_RATE,
+    .byteRate = DEFAULT_SAMPLE_RATE * 2,
+    .blockAlign = 2,
+    .bitsPerSample = 16,
+    .subchunk2Id = from_chars("data"),
+    .samplesBytes = 0
   };
   WaveBuilder wb(h);
 
   // First off, collect the WAV data for each source unit
   const int N = source.size();
-  Wave sourceData[N];
-  SpeechWaveData waveData[N];
+  Wave* sourceData = new Wave[N];
+  SpeechWaveData* waveData = new SpeechWaveData[N];
   readSourceData(*this, sourceData, waveData);
 
   // Ok, so waveData contains all the pieces with pitch marks translated to piece-local time
@@ -133,6 +133,10 @@ Wave SpeechWaveSynthesis::get_resynthesis() {
   do_resynthesis_fd(result, waveData);
 
   wb.append(result);
+
+  delete[] sourceData;
+  delete[] waveData;
+
   return wb.build();
 }
 

@@ -4,6 +4,7 @@
 #include<cstring>
 #include<iostream>
 #include<algorithm>
+#include<cassert>
 
 #include"alphabet.hpp"
 #include"types.hpp"
@@ -258,8 +259,8 @@ struct FunctionalAutomaton {
 
     vector<int> max_path;
     // Will need for intermediate computations
-    Transition children_a[alphabet_length()],
-      next_children_a[alphabet_length()];
+    Transition* children_a = new Transition[alphabet_length()],
+      *next_children_a = new Transition[alphabet_length()];
 
     Transition* children = children_a,
       *next_children = next_children_a;
@@ -322,6 +323,9 @@ struct FunctionalAutomaton {
 
     if(max_path_ptr)
       *max_path_ptr = max_path;
+    
+    delete[] children_a;
+    delete[] next_children_a;
 
     return value;
   }

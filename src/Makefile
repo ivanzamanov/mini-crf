@@ -1,5 +1,6 @@
 
-CC = g++
+#CC = g++
+CC = clang++
 CFLAGS = -std=c++11 -Wall -I./include
 OBJ_DIR = bin
 OBJ = crf.o

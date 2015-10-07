@@ -55,7 +55,6 @@ short truncate(double v) {
   return (short) v;
 }
 
-const int I_NF = 500;
 static void copyVoicedPart(SpeechWaveData& oSource,
                            int& destOffset,
                            const int destOffsetBound,
@@ -70,7 +69,7 @@ static void copyVoicedPart(SpeechWaveData& oSource,
 
   int NF = nMark - mark;
   NF /= 2;
-  cdouble frequencies[NF + 1];
+  cdouble* frequencies = new cdouble[NF + 1];
 
   if(std::abs(pitchScale - 1) < 0.1)
     pitchScale = 1;
@@ -91,6 +90,7 @@ static void copyVoicedPart(SpeechWaveData& oSource,
     for(int i = 0; i < sourceLen && destOffset < dest.length; i++, destOffset++)
       dest.plus(destOffset, truncate(values[i]));
   }
+  delete[] frequencies;
 }
 
 static float nextRandFloat() {
