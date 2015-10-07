@@ -1,6 +1,7 @@
 #ifndef __SPEECH_MOD_HPP__
 #define __SPEECH_MOD_HPP__
 
+#include<cassert>
 #include<vector>
 
 #include"speech_synthesis.hpp"
@@ -41,8 +42,7 @@ struct PitchRange {
 
   frequency at(int index) const {
     double c = (index - offset); // centered
-    if(c < 0 || c > length)
-      throw std::out_of_range("Pitch outside range");
+    assert(!(c < 0 || c > length)); // Bad sample index
     return left * (1 - c / length) + right * c / length;
   }
   
@@ -63,8 +63,7 @@ struct PitchTier {
       if( ranges[i].offset + ranges[i].length > sample)
         return ranges[i].at(sample);
     return atEnd();
-    // Shouldn't happen so this will break stuff
-    throw std::out_of_range("Out of range " + sample);
+    assert(false); // Bad sample index
   }
   frequency atEnd() const {
     int offset = ranges[length - 1].offset;

@@ -1,36 +1,77 @@
+#include<cassert>
+
 #include"gridsearch.hpp"
 #include"threadpool.h"
 #include"crf.hpp"
 #include"tool.hpp"
 #include"speech_mod.hpp"
+#include"fourier.hpp"
 
 // TODO
-static double compare_IS(Wave result, Wave original) {
-  return 1;
+static double compare_IS(Wave& result, Wave& original) {
+  return 0;
+  double value = 0;
+  each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
+      value++;
+    });
+  assert(false); // ItakuraSaito not yet implemented
+  return value;
 }
 
 // TODO
-static double compare_LogSpectrum(Wave result, Wave original) {
-  return 1;
+static double compare_LogSpectrum(Wave& result, Wave& original) {
+  double value = 0;
+  each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
+      const int T = f1.size();
+      const int F = T / 2;
+      double values[T];
+      cdouble freqs1[F];
+      cdouble freqs2[F];
+
+      f1.extract(values, T, 0);
+      ft::FT(values, T, freqs1, F);
+
+      f2.extract(values, T, 0);
+      ft::FT(values, T, freqs2, F);
+
+      for(int i = 0; i < F; i++) {
+        double m1 = freqs1[i].magn();
+        m1 = m1 ? m1 : 1;
+        double m2 = freqs2[i].magn();
+        m2 = m2 ? m2 : 1;
+        value += std::log( m2 / m1);
+      }
+    });
+  return value;
 }
 
 struct Range {
-  Range(std::string feature, int index, double from, double to, double step)
-    :from(from), to(to), step(step), index(index), feature(feature) {
-    current = from - step;
+  Range(): Range("", 0, 0, 1) { }
+  Range(std::string feature, double from, double to, double step)
+    :from(from), to(to), step(step), current(from), feature(feature) {
+    assert(step > 0 && from <= to);
   }
 
-  bool has_next() { return current < to; }
+  bool has_next() { return (current + step) <= to; }
   void next() { current += step; }
   
   double from, to, step, current;
-  int index;
   std::string feature;
+
+  std::string to_string() const {
+    std::stringstream str;
+    str << "[" << feature << ", " << from << ", " << to << ", " << step << "]";
+    return str.str();
+  }
 };
 
-static const int FC = 5;
+static const int FC = PhoneticFeatures::ESIZE + PhoneticFeatures::VSIZE;
 struct TrainingOutput {
-  Range ranges[FC];
+  TrainingOutput(std::array<Range, FC> ranges, gridsearch::Comparisons result)
+    :ranges(ranges), result(result)
+  { }
+
+  std::array<Range, FC> ranges;
   gridsearch::Comparisons result;
 };
 
@@ -55,7 +96,7 @@ namespace gridsearch {
     cost cost = max_path(input, crf, crf.lambda, crf.mu, &path);
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
-    std::cerr << "Cost " << index << ": " << cost << std::endl;
+    INFO("Cost " << index << ": " << cost);
 
     std::stringstream outputFile;
     outputFile << "/tmp/resynth-" << params->index << ".wav";
@@ -77,19 +118,37 @@ namespace gridsearch {
   void wait_done(bool* flags, unsigned count) {
     bool done;
     do {
-      sleep(5);
+      sleep(1);
       done = true;
       for(unsigned i = 0; i < count; i++)
         done &= flags[i];
-      cerr << "Unfinished: ";
-      for(unsigned i = 0; i < count; i++)
-        if(!flags[i])
-          cerr << i << " ";
-      cerr << std::endl;
+      DEBUG(
+            cerr << "Unfinished: ";
+            for(unsigned i = 0; i < count; i++)
+              if(!flags[i])
+                cerr << i << " ";
+            cerr << std::endl;
+            );
     } while(!done);
   }
 
-  TrainingOutput do_train(ThreadPool& tp) {
+  void aggregate(std::vector<Comparisons> params,
+                 Comparisons* sum=0,
+                 Comparisons* max=0) {
+    Comparisons sumTemp;
+    int maxIndex = -1;
+    for(unsigned i = 0; i < params.size(); i++) {
+      if(maxIndex == -1 || params[i] < params[maxIndex])
+        maxIndex = i;
+      sumTemp = sumTemp + params[i];
+    }
+    if(sum)
+      *sum = sumTemp;
+    if(max)
+      *max = params[maxIndex];
+  }
+
+  Comparisons do_train(ThreadPool& tp) {
     unsigned count = corpus_test.size();
     bool flags[count];
 
@@ -100,61 +159,75 @@ namespace gridsearch {
       Task* t = new ParamTask<ResynthParams>(&resynth_index, &params[i]);
       tp.add_task(t);
     }
-
     wait_done(flags, count);
-  }
 
-  void populate(Range r) {
-    for(unsigned i = 0; i < crf.lambda.size(); i++)
-      if(crf.features.enames[i] == r.feature)
-        crf.lambda[i] = r.current;
+    std::vector<Comparisons> comps;
+    for(unsigned i = 0; i < count; i++) comps.push_back(params[i].result);
 
-    for(unsigned i = 0; i < crf.mu.size(); i++)
-      if(crf.features.vnames[i] == r.feature)
-        crf.mu[i] = r.current;
-  }
-
-  TrainingOutput train_on_ranges(Range* ranges, int n, ThreadPool& tp) {
-    for(int i = 0; i < n; i++)
-      populate(ranges[i]);
-    return do_train(tp);
+    Comparisons result;
+    aggregate(comps, &result);
+    return result;
   }
 
   int train(const Options& opts) {
     Progress::enabled = false;
+    Comparisons::metric = opts.get_opt<std::string>("metric", "");
+
     //#pragma omp parallel for
     int threads = opts.get_opt<int>("thread-count", 8);
     ThreadPool tp(threads);
     int ret = tp.initialize_threadpool();
     if (ret == -1) {
-      cerr << "Failed to initialize thread pool" << endl;
+      ERROR("Failed to initialize thread pool");
       return ret;
     }
 
-    crf.mu[0] = opts.get_opt<coefficient>("state-pitch", 0);
-    crf.mu[1] = opts.get_opt<coefficient>("state-duration", 0);
-    crf.lambda[0] = opts.get_opt<coefficient>("trans-pitch", 0);
-    crf.lambda[1] = opts.get_opt<coefficient>("trans-mfcc", 0);
-    crf.lambda[2] = opts.get_opt<coefficient>("trans-ctx", 0);
-
-    Range ranges[FC] = {
-      Range("trans-ctx", 2, 100, 100, 1),
-      Range("trans-pitch", 0, 1, 100, 1),
-      Range("state-pitch", 0, 1, 100, 0),
-      Range("trans-mfcc", 1, 1, 10, 0.1),
-      Range("state-duration", 1, 1, 100, 1)
+    std::array<Range, FC> ranges = {
+      Range("trans-ctx", 100, 100, 1),
+      Range("trans-pitch", 1, 100, 1),
+      Range("state-pitch", 1, 100, 1),
+      Range("trans-mfcc", 1, 10, 0.1),
+      Range("state-duration", 1, 100, 1)
     };
-    
-    for(int i = 1; i < FC; i++) {
+    for(auto it : ranges)
+      INFO("Range " << it.to_string());
+
+    int iteration = 0;
+    std::vector<TrainingOutput> outputs;
+    for(unsigned i = 1; i < ranges.size(); i++) {
+      std::vector<Comparisons> comps;
+      double bestCoef = -1;
+      Comparisons bestVals;
       while(ranges[i].has_next()) {
+        iteration++;
+        // Update coefficient
+        crf.set(ranges[i].feature, ranges[i].current);
+        // Log
+        LOG("");
+        INFO("Iteration: " << iteration);
+        for(unsigned k = 0; k < ranges.size(); k++)
+          LOG(ranges[k].feature << "=" << ranges[k].current);
+
+        // And actual work...
+        Comparisons result = do_train(tp);
+        if(bestCoef == -1 || result < bestVals)
+          bestCoef = ranges[i].current;
+
+        // Advance
         ranges[i].next();
-        TrainingOutput output = train_on_ranges(ranges, FC);
+
+        INFO("Value: " << result.value());
       }
+      INFO(ranges[i].feature << " best value = " << bestCoef);
+      ranges[i].current = bestCoef;
     }
 
-    int result = do_train(tp);
+    INFO("Best at: ");
+    for(unsigned k = 0; k < ranges.size(); k++)
+      LOG(ranges[k].feature << "=" << ranges[k].current);
 
     tp.destroy_threadpool();
-    return result;
+
+    return 0;
   }
 }

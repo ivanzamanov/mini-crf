@@ -74,7 +74,7 @@ static void copyVoicedPart(SpeechWaveData& oSource,
   if(std::abs(pitchScale - 1) < 0.1)
     pitchScale = 1;
   if(pitchScale >= 2 || pitchScale <= 0.5)
-    LOG("WARN: Pitch scale outside sane bounds");
+    WARN("Pitch scale " << pitchScale);
   int sourceLen = nMark - mark;
   int newPeriod = sourceLen / pitchScale;
   double values[sourceLen];
@@ -234,7 +234,7 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
 
     double durationScale = targetDuration / WaveData::toDuration(p.length);
     if(durationScale < 0.5 || durationScale > 2)
-      LOG("WARN: Duration scale outside sane bounds");
+      WARN("Duration scale " << durationScale);
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
     int startOffset = 0;

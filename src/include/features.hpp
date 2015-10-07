@@ -123,22 +123,25 @@ struct PhoneticFeatures {
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
-  const std::string enames[3] = {
+  static const int ESIZE = 3;
+  static const int VSIZE = 2;
+
+  const std::string enames[ESIZE] = {
     "trans-pitch",
     "trans-mfcc",
     "tranx-ctx"
   };
-  const _EdgeFeature f[3] = {
+  const _EdgeFeature f[ESIZE] = {
     Features::Pitch,
     Features::MFCCDist,
     Features::LeftContext
   };
 
-  const std::string vnames[2] = {
+  const std::string vnames[VSIZE] = {
     "state-duration",
     "state-pitch"
   };
-  const _VertexFeature g[2] = {
+  const _VertexFeature g[VSIZE] = {
     Features::Duration,
     Features::PitchState
   };

@@ -96,6 +96,16 @@ public:
     return numer - std::log(denom);
   };
 
+  void set(const std::string feature, coefficient coef) {
+    for(unsigned i = 0; i < lambda.size(); i++)
+      if(features.enames[i] == feature)
+        lambda[i] = coef;
+
+    for(unsigned i = 0; i < mu.size(); i++)
+      if(features.vnames[i] == feature)
+        mu[i] = coef;
+  }
+
   _Features features;
 
   // Vertex feature coefficients

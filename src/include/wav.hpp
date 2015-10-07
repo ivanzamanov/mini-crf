@@ -48,8 +48,14 @@ struct WaveData {
       str << data[i] << '\n';
   }
 
-  void extract(short* dest, int count, int sourceOffset) {
-    std::memcpy(dest, data + sourceOffset, sizeof(data[0]) * count);
+  void extract(short* dest, int count, int sourceOffset=0) {
+    std::memcpy(dest, data + offset + sourceOffset, sizeof(data[0]) * count);
+  }
+
+  template<class T>
+  void extract(T* dest, int count, int sourceOffset=0) {
+    for(int i = 0; i < count; i++)
+      dest[i] = data[offset + sourceOffset + i];
   }
 
   static WaveData copy(WaveData& origin) {
@@ -208,6 +214,22 @@ struct WaveBuilder {
     return result;
   }
 };
+
+template<class F>
+void each_frame(Wave& w1, Wave& w2, double width, F func) {
+  int length = std::min(w1.length(), w2.length());
+  int frameSamples = WaveData::toSamples(width);
+  int frameOffset = 0;
+  while(frameOffset < length) {
+    int frameLength = std::min(frameSamples, length - frameOffset);
+    if(frameLength <= 0)
+      break;
+    WaveData f1 = w1.extractBySample(frameOffset, frameOffset + frameLength);
+    WaveData f2 = w2.extractBySample(frameOffset, frameOffset + frameLength);
+    func(f1, f2);
+    frameOffset += frameSamples;
+  }
+}
 
 //#pragma GCC pop_options
 
