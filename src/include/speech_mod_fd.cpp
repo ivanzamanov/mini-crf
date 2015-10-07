@@ -62,7 +62,8 @@ static void copyVoicedPart(SpeechWaveData& oSource,
                            int mark,
                            const int nMark,
                            frequency pitch,
-                           WaveData dest) {
+                           WaveData dest,
+                           int debugIndex) {
   double destPitch = pitch;
   double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
   double pitchScale = destPitch / sourcePitch;
@@ -74,7 +75,7 @@ static void copyVoicedPart(SpeechWaveData& oSource,
   if(std::abs(pitchScale - 1) < 0.1)
     pitchScale = 1;
   if(pitchScale >= 2 || pitchScale <= 0.5)
-    WARN("Pitch scale " << pitchScale);
+    WARN("Pitch scale " << pitchScale << " at " << debugIndex);
   int sourceLen = nMark - mark;
   int newPeriod = sourceLen / pitchScale;
   double values[sourceLen];
@@ -124,13 +125,17 @@ static void copyVoicelessPart(SpeechWaveData& source,
 }
 
 static void scaleToPitchAndDurationSimple(WaveData dest, int& startOffset,
-                                          SpeechWaveData& source, PitchRange pitch, double) {
-  copyVoicedPart(source, startOffset, dest.length, 0, dest.length, pitch.at_mid(), dest);
+                                          SpeechWaveData& source, PitchRange pitch,
+                                          double, int debugIndex) {
+  copyVoicedPart(source, startOffset, dest.length, 0,
+                 dest.length, pitch.at_mid(), dest, debugIndex);
 }
 
 static void scaleToPitchAndDuration(WaveData dest,
                                     int& destOffset,
-                                    SpeechWaveData& source, PitchRange pitch, double duration) {
+                                    SpeechWaveData& source,
+                                    PitchRange pitch, double duration,
+                                    int debugIndex) {
   // Time scale
   double scale = duration / WaveData::toDuration(source.length);
 
@@ -152,7 +157,8 @@ static void scaleToPitchAndDuration(WaveData dest,
   if(nMark - mark >= MAX_VOICELESS_SAMPLES || sourceMarks.size() == 1)
     copyVoicelessPart(source, destOffset, destOffsetBound, 0, mark, nMark, dest);
   else
-    copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, targetPitch, dest);
+    copyVoicedPart(source, destOffset, destOffsetBound,
+                   mark, nMark, targetPitch, dest, debugIndex);
 
   for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
     mark = sourceMarks[i];
@@ -165,7 +171,8 @@ static void scaleToPitchAndDuration(WaveData dest,
     if(nMark - mark >= MAX_VOICELESS_SAMPLES)
       copyVoicelessPart(source, destOffset, destOffsetBound, mark, mark, nMark, dest);
     else
-      copyVoicedPart(source, destOffset, destOffsetBound, mark, nMark, targetPitch, dest);
+      copyVoicedPart(source, destOffset, destOffsetBound,
+                     mark, nMark, targetPitch, dest, debugIndex);
   }
 
   if(sourceMarks.size() == 1)
@@ -234,14 +241,14 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
 
     double durationScale = targetDuration / WaveData::toDuration(p.length);
     if(durationScale < 0.5 || durationScale > 2)
-      WARN("Duration scale " << durationScale);
+      WARN("Duration scale " << durationScale << " at " << i);
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
     int startOffset = 0;
     if(WaveData::toDuration(p.length) <= 1 / pitch.at_mid())
-      scaleToPitchAndDurationSimple(tmp, startOffset, p, pitch, targetDuration);
+      scaleToPitchAndDurationSimple(tmp, startOffset, p, pitch, targetDuration, i);
     else
-      scaleToPitchAndDuration(tmp, startOffset, p, pitch, targetDuration);
+      scaleToPitchAndDuration(tmp, startOffset, p, pitch, targetDuration, i);
 
     for(int i = 0; i < tmp.length - extra && destOffset < dest.length; i++, destOffset++)
       dest[destOffset] = tmp[i];

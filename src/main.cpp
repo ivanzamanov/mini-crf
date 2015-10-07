@@ -62,9 +62,14 @@ int resynthesize(Options& opts) {
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
-  SpeechWaveSynthesis(output, input, crf.alphabet())
-    .get_resynthesis()
-    .write(wav_output);
+  Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
+    .get_resynthesis();
+  outputSignal.write(wav_output);
+  
+  FileData fileData = alphabet_test.file_data_of(input[0]);
+  Wave sourceSignal;
+  sourceSignal.read(fileData.file);
+  gridsearch::Comparisons cmp; cmp.fill(outputSignal, sourceSignal); cmp.print();
   return 0;
 }
 

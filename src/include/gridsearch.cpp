@@ -4,46 +4,7 @@
 #include"threadpool.h"
 #include"crf.hpp"
 #include"tool.hpp"
-#include"speech_mod.hpp"
 #include"fourier.hpp"
-
-// TODO
-static double compare_IS(Wave& result, Wave& original) {
-  return 0;
-  double value = 0;
-  each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
-      value++;
-    });
-  assert(false); // ItakuraSaito not yet implemented
-  return value;
-}
-
-// TODO
-static double compare_LogSpectrum(Wave& result, Wave& original) {
-  double value = 0;
-  each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
-      const int T = f1.size();
-      const int F = T / 2;
-      double values[T];
-      cdouble freqs1[F];
-      cdouble freqs2[F];
-
-      f1.extract(values, T, 0);
-      ft::FT(values, T, freqs1, F);
-
-      f2.extract(values, T, 0);
-      ft::FT(values, T, freqs2, F);
-
-      for(int i = 0; i < F; i++) {
-        double m1 = freqs1[i].magn();
-        m1 = m1 ? m1 : 1;
-        double m2 = freqs2[i].magn();
-        m2 = m2 ? m2 : 1;
-        value += std::log( m2 / m1);
-      }
-    });
-  return value;
-}
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -76,6 +37,45 @@ struct TrainingOutput {
 };
 
 namespace gridsearch {
+  // TODO
+  double compare_IS(Wave& result, Wave& original) {
+    return 0;
+    double value = 0;
+    each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
+        value++;
+      });
+    assert(false); // ItakuraSaito not yet implemented
+    return value;
+  }
+
+  double compare_LogSpectrum(Wave& result, Wave& original) {
+    double value = 0;
+    each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
+        const int T = f1.size();
+        const int F = T / 2;
+        double values[T];
+        cdouble freqs1[F];
+        cdouble freqs2[F];
+
+        f1.extract(values, T, 0);
+        ft::FT(values, T, freqs1, F);
+
+        f2.extract(values, T, 0);
+        ft::FT(values, T, freqs2, F);
+
+        double diff = 0;
+        for(int i = 0; i < F; i++) {
+          double m1 = freqs1[i].magn();
+          m1 = m1 ? m1 : 1;
+          double m2 = freqs2[i].magn();
+          m2 = m2 ? m2 : 1;
+          diff += std::abs( std::log( m2 / m1) );
+        }
+        value += diff;
+      });
+    return value;
+  }
+
   std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
     std::string result(1, ' ');
     for(auto it = vec.begin(); it != vec.end(); it++) {

@@ -4,8 +4,12 @@
 #include<cassert>
 #include"types.hpp"
 #include"options.hpp"
+#include"speech_mod.hpp"
 
 namespace gridsearch {
+  double compare_LogSpectrum(Wave& result, Wave& original);
+  double compare_IS(Wave& result, Wave& original);
+
   struct Comparisons {
     static std::string metric;
     static std::string aggregate;
@@ -21,6 +25,16 @@ namespace gridsearch {
     double ItakuraSaito;
     double LogSpectrum;
 
+    void fill(Wave& dist, Wave& original) {
+      ItakuraSaito = compare_IS(dist, original);
+      LogSpectrum = compare_LogSpectrum(dist, original);
+    }
+
+    void print() const {
+      LOG("IS = " << ItakuraSaito);
+      LOG("LogSpectrum = " << LogSpectrum);
+    }
+    
     bool operator<(const Comparisons o) const {
       return ItakuraSaito < o.ItakuraSaito;
     }
