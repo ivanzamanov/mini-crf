@@ -186,9 +186,9 @@ namespace gridsearch {
     std::array<Range, FC> ranges = {{
         Range("trans-ctx", 100, 100, 1),
         Range("trans-pitch", 1, 100, 1),
-        Range("state-pitch", 1, 100, 1),
-        Range("trans-mfcc", 1, 10, 0.1),
-        Range("state-duration", 1, 100, 1)
+        Range("state-pitch", 0, 100, 1),
+        Range("trans-mfcc", 0, 10, 0.1),
+        Range("state-duration", 0, 100, 1)
       }};
     for(auto it : ranges)
       INFO("Range " << it.to_string());
