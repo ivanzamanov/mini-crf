@@ -37,6 +37,33 @@ struct TrainingOutput {
 };
 
 namespace gridsearch {
+
+  std::vector<FrameFrequencies> toFFTdFrames(Wave& wave) {
+    int length = wave.length();
+    int frameOffset = 0;
+    std::vector<FrameFrequencies> result;
+    FrameFrequencies values;
+    int sampleWidth = values.size();
+    double* td_values = new double[sampleWidth];
+    while(frameOffset < length) {
+      for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
+
+      int frameLength = std::min(sampleWidth, length - frameOffset);
+      if(frameLength <= 0)
+        break;
+
+      WaveData frame = wave.extractBySample(frameOffset, frameOffset + frameLength);
+      frameOffset += sampleWidth;
+      for(unsigned i = 0; i < frame.size(); i++) td_values[i] = frame[i];
+
+      ft::FT(td_values, frame.size(), values, values.size());
+      result.push_back(values);
+    }
+    delete td_values;
+    assert(result.size() > 0);
+    return result;
+  }
+
   // TODO
   double compare_IS(Wave& result, Wave& original) {
     return 0;
@@ -48,35 +75,33 @@ namespace gridsearch {
     return value;
   }
 
-  double compare_LogSpectrum(Wave& result, Wave& original) {
+  //__attribute__ ((optnone))
+   double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>& frames2) {
+    auto frames1 = toFFTdFrames(result);
+    assert(frames1.size() == frames2.size());
+
     double value = 0;
-    each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
-        const int T = f1.size();
-        const int F = T / 2;
-        const int TF_SIZE_MAX = 5000;
-        double values[TF_SIZE_MAX];
-        cdouble freqs1[TF_SIZE_MAX];
-        cdouble freqs2[TF_SIZE_MAX];
-
-        f1.extract(values, T, 0);
-        ft::FT(values, T, freqs1, F);
-
-        f2.extract(values, T, 0);
-        ft::FT(values, T, freqs2, F);
-
-        double diff = 0;
-        for(int i = 0; i < F; i++) {
-          double m1 = freqs1[i].magn();
-          m1 = m1 ? m1 : 1;
-          double m2 = freqs2[i].magn();
-          m2 = m2 ? m2 : 1;
-          diff += std::abs( std::log( m2 / m1) );
-        }
-        value += diff;
-      });
+    for(unsigned j = 0; j < frames1.size(); j++) {
+      double diff = 0;
+      auto& freqs1 = frames1[j];
+      auto& freqs2 = frames2[j];
+      for(unsigned i = 0; i < freqs1.size(); i++) {
+        double m1 = freqs1[i].magn();
+        m1 = m1 ? m1 : 1;
+        double m2 = freqs2[i].magn();
+        m2 = m2 ? m2 : 1;
+        diff += std::abs( std::log( m2 / m1) );
+      }
+      value += diff;
+    }
     return value;
   }
 
+  double compare_LogSpectrum(Wave& result, Wave& original) {
+    auto frames2 = toFFTdFrames(original);
+    return compare_LogSpectrum(result, frames2);
+  }
+  
   std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
     std::string result(1, ' ');
     for(auto it = vec.begin(); it != vec.end(); it++) {
@@ -91,18 +116,11 @@ namespace gridsearch {
     int index = params->index;
   
     std::vector<PhonemeInstance> input = corpus_test.input(index);
-    std::string sentence_string = to_text_string(input);
     std::vector<int> path;
 
-    cost cost = max_path(input, crf, crf.lambda, crf.mu, &path);
+    max_path(input, crf, crf.lambda, crf.mu, &path);
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
-    INFO("Cost " << index << ": " << cost);
-
-    std::stringstream outputFile;
-    outputFile << "/tmp/resynth-" << params->index << ".wav";
-
-    std::ofstream wav_output(outputFile.str());
     Wave resultSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
       .get_resynthesis();
 
@@ -110,8 +128,10 @@ namespace gridsearch {
     Wave sourceSignal;
     sourceSignal.read(fileData.file);
 
+    auto& frames = *(params->precompFrames);
+
     params->result.ItakuraSaito = compare_IS(resultSignal, sourceSignal);
-    params->result.LogSpectrum = compare_LogSpectrum(resultSignal, sourceSignal);
+    params->result.LogSpectrum = compare_LogSpectrum(resultSignal, frames[index]);
     
     *(params->flag) = 1;
   }
@@ -149,7 +169,8 @@ namespace gridsearch {
       *max = params[maxIndex];
   }
 
-  Comparisons do_train(ThreadPool& tp) {
+  Comparisons do_train(ThreadPool& tp,
+                       std::vector< std::vector<FrameFrequencies> > *precompFrames) {
     unsigned count = corpus_test.size();
     bool flags[count];
 
@@ -157,6 +178,9 @@ namespace gridsearch {
     for(unsigned i = 0; i < count; i++) {
       flags[i] = 0;
       params[i].init(i, &flags[i]);
+
+      params[i].precompFrames = precompFrames;
+      
       Task* t = new ParamTask<ResynthParams>(&resynth_index, &params[i]);
       tp.add_task(t);
     }
@@ -193,7 +217,20 @@ namespace gridsearch {
     for(auto it : ranges)
       INFO("Range " << it.to_string());
 
+    // Pre-compute FFTd frames of source signals
+    INFO("Precomputing FFTs");
+    std::vector< std::vector<FrameFrequencies> > precompFrames;
+    for(unsigned i = 0; i < corpus_test.size(); i++) {
+      FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
+      Wave sourceSignal;
+      sourceSignal.read(fileData.file);
+      auto frames = toFFTdFrames(sourceSignal);
+      precompFrames.push_back(frames);
+    }
+    INFO("Done");
+
     int iteration = 0;
+    int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
     std::vector<TrainingOutput> outputs;
     for(unsigned i = 1; i < ranges.size(); i++) {
       std::vector<Comparisons> comps;
@@ -201,6 +238,8 @@ namespace gridsearch {
       Comparisons bestVals;
       while(ranges[i].has_next()) {
         iteration++;
+        if(iteration > maxIterations)
+          break;
         // Update coefficient
         crf.set(ranges[i].feature, ranges[i].current);
         // Log
@@ -210,7 +249,7 @@ namespace gridsearch {
           LOG(ranges[k].feature << "=" << ranges[k].current);
 
         // And actual work...
-        Comparisons result = do_train(tp);
+        Comparisons result = do_train(tp, &precompFrames);
         if(bestCoef == -1 || result < bestVals)
           bestCoef = ranges[i].current;
 

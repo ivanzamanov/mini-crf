@@ -28,8 +28,8 @@ cdouble operator*(S scalar, cdouble c) {
 }
 
 namespace ft {
-  template<class Val>
-  void FT(Val* values, int T, cdouble* frequencies, int F) {
+  template<class Val, class Freqs=cdouble*>
+  void FT(Val* values, int T, Freqs& frequencies, int F) {
     double period = T;
     Val real, img;
     for(int f = 0; f < F; f++) {

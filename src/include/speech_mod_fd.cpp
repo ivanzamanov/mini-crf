@@ -4,9 +4,6 @@
 #include"util.hpp"
 #include"fourier.hpp"
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-
 using namespace util;
 using std::vector;
 
@@ -273,5 +270,3 @@ void SpeechWaveSynthesis::do_resynthesis_fd(WaveData dest, SpeechWaveData* piece
   }
   prog.finish();
 }
-
-#pragma GCC pop_options

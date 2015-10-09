@@ -2,12 +2,17 @@
 #define __GRID_SEARCH_HPP__
 
 #include<cassert>
+
 #include"types.hpp"
 #include"options.hpp"
 #include"speech_mod.hpp"
+#include"fourier.hpp"
 
 namespace gridsearch {
+  typedef std::array<cdouble, (int) (0.025 * 24000)> FrameFrequencies;
+
   double compare_LogSpectrum(Wave& result, Wave& original);
+  double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>&);
   double compare_IS(Wave& result, Wave& original);
 
   struct Comparisons {
@@ -24,10 +29,15 @@ namespace gridsearch {
 
     double ItakuraSaito;
     double LogSpectrum;
-
+    
     void fill(Wave& dist, Wave& original) {
       ItakuraSaito = compare_IS(dist, original);
       LogSpectrum = compare_LogSpectrum(dist, original);
+    }
+    
+    void fill(Wave& dist, std::vector<FrameFrequencies>& sourceFreqs) {
+      //ItakuraSaito = compare_IS(dist, original);
+      LogSpectrum = compare_LogSpectrum(dist, sourceFreqs);
     }
 
     void print() const {
@@ -65,6 +75,7 @@ namespace gridsearch {
     int index;
     bool* flag;
     Comparisons result;
+    std::vector< std::vector<FrameFrequencies> >* precompFrames;
   };
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec);
