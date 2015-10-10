@@ -88,7 +88,7 @@ struct Features {
     const PhonemeInstance& next = x[pos];
     stime_t d1 = prev.end - prev.start;
     stime_t d2 = next.end - next.start;
-    return std::abs(d1 - d2);
+    return d1 / d2;
   }
 
   static cost BaselineFunction(const PhonemeInstance& prev,
