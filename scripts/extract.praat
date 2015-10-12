@@ -1,7 +1,7 @@
 form Feature Extraction
   comment I/O file paths
-  sentence soundPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E.1.Un1_015.wav
-  sentence textGridPath /home/ivo/SpeechSynthesis/corpus-synth/Diana_E.1.Un1/Diana_E_1_Un1_015.TextGrid
+  sentence soundPath /home/ivo/SpeechSynthesis/corpus-test/Diana_A.1.1.Un2/Diana_A.1.1.Un2_0013.wav
+  sentence textGridPath /home/ivo/SpeechSynthesis/corpus-test/Diana_A.1.1.Un2/Diana_A_1_1_Un2_0013.TextGrid
   sentence outputFile /tmp/praat-output.txt
 endform
 
@@ -34,6 +34,7 @@ endif
 soundObj = Read from file... 'soundPath$'
 selectObject: soundObj
 Rename... Sound
+const_total_time = Get total duration
 
 # Extract pitch tier
 #pitch = To Pitch (ac)... timeStep 75 20 1 0 0 0.01 0.35 0.14 600
@@ -54,7 +55,7 @@ mfccObj = To MFCC... mfccCount windowLength timeStep 100 100 0.0
 # Available objects:
 # pointProcess, soundObj, pitch
 
-textGridSegmented = Create TextGrid... 0 totalDuration phonemes ""
+textGridSegmented = Create TextGrid... 0 totalDuration "Phonemes EndPoints" ""
 # First off, extract all boundary points...
 for i to intervalCount
   if semiphons
@@ -80,6 +81,23 @@ for i to intervalCount
   startPoint = intervalLeft
   endPoint = intervalRight
   @findMaxEnergyPoint
+
+  if i != 0 && startPoint > 0
+    selectObject: textGridSegmented
+    Insert boundary... 2 maxEnergyPoint
+    insertedIntervals = Get number of intervals... 1
+    my_label$ = string$(i)
+    Set interval text: 1, insertedIntervals, my_label$
+    appendInfoLine: "Max EN at ", maxEnergyPoint
+
+    if endPoint < const_total_time
+    Insert boundary... 2 endPoint
+    insertedIntervals = Get number of intervals... 1
+    my_label$ = string$(i)
+    Set interval text: 1, insertedIntervals, my_label$
+    appendInfoLine: "End at ", endPoint
+    endif
+  endif
 
   if semiphons
     selectObject: textGridObj
@@ -116,7 +134,7 @@ for i to semiPhonCount
 
   semiPhonStart[i] = startPulsePoint
   semiPhonEnd[i] = endPulsePoint
-  
+
   if i == semiPhonCount
     semiPhonEnd[i] = Get total duration
     semiPhonStart[i] = semiPhonEnd[i - 1]
@@ -134,10 +152,13 @@ for i to semiPhonCount
 endfor
 
 for i to semiPhonCount
-  selectObject: textGridSegmented
-  if i != 0
-    #appendInfoLine: "Insert ", i
-    #Insert boundary... 1 semiPhonStart[i]
+  if i != 0 && semiPhonStart[i] > 0
+    selectObject: textGridSegmented
+    appendInfoLine: "Insert ", i
+    Insert boundary... 1 semiPhonStart[i]
+    my_label$ = labels$[i]
+    insertedIntervals = Get number of intervals... 1
+    Set interval text: 1, insertedIntervals, my_label$
   endif
   selectObject: mfccObj
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
@@ -256,6 +277,7 @@ procedure outputEntry
     pitchPoint = Get time from frame... frame
     selectObject: pitch
     pitchValue = Get value at time: pitchPoint, "Hertz", "Linear"
+    appendInfoLine: "Pitch at ", pitchPoint, " ", pitchValue
     appendFileLine: outputFile$, "pitch=", pitchValue
 
     selectObject: mfccObj

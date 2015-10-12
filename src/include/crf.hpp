@@ -213,7 +213,8 @@ struct FunctionalAutomaton {
       for (unsigned i = 0; i < lambda.size(); i++) {
         auto* func = crf.features.f[i];
         cost coef = lambda[i];
-        result += coef * (*func)(src, dest, pos, x);
+        cost val = (*func)(src, dest, pos, x);
+        result += coef * val;
       }
     }
 
@@ -221,7 +222,8 @@ struct FunctionalAutomaton {
       for(unsigned i = 0; i < mu.size(); i++) {
         auto* func = crf.features.g[i];
         cost coef = mu[i];
-        result += coef * (*func)(dest, pos, x);
+        cost val = (*func)(dest, pos, x);
+        result += coef * val;
       }
     }
     return result;

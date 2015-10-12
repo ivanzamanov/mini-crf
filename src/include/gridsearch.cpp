@@ -59,7 +59,7 @@ namespace gridsearch {
       ft::FT(td_values, frame.size(), values, values.size());
       result.push_back(values);
     }
-    delete td_values;
+    delete[] td_values;
     assert(result.size() > 0);
     return result;
   }

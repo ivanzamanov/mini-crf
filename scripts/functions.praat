@@ -3,30 +3,45 @@
 # Object: Sound
 # Output: maxEnergyPoint
 procedure findMaxEnergyPoint
-  analysisFrame_ = timeStep
-  count_ = (endPoint - startPoint - timeStep * 2) / analysisFrame_
+  startSample = Get sample number from time... startPoint
+  startSample = floor(startSample + 1)
+  endSample = Get sample number from time... endPoint
+  endSample = floor(endSample)
+
   max_ = 0
   maxEnergyPoint = 0
-  for i_ to count_
-    p1_ = startPoint + (i_ * analysisFrame_)
-    p2_ = p1_ + analysisFrame_
-    energy_ = Get energy... p1_ p2_
-    #appendInfoLine: p1_, " ", p2_
-    # Undefined check for edge case at end of file
-    if (energy_ != undefined) && energy_ > max_
-      maxEnergyPoint = (p1_ + p2_) / 2
-      max_ = energy_
+  for i_ from startSample to endSample
+    value_ = Get value at sample number... i_
+    value_ = abs(value_)
+    #appendInfoLine: i_, " = ", value_
+    if max_ < value_
+       #appendInfoLine: i, ": MAX from ", max_, " to ", value_
+       maxEnergyPoint = i_
+       max_ = value_
     endif
   endfor
+  maxEnergyPoint = Get time from sample number... maxEnergyPoint
+  appendInfoLine: i, ": Max en == ", maxEnergyPoint, " value = ", max_
 
   # Extreme edge cases
-  invalid = maxEnergyPoint == startPoint
-  invalid = maxEnergyPoint >= endPoint || invalid
-  invalid = maxEnergyPoint == 0 || invalid
-  invalid = (maxEnergyPoint - startPoint) < minLength
-  invalid = (endPoint - maxEnergyPoint) < minLength
-  if invalid
-    maxEnergyPoint = (endPoint - startPoint) / 2
+  if maxEnergyPoint == startPoint
+     appendInfoLine: i, ": MaxEn point == start point"
+     maxEnergyPoint = startPoint + 0.001
+  endif
+  if maxEnergyPoint >= endPoint
+     maxEnergyPoint = endPoint - 0.001
+     appendInfoLine: i, ": MaxEn point >= end point"
+  endif
+  if maxEnergyPoint == 0
+     appendInfoLine: i, ": MaxEn point == 0"
+  endif
+  if (maxEnergyPoint - startPoint) < minLength
+     appendInfoLine: i, ": MaxEn too close to start"
+     maxEnergyPoint = startPoint + 0.001
+  endif
+  if (endPoint - maxEnergyPoint) < minLength
+     appendInfoLine: i, ": MaxEn too close to end"
+     maxEnergyPoint = endPoint - 0.001
   endif
 endproc
 

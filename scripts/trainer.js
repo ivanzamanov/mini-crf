@@ -294,7 +294,7 @@ function trainSequential() {
     { name: 'trans-pitch', values: seqRange(1, 100, 1) },
     { name: 'state-pitch', values: seqRange(1, 100, 1) },
     { name: 'trans-mfcc', values: seqRange(1, 10, 0.1) },
-    { name: 'state-duration', values: seqRange(1, 100) }
+    { name: 'state-duration', values: seqRange(1, 100, 1) }
   ];
 
   var multiParamFunc = search.MultiParamFunction(trainWithCoefficients, config.valueCachePath);
