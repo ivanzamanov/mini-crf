@@ -1,12 +1,14 @@
 #include<sstream>
 #include<string>
 #include<cstring>
+#include<cassert>
 
 #include"parser.hpp"
 
 static void check_buffer(const std::string& expected, const std::string& actual) {
   if(actual.compare(expected)) {
     std::cerr << "Expected: " << expected << " got: " << actual << '\n';
+    assert(false);
   }
 }
 

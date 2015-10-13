@@ -21,27 +21,43 @@ procedure findMaxEnergyPoint
     endif
   endfor
   maxEnergyPoint = Get time from sample number... maxEnergyPoint
-  appendInfoLine: i, ": Max en == ", maxEnergyPoint, " value = ", max_
+  selectObject: pointProcess
+  appendInfo: "nearest to ", maxEnergyPoint
+  maxEnergyPoint = Get nearest index... maxEnergyPoint
+  maxEnergyPoint = Get time from index... maxEnergyPoint
+  appendInfoLine: " ", maxEnergyPoint
+  #appendInfoLine: i, ": Max en == ", maxEnergyPoint, " value = ", max_
 
   # Extreme edge cases
   if maxEnergyPoint == startPoint
      appendInfoLine: i, ": MaxEn point == start point"
-     maxEnergyPoint = startPoint + 0.001
+     highIndex = Get high index... maxEnergyPoint
+     maxEnergyPoint = Get time from index... highIndex
   endif
   if maxEnergyPoint >= endPoint
-     maxEnergyPoint = endPoint - 0.001
      appendInfoLine: i, ": MaxEn point >= end point"
+     lowIndex = Get low index... maxEnergyPoint
+     maxEnergyPoint = Get time from index... lowIndex
   endif
   if maxEnergyPoint == 0
      appendInfoLine: i, ": MaxEn point == 0"
   endif
   if (maxEnergyPoint - startPoint) < minLength
      appendInfoLine: i, ": MaxEn too close to start"
-     maxEnergyPoint = startPoint + 0.001
+     highIndex = Get high index... (maxEnergyPoint + 0.000001)
+     maxEnergyPoint = Get time from index... highIndex
   endif
   if (endPoint - maxEnergyPoint) < minLength
      appendInfoLine: i, ": MaxEn too close to end"
-     maxEnergyPoint = endPoint - 0.001
+     lowIndex = Get low index... (maxEnergyPoint - 0.000001)
+     maxEnergyPoint = Get time from index... lowIndex
+     appendInfoLine: "adjust to ", maxEnergyPoint
+  endif
+
+  # Extreme edge case of a small noise at the end
+  if maxEnergyPoint < startPoint
+     maxEnergyPoint = (startPoint + endPoint) / 2
+     appendInfoLine: "-------- mid -------------"
   endif
 endproc
 
@@ -52,8 +68,8 @@ procedure getPulseBoundaries
   #appendInfoLine: i, ": ", startPoint_, " ", endPoint_
   selectObject: pointProcess
   maxIndex_ = Get number of points
-  startIndex = Get high index... startPoint_
-  endIndex = Get high index... endPoint_
+  startIndex = Get nearest index... startPoint_
+  endIndex = Get nearest index... endPoint_
 
   # Required for edge cases such as start and end of file
   startIndex = minStartIndex

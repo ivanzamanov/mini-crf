@@ -22,6 +22,19 @@ semiphons = 1
 
 textGridObj = Read from file... 'textGridPath$'
 Rename... TextGrid
+intervals = Get number of intervals... 1
+for i to intervals - 1
+  #appendInfoLine: i
+  l1$ = Get label of interval... 1 i
+  l2$ = Get label of interval... 1 (i+1)
+  if l1$ == l2$ && l1$ == "$"
+    #appendInfoLine: "Remove of ", (i+1), " ", l1$, l2$
+    Remove left boundary... 1 (i+1)
+    Set interval text: 1, i, l1$
+    i -= 1
+    intervals = Get number of intervals... 1
+  endif
+endfor
 
 intervalCount = Get number of intervals... 1
 
@@ -74,47 +87,42 @@ for i to intervalCount
   # Left and right boundaries of the current interval in the TextGrid
   intervalLeft = Get start point... 1 i
   intervalRight = Get end point... 1 i
+  #appendInfoLine: "[ ", intervalLeft, " ", intervalRight, " ]"
 
-  # Find point of maximum energy between startPoint and endPoint
-  # This is where the phoneme should be split
-  selectObject: soundObjOriginal
-  startPoint = intervalLeft
-  endPoint = intervalRight
-  @findMaxEnergyPoint
+  selectObject: pointProcess
+  startIndex = Get nearest index... intervalLeft
+  endIndex = Get nearest index... intervalRight
 
-  if i != 0 && startPoint > 0
-    selectObject: textGridSegmented
-    Insert boundary... 2 maxEnergyPoint
-    insertedIntervals = Get number of intervals... 1
-    my_label$ = string$(i)
-    Set interval text: 1, insertedIntervals, my_label$
-    appendInfoLine: "Max EN at ", maxEnergyPoint
-
-    if endPoint < const_total_time
-    Insert boundary... 2 endPoint
-    insertedIntervals = Get number of intervals... 1
-    my_label$ = string$(i)
-    Set interval text: 1, insertedIntervals, my_label$
-    appendInfoLine: "End at ", endPoint
-    endif
+  if startIndex != 0
+    startPulsePoint = Get time from index... startIndex
+  else
+    startPulsePoint = startIndex
   endif
+  endPulsePoint = Get time from index... endIndex
+
+  semiPhonStart[intervalIndex] = startPulsePoint
+  semiPhonEnd[intervalIndex] = endPulsePoint
 
   if semiphons
-    selectObject: textGridObj
+    #Find point of maximum energy between startPoint and endPoint
+    #This is where the phoneme should be split
+    selectObject: soundObjOriginal
+    startPoint = startPulsePoint
+    endPoint = endPulsePoint
 
-    semiPhonStart[intervalIndex] = startPoint
+    @findMaxEnergyPoint
+
     semiPhonEnd[intervalIndex] = maxEnergyPoint
-
     semiPhonStart[intervalIndex + 1] = maxEnergyPoint
-    semiPhonEnd[intervalIndex + 1] = endPoint
-  else
-    selectObject: textGridObj
-    semiPhonStart[intervalIndex] = startPoint
-    semiPhonEnd[intervalIndex] = endPoint
+    semiPhonEnd[intervalIndex + 1] = endPulsePoint
   endif
+
+  appendInfo: "[ ", intervalLeft, " ", intervalRight, " ] -> "
+  appendInfo: "[ ",semiPhonStart[intervalIndex]," ",semiPhonEnd[intervalIndex]," ] "
+  appendInfoLine: "[ ",semiPhonStart[intervalIndex + 1]," ",semiPhonEnd[intervalIndex + 1]," ]"
 endfor
 
-appendInfoLine: "intervals = ", intervalCount
+#appendInfoLine: "intervals = ", intervalCount
 
 # By now, I have the boundaries as defined by the text grid and maximum energy
 # Now, round to a glottal pulse
@@ -124,9 +132,21 @@ else
   semiPhonCount = intervalCount
 endif
 
-appendInfoLine: "semiPhonCount = ", semiPhonCount
-minStartIndex = 0
+# Create a segmentation textgrid
+selectObject: textGridSegmented
 for i to semiPhonCount
+  appendInfoLine: i, "-------"
+  my_label$ = labels$[i]
+  insertedIntervals = Get number of intervals... 2
+  Set interval text: 2, insertedIntervals, my_label$
+  appendInfoLine: "End ", i, " ", semiPhonEnd[i]
+  Insert boundary: 2, semiPhonEnd[i]
+endfor
+
+
+#appendInfoLine: "semiPhonCount = ", semiPhonCount
+minStartIndex = 0
+for i to 0
   startPoint_ = semiPhonStart[i]
   endPoint_ = semiPhonEnd[i]
 
@@ -152,13 +172,13 @@ for i to semiPhonCount
 endfor
 
 for i to semiPhonCount
-  if i != 0 && semiPhonStart[i] > 0
+  if semiPhonStart[i] > 0
     selectObject: textGridSegmented
-    appendInfoLine: "Insert ", i
-    Insert boundary... 1 semiPhonStart[i]
-    my_label$ = labels$[i]
+    #appendInfoLine: "Insert ", i
     insertedIntervals = Get number of intervals... 1
     Set interval text: 1, insertedIntervals, my_label$
+    Insert boundary... 1 semiPhonStart[i]
+    my_label$ = labels$[i]
   endif
   selectObject: mfccObj
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
@@ -277,7 +297,7 @@ procedure outputEntry
     pitchPoint = Get time from frame... frame
     selectObject: pitch
     pitchValue = Get value at time: pitchPoint, "Hertz", "Linear"
-    appendInfoLine: "Pitch at ", pitchPoint, " ", pitchValue
+    #appendInfoLine: "Pitch at ", pitchPoint, " ", pitchValue
     appendFileLine: outputFile$, "pitch=", pitchValue
 
     selectObject: mfccObj

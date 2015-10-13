@@ -2,6 +2,7 @@
 BASE=$(dirname $0)
 DATE=$(date +%m-%d-%H-%M)
 set -e
+set -x
 
 mkdir -p logs
 LOG_FILE=logs/features-extraction-${DATE}.log
