@@ -23,11 +23,12 @@ semiphons = 1
 textGridObj = Read from file... 'textGridPath$'
 Rename... TextGrid
 intervals = Get number of intervals... 1
+# Coalesce noise intervals
 for i to intervals - 1
   #appendInfoLine: i
   l1$ = Get label of interval... 1 i
   l2$ = Get label of interval... 1 (i+1)
-  if l1$ == l2$ && l1$ == "$"
+  if (l1$=="$"||l1$=="_") && (l2$=="$"||l2$=="_")
     #appendInfoLine: "Remove of ", (i+1), " ", l1$, l2$
     Remove left boundary... 1 (i+1)
     Set interval text: 1, i, l1$
@@ -36,6 +37,21 @@ for i to intervals - 1
   endif
 endfor
 
+# Ensure minimum interval length of 0.03
+for k to 3
+for i from 2 to intervals
+  start = Get starting point... 1 i
+  end = Get end point... 1 i
+  if end - start < 0.03
+    start = start - (0.03 - end + start)
+    if start > 0
+      appendInfoLine: i, " adjust interval, length is ", (end - start)
+      Remove left boundary... 1 i
+      Insert boundary... 1 start
+    endif
+  endif
+endfor
+endfor
 intervalCount = Get number of intervals... 1
 
 if semiphons
@@ -139,7 +155,7 @@ for i to semiPhonCount
   my_label$ = labels$[i]
   insertedIntervals = Get number of intervals... 2
   Set interval text: 2, insertedIntervals, my_label$
-  appendInfoLine: "End ", i, " ", semiPhonEnd[i]
+  appendInfoLine: "End ", i, " ", semiPhonEnd[i], " ", my_label$
   Insert boundary: 2, semiPhonEnd[i]
 endfor
 
