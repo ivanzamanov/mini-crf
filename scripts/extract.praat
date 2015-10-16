@@ -29,7 +29,7 @@ for i to intervals - 1
   l1$ = Get label of interval... 1 i
   l2$ = Get label of interval... 1 (i+1)
   if (l1$=="$"||l1$=="_") && (l2$=="$"||l2$=="_")
-    #appendInfoLine: "Remove of ", (i+1), " ", l1$, l2$
+    appendInfoLine: "Remove of ", (i+1), " ", l1$, l2$
     Remove left boundary... 1 (i+1)
     Set interval text: 1, i, l1$
     i -= 1
@@ -43,22 +43,25 @@ for i from 2 to intervals
   start = Get starting point... 1 i
   end = Get end point... 1 i
   if end - start < 0.03
-    start = start - (0.03 - end + start)
+    newStart = start - (0.03 - end + start)
     if start > 0
-      appendInfoLine: i, " adjust interval, length is ", (end - start)
+      #appendInfoLine: i, " adjust interval, length is ", (end - start)
+      l1$ = Get label of interval... 1 (i-1)
+      l2$ = Get label of interval... 1 i
+
+      appendInfoLine: "Remove ", start, " insert ", newStart
       Remove left boundary... 1 i
-      Insert boundary... 1 start
+      Insert boundary... 1 newStart
+      Set interval text: 1, (i-1), l1$
+      Set interval text: 1, i, l2$
+
+      l1$ = Get label of interval... 1 (i-1)
+      l2$ = Get label of interval... 1 i
     endif
   endif
 endfor
 endfor
 intervalCount = Get number of intervals... 1
-
-if semiphons
-  phonemesCount = intervalCount * 2
-else
-  phonemesCount = intervalCount
-endif
 
 soundObj = Read from file... 'soundPath$'
 selectObject: soundObj
@@ -86,29 +89,23 @@ mfccObj = To MFCC... mfccCount windowLength timeStep 100 100 0.0
 
 textGridSegmented = Create TextGrid... 0 totalDuration "Phonemes EndPoints" ""
 # First off, extract all boundary points...
+phonCount = 0
 for i to intervalCount
-  if semiphons
-    intervalIndex = (i-1) * 2 + 1
-  else
-    intervalIndex = i
-  endif
+
+  phonCount += 1
 
   selectObject: textGridObj
   intervalLabel$ = Get label of interval... 1 i
-  # Label of left semiphon
-  labels$[intervalIndex] = "-" + intervalLabel$
-  # right semiphon
-  labels$[intervalIndex + 1] = intervalLabel$ + "-"
-
+  appendInfoLine: "Label ", i, " = ", intervalLabel$
   # Left and right boundaries of the current interval in the TextGrid
   intervalLeft = Get start point... 1 i
   intervalRight = Get end point... 1 i
-  #appendInfoLine: "[ ", intervalLeft, " ", intervalRight, " ]"
 
   selectObject: pointProcess
   startIndex = Get nearest index... intervalLeft
   endIndex = Get nearest index... intervalRight
 
+  #appendInfoLine: "[ ", intervalLeft, " ", intervalRight, " ]"
   if startIndex != 0
     startPulsePoint = Get time from index... startIndex
   else
@@ -116,10 +113,15 @@ for i to intervalCount
   endif
   endPulsePoint = Get time from index... endIndex
 
-  semiPhonStart[intervalIndex] = startPulsePoint
-  semiPhonEnd[intervalIndex] = endPulsePoint
+  semiPhonStart[phonCount] = startPulsePoint
+  semiPhonEnd[phonCount] = endPulsePoint
 
-  if semiphons
+  if semiphons || intervalLabel$ == "_" || intervalLabel$ == "$"
+    # Label of left semiphon
+    labels$[phonCount] = "-" + intervalLabel$
+    # right semiphon
+    labels$[phonCount + 1] = intervalLabel$ + "-"
+
     #Find point of maximum energy between startPoint and endPoint
     #This is where the phoneme should be split
     selectObject: soundObjOriginal
@@ -128,25 +130,32 @@ for i to intervalCount
 
     @findMaxEnergyPoint
 
-    semiPhonEnd[intervalIndex] = maxEnergyPoint
-    semiPhonStart[intervalIndex + 1] = maxEnergyPoint
-    semiPhonEnd[intervalIndex + 1] = endPulsePoint
+    if maxEnergyPoint != 0
+      semiPhonEnd[phonCount] = maxEnergyPoint
+      semiPhonStart[phonCount + 1] = maxEnergyPoint
+      semiPhonEnd[phonCount + 1] = endPulsePoint
+      phonCount += 1
+    else if intervalLabel$ != "_" && intervalLabel$ != "$"
+      labels$[phonCount] = intervalLabel$ + "-"
+      #exitScript: "Error at ", i
+    else
+      exitScript: "Error at ", i
+    endif
+  else
+    labels$[phonCount] = intervalLabel$
   endif
 
-  appendInfo: "[ ", intervalLeft, " ", intervalRight, " ] -> "
-  appendInfo: "[ ",semiPhonStart[intervalIndex]," ",semiPhonEnd[intervalIndex]," ] "
-  appendInfoLine: "[ ",semiPhonStart[intervalIndex + 1]," ",semiPhonEnd[intervalIndex + 1]," ]"
+  #appendInfo: "[ ", intervalLeft, " ", intervalRight, " ] -> "
+  #appendInfo: "[ ",semiPhonStart[intervalIndex]," ",semiPhonEnd[intervalIndex]," ] "
+  #appendInfoLine: "[ ",semiPhonStart[intervalIndex + 1]," ",semiPhonEnd[intervalIndex + 1]," ]"
 endfor
 
 #appendInfoLine: "intervals = ", intervalCount
 
 # By now, I have the boundaries as defined by the text grid and maximum energy
 # Now, round to a glottal pulse
-if semiphons
-  semiPhonCount = intervalCount * 2
-else
-  semiPhonCount = intervalCount
-endif
+semiPhonCount = phonCount
+appendInfoLine: "Will create ", phonCount, " pieces"
 
 # Create a segmentation textgrid
 selectObject: textGridSegmented
@@ -158,7 +167,6 @@ for i to semiPhonCount
   appendInfoLine: "End ", i, " ", semiPhonEnd[i], " ", my_label$
   Insert boundary: 2, semiPhonEnd[i]
 endfor
-
 
 #appendInfoLine: "semiPhonCount = ", semiPhonCount
 minStartIndex = 0
@@ -187,16 +195,8 @@ for i to 0
   endif
 endfor
 
+selectObject: mfccObj
 for i to semiPhonCount
-  if semiPhonStart[i] > 0
-    selectObject: textGridSegmented
-    #appendInfoLine: "Insert ", i
-    insertedIntervals = Get number of intervals... 1
-    Set interval text: 1, insertedIntervals, my_label$
-    Insert boundary... 1 semiPhonStart[i]
-    my_label$ = labels$[i]
-  endif
-  selectObject: mfccObj
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
   startFrames[i] = Get frame number from time... semiPhonStart[i]
   endFrames[i] = Get frame number from time... semiPhonEnd[i]
@@ -232,10 +232,11 @@ deleteFile: outputFile$
 appendFileLine: outputFile$, "[Config]"
 appendFileLine: outputFile$, "timeStep=", timeStep
 appendFileLine: outputFile$, "mfcc=", mfccCount
-appendFileLine: outputFile$, "intervals=", phonemesCount
+appendFileLine: outputFile$, "intervals=", semiPhonCount
 
 @unforcePointProcess
 # Output all semiphons
+semiPhonStart[1] = 0
 for i to semiPhonCount
   startPoint_ = semiPhonStart[i]
   endPoint_ = semiPhonEnd[i]

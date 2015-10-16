@@ -293,6 +293,8 @@ struct FunctionalAutomaton {
       options.push_back(allowed.size());
 
       next_children_length = allowed.size();
+      if(children_length == 0)
+        LOG("Error");
       //      #pragma omp parallel for
       for(unsigned m = 0; m < allowed.size(); m++) {
         auto srcId = allowed[m];
