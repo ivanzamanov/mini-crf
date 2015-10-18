@@ -57,36 +57,42 @@ static void copyVoicedPart(SpeechWaveData& oSource,
                            const int destOffsetBound,
                            int mark,
                            const int nMark,
-                           frequency pitch,
+                           const PitchRange pitch,
                            WaveData dest,
                            int debugIndex) {
-  double destPitch = pitch;
-  double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
-  double pitchScale = destPitch / sourcePitch;
 
+  int sourceLen = nMark - mark;
+  double* values = new double[sourceLen];
+  for(int i = 0; i < sourceLen; i++) values[i] = (double) oSource[mark + i];
+
+  // Harmonics below Nyquist frequency
   int NF = nMark - mark;
   NF /= 2;
   cdouble* frequencies = new cdouble[NF + 1];
+  ft::FT(values, sourceLen, frequencies, NF);
 
-  if(std::abs(pitchScale - 1) < 0.1)
-    pitchScale = 1;
-  if(pitchScale >= 2 || pitchScale <= 0.5)
-    WARN("Pitch scale " << pitchScale << " at " << debugIndex);
-  int sourceLen = nMark - mark;
-  int newPeriod = sourceLen / pitchScale;
-  double values[sourceLen];
-  
-  for(int i = 0; i < sourceLen; i++) values[i] = (double) oSource[mark + i];
-
-  if(pitchScale != 1) {
-    ft::FT(values, sourceLen, frequencies, NF);
-    ft::rFT(frequencies, NF, values, sourceLen, newPeriod);
-  }
+  double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
 
   while(destOffset < dest.length && destOffset < destOffsetBound) {
-    for(int i = 0; i < sourceLen && destOffset < dest.length; i++, destOffset++)
+    double destPitch = pitch.at(destOffset);
+    double pitchScale = destPitch / sourcePitch;
+
+    if (std::abs(pitchScale - 1) < 0.1)
+      pitchScale = 1;
+    if (pitchScale >= 2 || pitchScale <= 0.5)
+      WARN("Pitch scale " << pitchScale << " at " << debugIndex);
+
+    int newPeriod = sourceLen / pitchScale;
+    if (newPeriod != sourceLen)
+      ft::rFT(frequencies, NF, values, sourceLen, newPeriod);
+    else
+      for(int i = 0; i < sourceLen; i++) values[i] = (double) oSource[mark + i];
+
+    for(int i = 0; i < newPeriod && destOffset < dest.length; i++, destOffset++)
       dest.plus(destOffset, truncate(values[i]));
   }
+
+  delete[] values;
   delete[] frequencies;
 }
 
@@ -125,7 +131,7 @@ static void scaleToPitchAndDurationSimple(WaveData dest, int& startOffset,
                                           SpeechWaveData& source, PitchRange pitch,
                                           double, int debugIndex) {
   copyVoicedPart(source, startOffset, dest.length, 0,
-                 dest.length, pitch.at_mid(), dest, debugIndex);
+                 dest.length, pitch, dest, debugIndex);
 }
 
 static void scaleToPitchAndDuration(WaveData dest,
@@ -150,12 +156,11 @@ static void scaleToPitchAndDuration(WaveData dest,
   int mark = 0;
   int nMark = sourceMarks[i];
   destOffsetBound = startOffset + nMark * scale;
-  frequency targetPitch = pitch.at(destOffset);
   if(nMark - mark >= MAX_VOICELESS_SAMPLES || sourceMarks.size() == 1)
     copyVoicelessPart(source, destOffset, destOffsetBound, 0, mark, nMark, dest);
   else
     copyVoicedPart(source, destOffset, destOffsetBound,
-                   mark, nMark, targetPitch, dest, debugIndex);
+                   mark, nMark, pitch, dest, debugIndex);
 
   for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
     mark = sourceMarks[i];
@@ -163,13 +168,12 @@ static void scaleToPitchAndDuration(WaveData dest,
 
     int scaledEnd = scale * nMark;
     destOffsetBound = startOffset + scaledEnd;
-    targetPitch = pitch.at(destOffset);
 
     if(nMark - mark >= MAX_VOICELESS_SAMPLES)
       copyVoicelessPart(source, destOffset, destOffsetBound, mark, mark, nMark, dest);
     else
       copyVoicedPart(source, destOffset, destOffsetBound,
-                     mark, nMark, targetPitch, dest, debugIndex);
+                     mark, nMark, pitch, dest, debugIndex);
   }
 
   if(sourceMarks.size() == 1)

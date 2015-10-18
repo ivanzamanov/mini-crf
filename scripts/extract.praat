@@ -116,7 +116,8 @@ for i to intervalCount
   semiPhonStart[phonCount] = startPulsePoint
   semiPhonEnd[phonCount] = endPulsePoint
 
-  if semiphons || intervalLabel$ == "_" || intervalLabel$ == "$"
+  if semiphons && !(intervalLabel$ == "_" || intervalLabel$ == "$")
+    appendInfoLine: "Split ", intervalLabel$
     # Label of left semiphon
     labels$[phonCount] = "-" + intervalLabel$
     # right semiphon
@@ -160,12 +161,14 @@ appendInfoLine: "Will create ", phonCount, " pieces"
 # Create a segmentation textgrid
 selectObject: textGridSegmented
 for i to semiPhonCount
-  appendInfoLine: i, "-------"
+  #appendInfoLine: i, "-------"
   my_label$ = labels$[i]
   insertedIntervals = Get number of intervals... 2
   Set interval text: 2, insertedIntervals, my_label$
   appendInfoLine: "End ", i, " ", semiPhonEnd[i], " ", my_label$
-  Insert boundary: 2, semiPhonEnd[i]
+  if semiPhonEnd[i] != const_total_time
+    Insert boundary: 2, semiPhonEnd[i]
+  endif
 endfor
 
 #appendInfoLine: "semiPhonCount = ", semiPhonCount
@@ -236,6 +239,7 @@ appendFileLine: outputFile$, "intervals=", semiPhonCount
 
 @unforcePointProcess
 # Output all semiphons
+checkDuration = 0
 semiPhonStart[1] = 0
 for i to semiPhonCount
   startPoint_ = semiPhonStart[i]
@@ -245,6 +249,7 @@ for i to semiPhonCount
   startFrame_ = startFrames[i]
   endFrame_ = endFrames[i]
 
+  checkDuration += duration
   #appendInfoLine: startPoint_, " ", endPoint_, " ", label_$, " ", duration, " ", startFrame_, " ", endFrame_
 
   # These should 1) be very little, just some edge cases
@@ -256,6 +261,7 @@ for i to semiPhonCount
     exitScript: "Fail"
   endif
 endfor
+appendInfoLine: "Total duration of extracted ", checkDuration, " from ", semiPhonCount, " parts"
 
 # Extract pulses to be used to determine cut points
 # Ok, sooo I need to know which parts are voiced/unvoiced, hence I can't use the

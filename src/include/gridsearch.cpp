@@ -78,14 +78,15 @@ namespace gridsearch {
   //__attribute__ ((optnone))
    double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>& frames2) {
     auto frames1 = toFFTdFrames(result);
-    assert(frames1.size() == frames2.size());
+    assert(std::abs((int) frames1.size() - (int) frames2.size()) <= 1);
 
+    int minSize = std::min(frames1.size(), frames2.size());
     double value = 0;
-    for(unsigned j = 0; j < frames1.size(); j++) {
+    for(auto j = 0; j < minSize; j++) {
       double diff = 0;
       auto& freqs1 = frames1[j];
       auto& freqs2 = frames2[j];
-      for(unsigned i = 0; i < freqs1.size(); i++) {
+      for(auto i = 0; i < minSize; i++) {
         double m1 = freqs1[i].magn();
         m1 = m1 ? m1 : 1;
         double m2 = freqs2[i].magn();
