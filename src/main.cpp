@@ -62,8 +62,10 @@ int resynthesize(Options& opts) {
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
+
+  bool FD = !opts.has_opt("td");
   Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-    .get_resynthesis();
+    .get_resynthesis(FD);
   outputSignal.write(wav_output);
 
   for(int i = 0; i < (int) input.size(); i++)

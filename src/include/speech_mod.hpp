@@ -20,10 +20,9 @@ struct SpeechWaveSynthesis {
   std::vector<PhonemeInstance>& target;
   PhonemeAlphabet& origin;
 
-  Wave get_resynthesis();
+  Wave get_resynthesis(bool FD=true);
 private:
-  void do_resynthesis_td(WaveData, SpeechWaveData*);
-  void do_resynthesis_fd(WaveData, SpeechWaveData*);
+  void do_resynthesis(WaveData, SpeechWaveData*, bool FD);
 };
 
 // F0 of less than 50 Hz will be considered voiceless
@@ -71,6 +70,26 @@ struct PitchTier {
     return ranges[length - 1].at(offset + len - 1);
   }
 };
+
+// Mod commons
+template<class T>
+short truncate(T v) {
+  v = std::max(v, (T) SHRT_MIN);
+  v = std::min(v, (T) SHRT_MAX);
+  return (short) v;
+}
+
+int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
+                                WaveData dest, const int destOffset,
+                                const double periodLeft, const double periodRight, bool win=true);
+float nextRandFloat();
+void copyVoicelessPart(SpeechWaveData& source,
+                       int& destOffset,
+                       const int destOffsetBound,
+                       const int,
+                       int sMark,
+                       int sourceBound,
+                       WaveData dest);
 
 PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target);
 double hann(int i, int size);
