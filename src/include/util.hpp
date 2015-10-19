@@ -73,6 +73,12 @@ namespace util {
   }
 
   template<class T, class Func>
+  void each(const std::vector<T> &v, Func f) {
+    for(auto& el : v)
+      f(el);
+  }
+
+  template<class T, class Func>
   void each2(std::vector<T> &v, Func f) {
     int i = 0;
     for(auto& el : v)
@@ -171,7 +177,7 @@ struct Progress {
       std::cerr.flush();
     }
   }
-  
+
   void finish() {
     if(Progress::enabled)
       std::cerr << " Done " << std::endl;

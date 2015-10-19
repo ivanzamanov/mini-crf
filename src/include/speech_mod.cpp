@@ -7,50 +7,68 @@
 using namespace util;
 using std::vector;
 
-void smooth(WaveData dest, int offset, frequency pitch,
-            PhonemeInstance& left, PhonemeInstance& right);
+// Mod commons
 
-void scaleToPitchAndDurationSimpleFD(WaveData dest, int& startOffset,
-                                     SpeechWaveData& source,
-                                     PitchRange pitch,
-                                     double, int debugIndex);
+template<class T>
+short truncate(T v) {
+  v = std::max(v, (T) SHRT_MIN);
+  v = std::min(v, (T) SHRT_MAX);
+  return (short) v;
+}
 
-void scaleToPitchAndDurationFD(WaveData dest,
+double hann(int i, int size) {
+  return 0.5 * (1 - cos(2 * M_PI * i / size));
+}
+
+void smooth(WaveData& dest, int offset, frequency pitch,
+            const PhonemeInstance& left, const PhonemeInstance& right);
+
+void scaleToPitchAndDurationSimpleFD(WaveData& dest,
+                                     int& startOffset,
+                                     const SpeechWaveData& source,
+                                     const PitchRange& pitch,
+                                     double,
+                                     int debugIndex);
+
+void scaleToPitchAndDurationFD(WaveData& dest,
                                int& destOffset,
                                SpeechWaveData& source,
-                               PitchRange pitch, double duration,
+                               const PitchRange& pitch,
+                               double duration,
                                int debugIndex);
 
-void scaleToPitchAndDurationSimpleTD(WaveData dest,
+void scaleToPitchAndDurationSimpleTD(WaveData& dest,
                                      int startOffset,
-                                     SpeechWaveData& source,
-                                     PitchRange pitch,
+                                     const SpeechWaveData& source,
+                                     const PitchRange& pitch,
                                      double duration,
                                      int debugIndex);
 
-void copyVoicedPartFD(SpeechWaveData& oSource,
+void copyVoicedPartFD(const SpeechWaveData& oSource,
                       int& destOffset,
                       const int destOffsetBound,
                       int mark,
                       const int nMark,
-                      const PitchRange pitch,
-                      WaveData dest,
+                      const PitchRange& pitch,
+                      WaveData& dest,
                       int debugIndex);
 
-void copyVoicedPartTD(SpeechWaveData& source,
+void copyVoicedPartTD(const SpeechWaveData& source,
                       int& destOffset,
                       const int destOffsetBound,
                       int mark,
                       const int nMark,
-                      const PitchRange pitch,
-                      WaveData dest,
+                      const PitchRange& pitch,
+                      WaveData& dest,
                       int debugIndex);
 
-void scaleToPitchAndDuration(WaveData dest,
+void scaleToPitchAndDuration(WaveData& dest,
                              int& destOffset,
-                             SpeechWaveData& source,
-                             PitchRange pitch, double duration,
-                             int debugIndex, bool FD);
+                             const SpeechWaveData& source,
+                             const PitchRange& pitch,
+                             double duration,
+                             int debugIndex,
+                             bool FD);
 
 void gen_fall(double* data, int size, bool window=true) {
   //transform(data, size, [&](int, double&) { return 1; });
@@ -67,10 +85,6 @@ void gen_rise(double* data, int size, bool window=true) {
   transform(data, size / 2, [=](int i, double) {
       return window ? hann(i, size) : 1;
     });
-}
-
-double hann(int i, int size) {
-  return 0.5 * (1 - cos(2 * M_PI * i / size));
 }
 
 PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
@@ -173,7 +187,6 @@ Wave SpeechWaveSynthesis::get_resynthesis(bool FD) {
   each(target, [&](PhonemeInstance& p) { completeDuration += p.duration; });
   // preallocate the complete wave result
   WaveData result = WaveData::allocate(completeDuration);
-  result.print(0,0);
 
   INFO("Using " << (FD ? "FD" : "TD") << "-PSOLA");
   do_resynthesis(result, waveData, FD);
@@ -186,9 +199,9 @@ Wave SpeechWaveSynthesis::get_resynthesis(bool FD) {
   return wb.build();
 }
 
-int overlapAddAroundMark(SpeechWaveData& source, const int currentMark,
-                         WaveData dest, const int destOffset,
-                         const double periodLeft, const double periodRight, bool win) {
+int overlapAddAroundMark(const SpeechWaveData& source, const int currentMark,
+                         WaveData& dest, const int destOffset,
+                         const double periodLeft, const double periodRight, bool win=true) {
   DEBUG(LOG("Mark " << destOffset));
   int samplesLeft = WaveData::toSamples(periodLeft);
   int samplesRight = WaveData::toSamples(periodRight);
@@ -233,13 +246,13 @@ float nextRandFloat() {
   return 0.8 + (float) cycle * 0.1;
 }
 
-void copyVoicelessPart(SpeechWaveData& source,
+void copyVoicelessPart(const SpeechWaveData& source,
                        int& destOffset,
                        const int destOffsetBound,
                        const int,
                        int sMark,
                        int sourceBound,
-                       WaveData dest) {
+                       WaveData& dest) {
   int dLen = destOffsetBound - destOffset;
   float scale = (float) dLen / (sourceBound - sMark);
 
@@ -261,7 +274,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, 
   PitchTier pt = initPitchTier(pitchTier, target);
 
   double totalDuration = 0;
-  Progress prog(target.size() - 2, "PSOLA: ");
+  Progress prog(target.size(), "PSOLA: ");
   int destOffset = 0;
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
@@ -348,18 +361,22 @@ void smooth(WaveData dest, int offset, frequency pitch,
   }
 }
 
-void scaleToPitchAndDurationSimpleFD(WaveData dest, int& startOffset,
-                                     SpeechWaveData& source, PitchRange pitch,
-                                     double, int debugIndex) {
+void scaleToPitchAndDurationSimpleFD(WaveData& dest, int& startOffset,
+                                     const SpeechWaveData& source,
+                                     const PitchRange& pitch,
+                                     double,
+                                     int debugIndex) {
   copyVoicedPartFD(source, startOffset, dest.length, 0,
                    dest.length, pitch, dest, debugIndex);
 }
 
-void scaleToPitchAndDuration(WaveData dest,
+void scaleToPitchAndDuration(WaveData& dest,
                              int& destOffset,
-                             SpeechWaveData& source,
-                             PitchRange pitch, double duration,
-                             int debugIndex, bool FD) {
+                             const SpeechWaveData& source,
+                             const PitchRange& pitch,
+                             double duration,
+                             int debugIndex,
+                             bool FD) {
   // Time scale
   double scale = duration / WaveData::toDuration(source.length);
 
@@ -414,16 +431,16 @@ void scaleToPitchAndDuration(WaveData dest,
   copyVoicelessPart(source, destOffset, destOffsetBound, mark, nMark, scale, dest);
 }
 
-void copyVoicedPartFD(SpeechWaveData& oSource,
+void copyVoicedPartFD(const SpeechWaveData& oSource,
                       int& destOffset,
                       const int destOffsetBound,
                       int mark,
                       const int nMark,
-                      const PitchRange pitch,
-                      WaveData dest,
+                      const PitchRange& pitch,
+                      WaveData& dest,
                       int debugIndex) {
   int sourceLen = nMark - mark;
-  double* values = new double[sourceLen];
+  double* values = new double[1024 * 4];
   for(int i = 0; i < sourceLen; i++) values[i] = (double) oSource[mark + i];
 
   // Harmonics below Nyquist frequency
@@ -434,7 +451,7 @@ void copyVoicedPartFD(SpeechWaveData& oSource,
 
   double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
 
-  while(destOffset < dest.length && destOffset < destOffsetBound) {
+  while (destOffset < dest.length && destOffset < destOffsetBound) {
     double destPitch = pitch.at(destOffset);
     double pitchScale = destPitch / sourcePitch;
 
@@ -445,7 +462,7 @@ void copyVoicedPartFD(SpeechWaveData& oSource,
 
     int newPeriod = sourceLen / pitchScale;
     if (newPeriod != sourceLen)
-      ft::rFT(frequencies, NF, values, sourceLen, newPeriod);
+      ft::rFT(frequencies, NF, values, newPeriod, newPeriod);
     else
       for(int i = 0; i < sourceLen; i++) values[i] = (double) oSource[mark + i];
 
@@ -457,13 +474,13 @@ void copyVoicedPartFD(SpeechWaveData& oSource,
   delete[] frequencies;
 }
 
-void copyVoicedPartTD(SpeechWaveData& source,
+void copyVoicedPartTD(const SpeechWaveData& source,
                       int& destOffset,
                       const int destOffsetBound,
                       int mark,
                       const int nMark,
-                      const PitchRange pitch,
-                      WaveData dest,
+                      const PitchRange& pitch,
+                      WaveData& dest,
                       int) {
   int sourcePeriodSamplesRight = nMark - mark;
   int sourcePeriodSamplesLeft = nMark - mark;
@@ -479,10 +496,10 @@ void copyVoicedPartTD(SpeechWaveData& source,
   }
 }
 
-void scaleToPitchAndDurationSimpleTD(WaveData dest,
+void scaleToPitchAndDurationSimpleTD(WaveData& dest,
                                      int startOffset,
-                                     SpeechWaveData& source,
-                                     PitchRange pitch,
+                                     const SpeechWaveData& source,
+                                     const PitchRange& pitch,
                                      double duration,
                                      int) {
   // I'd rather have it rounded up

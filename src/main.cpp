@@ -66,6 +66,18 @@ int resynthesize(Options& opts) {
   bool FD = !opts.has_opt("td");
   Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
     .get_resynthesis(FD);
+
+  Wave tdSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
+    .get_resynthesis(false);
+
+  double diff = 0;
+  for(unsigned i = 0; i < tdSignal.length(); i++)
+    diff += std::abs(outputSignal[i] - tdSignal[i]);
+
+  INFO("Samples: " << tdSignal.length());
+  INFO("TD/FD Error: " << diff);
+  INFO("TD/FD Error mean: " << diff / tdSignal.length());
+
   outputSignal.write(wav_output);
 
   for(int i = 0; i < (int) input.size(); i++)

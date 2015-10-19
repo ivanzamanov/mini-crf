@@ -4,6 +4,7 @@
 #include<ios>
 #include<unistd.h>
 
+#include"gridsearch.hpp"
 #include"tool.hpp"
 #include"crf.hpp"
 #include"features.hpp"
@@ -11,9 +12,11 @@
 #include"speech_mod.hpp"
 
 void resynth(int argc, const char** argv) {
-  Options opts = parse_options(argc, argv);
+  Options opts;
+  if(!init_tool(argc, argv, &opts))
+    return;
 
-  int inputIds[1] = { 508 };
+  int inputIds[1] = { 22635 };
 
   std::vector<PhonemeInstance> input;
   for(auto phonId : inputIds) {
@@ -26,57 +29,46 @@ void resynth(int argc, const char** argv) {
     std::cerr << "End: " << pi.end << std::endl;
   }
 
+  float targetDuration = 0.062211;
+  float targetPitch = 225;
+
+  targetPitch = std::log(targetPitch);
+  
   std::vector<PhonemeInstance> output;
   for(auto p : input) {
     PhonemeInstance outputPhon;
     outputPhon.pitch_contour = p.pitch_contour;
-    outputPhon.start = 0;
+    outputPhon.pitch_contour[0] = targetPitch;
+    outputPhon.pitch_contour[1] = targetPitch;
 
-    outputPhon.end = p.duration;
+    outputPhon.start = 0;
+    outputPhon.end = targetDuration;
     outputPhon.duration = outputPhon.end;
   
     output.push_back(outputPhon);
   }
 
-  std::string outputFile = opts.get_opt("--output");
+  std::string outputFile = opts.get_opt<std::string>("--output", "single.wav");
   std::ofstream wav_output(outputFile);
-  SpeechWaveSynthesis(input, output, crf.alphabet())
-    .get_resynthesis()
-    .write(wav_output);
-}
+  Wave fdWave = SpeechWaveSynthesis(input, output, crf.alphabet())
+    .get_resynthesis(true);
+  Wave tdWave = SpeechWaveSynthesis(input, output, crf.alphabet())
+    .get_resynthesis(false);
 
-void clone(int argc, const char** argv) {
-  Options opts = parse_options(argc, argv);
-
-  int phonId = util::parse_int(opts.input);
-
-  std::vector<PhonemeInstance> input;
-  auto pi = alphabet_synth.fromInt(phonId);
-  input.push_back(pi);
-
-  std::vector<PhonemeInstance> output;
-  PhonemeInstance outputPhon;
-  outputPhon.pitch_contour = pi.pitch_contour;
-  outputPhon.start = 0;
-
-  outputPhon.end = 2;
-  outputPhon.duration = outputPhon.end;
+  fdWave.write(outputFile);
   
-  output.push_back(outputPhon);
+  double diff = 0;
+  for(unsigned i = 0; i < fdWave.length(); i++)
+    diff += std::abs(fdWave[i] - tdWave[i]);
 
-  std::string outputFile = opts.get_opt("--output");
-  std::ofstream wav_output(outputFile);
-  SpeechWaveSynthesis(input, output, crf.alphabet())
-    .get_resynthesis()
-    .write(wav_output);
+  INFO("Samples: " << fdWave.length());
+  INFO("TD/FD Error: " << diff);
+  INFO("TD/FD Error mean: " << diff / fdWave.length());
 }
 
 bool Progress::enabled = true;
+std::string gridsearch::Comparisons::metric = "";
+std::string gridsearch::Comparisons::aggregate = "";
 int main(int argc, const char** argv) {
-  std::ios_base::sync_with_stdio(false);
-  if(!init_tool(argc, argv)) {
-    return 1;
-  }
-
   resynth(argc, argv);
 }
