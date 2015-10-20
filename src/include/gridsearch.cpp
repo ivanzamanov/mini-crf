@@ -13,8 +13,10 @@ struct Range {
     assert(step > 0 && from <= to);
   }
 
-  bool has_next() { return (current + step) <= to; }
+  bool has_next() const { return (current + step) <= to; }
   void next() { current += step; }
+
+  void reset() { current = from; }
   
   double from, to, step, current;
   std::string feature;
@@ -170,6 +172,12 @@ namespace gridsearch {
       *max = params[maxIndex];
   }
 
+  double randDouble() {
+    static int c = 0;
+    c++;
+    return - (c * c) % 357;
+  }
+  
   Comparisons do_train(ThreadPool& tp,
                        std::vector< std::vector<FrameFrequencies> > *precompFrames) {
     unsigned count = corpus_test.size();
@@ -194,7 +202,7 @@ namespace gridsearch {
     aggregate(comps, &result);
     return result;
   }
-
+  
   int train(const Options& opts) {
     Progress::enabled = false;
     Comparisons::metric = opts.get_opt<std::string>("metric", "");
@@ -209,7 +217,7 @@ namespace gridsearch {
     }
 
     std::array<Range, FC> ranges = {{
-        Range("trans-ctx", 1, 1, 1),
+        Range("trans-ctx", 1, 1, 100),
         Range("trans-pitch", 1, 150, 1),
         Range("state-pitch", 1, 150, 1),
         Range("trans-mfcc", 0, 10, 0.1),
@@ -233,34 +241,49 @@ namespace gridsearch {
     int iteration = 0;
     int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
     std::vector<TrainingOutput> outputs;
-    for(unsigned i = 1; i < ranges.size(); i++) {
-      std::vector<Comparisons> comps;
-      double bestCoef = -1;
-      Comparisons bestVals;
-      while(ranges[i].has_next()) {
-        iteration++;
-        if(iteration > maxIterations)
-          break;
-        // Update coefficient
-        crf.set(ranges[i].feature, ranges[i].current);
-        // Log
-        LOG("");
-        INFO("Iteration: " << iteration);
-        for(unsigned k = 0; k < ranges.size(); k++)
-          LOG(ranges[k].feature << "=" << ranges[k].current);
+    unsigned passes = opts.get_opt<int>("training-passes", 3);
+    for(unsigned passNumber = 1; passNumber <= passes; passNumber++) {
+      INFO("Pass " << passNumber);
 
-        // And actual work...
-        Comparisons result = do_train(tp, &precompFrames);
-        if(bestCoef == -1 || result < bestVals)
-          bestCoef = ranges[i].current;
+      for(unsigned fixedRange = 0; fixedRange < FC; fixedRange++) {
+        for(unsigned i = 0; i < ranges.size(); i++) {
+          if(i == fixedRange || (i == 0 && passNumber == 1))
+            continue;
 
-        // Advance
-        ranges[i].next();
+          ranges[i].reset();
+          std::vector<Comparisons> comps;
+          double bestCoef = -1;
+          Comparisons bestVals;
+          while(ranges[i].has_next()) {
+            iteration++;
+            if(iteration > maxIterations)
+              break;
 
-        INFO("Value: " << result.value());
+            // Update coefficient
+            crf.set(ranges[i].feature, ranges[i].current);
+
+            INFO("Pass: " << passNumber << ", iteration: " << iteration);
+            for(unsigned k = 0; k < ranges.size(); k++)
+              LOG(ranges[k].feature << "=" << ranges[k].current);
+
+            // And actual work...
+            Comparisons result = do_train(tp, &precompFrames);
+
+            if(bestCoef == -1 || result < bestVals) {
+              bestCoef = ranges[i].current;
+              bestVals = result;
+            }
+
+            // Advance
+            ranges[i].next();
+
+            INFO("Value: " << result.value());
+          }
+
+          INFO(ranges[i].feature << " best value = " << bestCoef);
+          ranges[i].current = bestCoef;
+        }
       }
-      INFO(ranges[i].feature << " best value = " << bestCoef);
-      ranges[i].current = bestCoef;
     }
 
     INFO("Best at: ");

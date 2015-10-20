@@ -2,6 +2,8 @@
 
 #include"util.hpp"
 
+bool COLOR_ENABLED = true;
+
 namespace util {
   float mult_exp(float x, float y) {
     if(y == 0)

@@ -51,6 +51,7 @@ namespace tool {
     *opts = Options::parse_options(argc, argv);
     if(!Options::has_required(*opts))
       return false;
+    COLOR_ENABLED = !opts->has_opt("--no-color");
     crf.label_alphabet = &alphabet_synth;
     build_data(*opts);
 

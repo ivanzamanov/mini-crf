@@ -288,8 +288,9 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, 
     WaveDataTemp tmp(WaveData::allocate(targetDuration));
 
     double durationScale = targetDuration / WaveData::toDuration(p.length);
-    if(durationScale < 0.5 || durationScale > 2)
+    if(durationScale < 0.5 || durationScale > 2) {
       WARN("Duration scale " << durationScale << " at " << i);
+    }
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
     int startOffset = 0;
@@ -457,8 +458,9 @@ void copyVoicedPartFD(const SpeechWaveData& oSource,
 
     if (std::abs(pitchScale - 1) < 0.1)
       pitchScale = 1;
-    if (pitchScale >= 2 || pitchScale <= 0.5)
+    if (pitchScale >= 2 || pitchScale <= 0.5) {
       WARN("Pitch scale " << pitchScale << " at " << debugIndex);
+    }
 
     int newPeriod = sourceLen / pitchScale;
     if (newPeriod != sourceLen)
