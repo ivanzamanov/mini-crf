@@ -51,7 +51,7 @@ namespace gridsearch {
     }
     
     bool operator<(const Comparisons o) const {
-      return ItakuraSaito < o.ItakuraSaito;
+      return LogSpectrum < o.LogSpectrum;
     }
     
     bool operator<=(const Comparisons o) const {

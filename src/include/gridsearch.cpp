@@ -180,6 +180,7 @@ namespace gridsearch {
   
   Comparisons do_train(ThreadPool& tp,
                        std::vector< std::vector<FrameFrequencies> > *precompFrames) {
+    //return Comparisons().dummy(randDouble());
     unsigned count = corpus_test.size();
     bool flags[count];
 
@@ -245,44 +246,39 @@ namespace gridsearch {
     for(unsigned passNumber = 1; passNumber <= passes; passNumber++) {
       INFO("Pass " << passNumber);
 
-      for(unsigned fixedRange = 0; fixedRange < FC; fixedRange++) {
-        for(unsigned i = 0; i < ranges.size(); i++) {
-          if(i == fixedRange || (i == 0 && passNumber == 1))
-            continue;
+      for(unsigned i = (passNumber == 1); i < ranges.size(); i++) {
+        ranges[i].reset();
+        std::vector<Comparisons> comps;
+        double bestCoef = -1;
+        Comparisons bestVals;
+        while(ranges[i].has_next()) {
+          iteration++;
+          if(iteration > maxIterations)
+            break;
 
-          ranges[i].reset();
-          std::vector<Comparisons> comps;
-          double bestCoef = -1;
-          Comparisons bestVals;
-          while(ranges[i].has_next()) {
-            iteration++;
-            if(iteration > maxIterations)
-              break;
+          // Update coefficient
+          crf.set(ranges[i].feature, ranges[i].current);
 
-            // Update coefficient
-            crf.set(ranges[i].feature, ranges[i].current);
+          INFO("Pass: " << passNumber << ", iteration: " << iteration);
+          for(unsigned k = 0; k < ranges.size(); k++)
+            LOG(ranges[k].feature << "=" << ranges[k].current);
 
-            INFO("Pass: " << passNumber << ", iteration: " << iteration);
-            for(unsigned k = 0; k < ranges.size(); k++)
-              LOG(ranges[k].feature << "=" << ranges[k].current);
+          // And actual work...
+          Comparisons result = do_train(tp, &precompFrames);
 
-            // And actual work...
-            Comparisons result = do_train(tp, &precompFrames);
-
-            if(bestCoef == -1 || result < bestVals) {
-              bestCoef = ranges[i].current;
-              bestVals = result;
-            }
-
-            // Advance
-            ranges[i].next();
-
-            INFO("Value: " << result.value());
+          if(bestCoef == -1 || result < bestVals) {
+            bestCoef = ranges[i].current;
+            bestVals = result;
           }
 
-          INFO(ranges[i].feature << " best value = " << bestCoef);
-          ranges[i].current = bestCoef;
+          // Advance
+          ranges[i].next();
+
+          INFO("Value: " << result.value());
         }
+
+        INFO(ranges[i].feature << " best value = " << bestCoef);
+        ranges[i].current = bestCoef;
       }
     }
 
