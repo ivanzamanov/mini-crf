@@ -179,7 +179,7 @@ namespace gridsearch {
   }
 
   void precomputeFrames(std::vector< std::vector<FrameFrequencies> >& precompFrames) {
-    return;
+    //return;
     for(unsigned i = 0; i < corpus_test.size(); i++) {
       FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
       Wave sourceSignal;
@@ -191,7 +191,7 @@ namespace gridsearch {
   
   Comparisons do_train(ThreadPool& tp,
                        std::vector< std::vector<FrameFrequencies> > *precompFrames) {
-    return Comparisons().dummy(randDouble());
+    //return Comparisons().dummy(randDouble());
     unsigned count = corpus_test.size();
     bool flags[count];
 
