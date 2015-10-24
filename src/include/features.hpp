@@ -129,7 +129,7 @@ struct PhoneticFeatures {
   const std::string enames[ESIZE] = {
     "trans-pitch",
     "trans-mfcc",
-    "tranx-ctx"
+    "trans-ctx"
   };
   const _EdgeFeature f[ESIZE] = {
     Features::Pitch,
