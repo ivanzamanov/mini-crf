@@ -188,7 +188,7 @@ Wave SpeechWaveSynthesis::get_resynthesis(bool FD) {
   // preallocate the complete wave result
   WaveData result = WaveData::allocate(completeDuration);
 
-  INFO("Using " << (FD ? "FD" : "TD") << "-PSOLA");
+  DEBUG(INFO("Using " << (FD ? "FD" : "TD") << "-PSOLA");)
   do_resynthesis(result, waveData, FD);
 
   wb.append(result);
@@ -289,7 +289,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, 
 
     double durationScale = targetDuration / WaveData::toDuration(p.length);
     if(durationScale < 0.5 || durationScale > 2) {
-      WARN("Duration scale " << durationScale << " at " << i);
+      DEBUG(WARN("Duration scale " << durationScale << " at " << i);)
     }
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
@@ -459,7 +459,7 @@ void copyVoicedPartFD(const SpeechWaveData& oSource,
     if (std::abs(pitchScale - 1) < 0.1)
       pitchScale = 1;
     if (pitchScale >= 2 || pitchScale <= 0.5) {
-      WARN("Pitch scale " << pitchScale << " at " << debugIndex);
+      DEBUG(WARN("Pitch scale " << pitchScale << " at " << debugIndex);)
     }
 
     int newPeriod = sourceLen / pitchScale;

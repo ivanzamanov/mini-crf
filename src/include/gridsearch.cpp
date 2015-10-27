@@ -224,7 +224,7 @@ namespace gridsearch {
         Range& range = ranges[i];
         range.reset();
         std::vector<Comparisons> comps;
-        double bestCoef = ranges[i].current;
+        double bestCoef = -1;
         Comparisons bestVals;
         while(range.has_next()) {
           iteration++;
@@ -234,8 +234,8 @@ namespace gridsearch {
 
           INFO("Pass: " << passNumber << ", iteration: " << iteration);
           INFO("Trying " << range.feature << " = " << range.current);
-          /*for(unsigned k = 0; k < ranges.size(); k++)
-            LOG(ranges[k].feature << "=" << ranges[k].current);*/
+          DEBUG(for(unsigned k = 0; k < ranges.size(); k++)
+                  LOG(ranges[k].feature << "=" << ranges[k].current);)
 
           // And actual work...
           Comparisons result = do_train(tp, &precompFrames);
@@ -251,8 +251,12 @@ namespace gridsearch {
           INFO("Value: " << result.value());
         }
 
-        INFO(range.feature << " best value = " << bestCoef);
-        range.current = bestCoef;
+        if(bestCoef != -1) {
+          INFO(range.feature << " best value = " << bestCoef);
+          range.current = bestCoef;
+        } else {
+          INFO("Skipped " << range.feature);
+        }
       }
     }    
   }
