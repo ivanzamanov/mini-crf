@@ -2,6 +2,8 @@
 
 using namespace tool;
 
+bool FORCE_SCALE = false;
+
 void tool::build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus* corpus, StringLabelProvider& label_provider) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;

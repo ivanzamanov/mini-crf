@@ -182,6 +182,10 @@ struct BinaryReader {
   BinaryReader& operator>>(T& val) {
     return r(val);
   }
+
+  bool ok() {
+    return (bool) *s;
+  }
 };
 
 struct Progress {

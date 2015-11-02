@@ -9,6 +9,8 @@
 
 using namespace tool;
 
+extern bool SMOOTH;
+
 struct SpeechWaveSynthesis {
   SpeechWaveSynthesis(std::vector<PhonemeInstance>& source,
              std::vector<PhonemeInstance>& target,
