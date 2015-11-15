@@ -284,18 +284,18 @@ namespace gridsearch {
     return result;
   }
   
-  void executeTraining(unsigned passes, std::array<Range, FC>& ranges, std::vector< std::vector<FrameFrequencies> > &precompFrames, ThreadPool& tp, ValueCache<FC>& vc) {
+  void executeTraining(unsigned passes, std::array<Range, FC>& ranges, int maxIterations, std::vector< std::vector<FrameFrequencies> > &precompFrames, ThreadPool& tp, ValueCache<FC>& vc) {
     int iteration = 0;
-    for (unsigned passNumber = 1; passNumber <= passes; passNumber++) {
+    for (unsigned passNumber = 1; passNumber <= passes && iteration < maxIterations; passNumber++) {
       INFO("Pass " << passNumber);
 
-      for(unsigned i = (passNumber == 1); i < ranges.size(); i++) {
+      for(unsigned i = (passNumber == 1); i < ranges.size() && iteration < maxIterations; i++) {
         Range& range = ranges[i];
         range.reset();
         std::vector<Comparisons> comps;
         double bestCoef = -1;
         Comparisons bestVals;
-        while(range.has_next()) {
+        while(range.has_next() && iteration < maxIterations) {
           iteration++;
 
           // Update coefficient
@@ -373,8 +373,9 @@ namespace gridsearch {
 
     std::vector<TrainingOutput> outputs;
     unsigned passes = opts.get_opt<int>("training-passes", 3);
+    int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
 
-    executeTraining(passes, ranges, precompFrames, tp, vc);
+    executeTraining(passes, ranges, maxIterations, precompFrames, tp, vc);
 
     INFO("Best at: ");
     for(unsigned k = 0; k < ranges.size(); k++)

@@ -461,7 +461,8 @@ void copyVoicedPartFD(const SpeechWaveData& oSource,
     if (std::abs(pitchScale - 1) < 0.1)
       pitchScale = 1;
     if (pitchScale >= 2 || pitchScale <= 0.5) {
-      WARN("Pitch scale " << pitchScale << " at " << debugIndex);
+      WARN("Pitch scale " << pitchScale << " at " << debugIndex << ", "
+           << sourcePitch << " -> " << destPitch);
     }
 
     int newPeriod = sourceLen / pitchScale;

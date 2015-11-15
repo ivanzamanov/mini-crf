@@ -10,7 +10,7 @@ OBJ_FILES = $(patsubst %.cpp,%.o,$(CPP_FILES))
 MAIN_DEPS = $(wildcard */*.hpp *.hpp) main.cpp $(OBJ_FILES)
 
 main: $(MAIN_DEPS)
-	$(CMD) main.cpp $(OBJ_FILES) -o main -lpthread
+	$(CMD_NOOPT) main.cpp $(OBJ_FILES) -o main -lpthread
 
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test -lpthread

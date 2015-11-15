@@ -27,8 +27,9 @@ def FT(values):
         result[f] = (real / period, img / period)
     return result
 
-def rFT(frequencies, period, resultLength):
-    result = [0 for f in range(0, resultLength)]
+def rFT(frequencies):
+    result = [0 for f in range(0, (len(frequencies) - 1) * 2)]
+    period = float(len(result))
     for t, _ in enumerate(result):
         value = 0
         for f, (real, img) in enumerate(frequencies):
@@ -67,8 +68,8 @@ def main():
     plot = subplot(2, PLOTS)
     plot.set_title("Fourier Domain Modded")
     scale = 2
+    #newLen = int(len(fVals) * scale)
     newLen = len(fVals)
-    #newLen = int((len(fVals) - 1) * scale + 1)
     modded = [(0,0) for x in range(0, newLen)]
     modded = [x for x in fVals]
 
@@ -82,9 +83,8 @@ def main():
         ni = i / scale
         nf = ni
         ni = int(ni)
-        if ni > len(fVals) - 1:
-          continue
-        a = 0
+        if ni > len(fVals):
+            continue
         a = ni - nf
         c = modded[i]
         c = (c[0] + (1 - a) * fVals[ni][0], c[1] + (1 - a) * fVals[ni][1])
@@ -96,12 +96,12 @@ def main():
           str2 = formatC(plus)
         #c = fVals[ni]
         modded[i] = c
-        #print(str(i) + ' -> ' + str(ni) + ' , a = ' + str(a))'''
+        print(str(i) + ' -> ' + str(ni) + ' , a = ' + str(a))
 
-    '''print
+    print()
     for i, c in enumerate(fVals): print(str(i) + ': ' + formatC(c))
-    print
-    for i, c in enumerate(modded): print(str(i) + ': ' + formatC(c))'''
+    print()
+    for i, c in enumerate(modded): print(str(i) + ': ' + formatC(c))
 
     mTBins = range(0, len(modded))
     plot.plot(mTBins, [a for (a,_) in modded], 'b')
