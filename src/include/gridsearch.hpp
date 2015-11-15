@@ -29,10 +29,15 @@ namespace gridsearch {
 
     double ItakuraSaito;
     double LogSpectrum;
+
+    const Comparisons& dummy(double v) {
+      ItakuraSaito = LogSpectrum = v; return *this;
+    }
     
-    void fill(Wave& dist, Wave& original) {
+    const Comparisons& fill(Wave& dist, Wave& original) {
       ItakuraSaito = compare_IS(dist, original);
       LogSpectrum = compare_LogSpectrum(dist, original);
+      return *this;
     }
     
     void fill(Wave& dist, std::vector<FrameFrequencies>& sourceFreqs) {
@@ -46,7 +51,11 @@ namespace gridsearch {
     }
     
     bool operator<(const Comparisons o) const {
-      return ItakuraSaito < o.ItakuraSaito;
+      return LogSpectrum < o.LogSpectrum;
+    }
+    
+    bool operator<=(const Comparisons o) const {
+      return *this < o || (ItakuraSaito == o.ItakuraSaito && LogSpectrum == o.LogSpectrum);
     }
 
     const Comparisons operator+(const Comparisons o) const {

@@ -10,11 +10,31 @@
 
 #define TEST(x) std::cerr << #x << ":\n" ; x(); std::cerr << "OK" << std::endl;
 
+enum ColorCode {
+  RED      = 31,
+  GREEN    = 32,
+  YELLOW   = 33,
+  BLUE     = 34,
+  DEFAULT  = 39
+};
+
+extern bool COLOR_ENABLED;
+struct Color {
+  Color(int code=ColorCode::DEFAULT): code(code) { }
+  int code;
+
+  friend std::ostream& operator<<(std::ostream& str, const Color& c) {
+    return str << "\033[" << c.code << "m";
+  }
+};
+
 #define DEBUG(x) ;
 #define LOG(x) std::cerr << x << std::endl
-#define INFO(x) std::cerr << "INFO: " << x << std::endl
-#define WARN(x) std::cerr << "INFO: " << x << std::endl
-#define ERROR(x) std::cerr << "INFO: " << x << std::endl
+#define LOG_COLOR(h, x, color) std::cerr << Color(ColorCode::color) << h << Color(ColorCode::DEFAULT) << x << std::endl
+#define LOG_COLOR_OPT(h, x, color) if(COLOR_ENABLED) LOG_COLOR(h, x, color); else LOG(h << x)
+#define INFO(x) LOG_COLOR_OPT("INFO: ", x, GREEN)
+#define WARN(x) LOG_COLOR_OPT("WARN: ", x, YELLOW)
+#define ERROR(x) LOG_COLOR_OPT("ERROR: ", x, RED)
 
 #define MY_E 2.71828182845904523536028747135266250 // e
 
@@ -68,6 +88,12 @@ namespace util {
 
   template<class T, class Func>
   void each(std::vector<T> &v, Func f) {
+    for(auto& el : v)
+      f(el);
+  }
+
+  template<class T, class Func>
+  void each(const std::vector<T> &v, Func f) {
     for(auto& el : v)
       f(el);
   }
@@ -156,6 +182,10 @@ struct BinaryReader {
   BinaryReader& operator>>(T& val) {
     return r(val);
   }
+
+  bool ok() {
+    return (bool) *s;
+  }
 };
 
 struct Progress {
@@ -171,7 +201,7 @@ struct Progress {
       std::cerr.flush();
     }
   }
-  
+
   void finish() {
     if(Progress::enabled)
       std::cerr << " Done " << std::endl;

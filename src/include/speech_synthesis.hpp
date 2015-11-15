@@ -11,6 +11,7 @@
 #include"parser.hpp"
 
 using std::vector;
+extern bool FORCE_SCALE;
 
 namespace tool {
   typedef _Corpus<PhonemeInstance, PhonemeInstance> Corpus;
@@ -22,8 +23,32 @@ namespace tool {
     vector<unsigned> old_ids;
     vector<unsigned> new_ids;
 
-    const LabelAlphabet<PhonemeInstance>::LabelClass& get_class(const PhonemeInstance& phon) const {
-      return classes[phon.label];
+    const LabelAlphabet<PhonemeInstance>::LabelClass get_class(const PhonemeInstance& phon) const {
+      if(!FORCE_SCALE)
+        return classes[phon.label];
+      else {
+        LabelAlphabet<PhonemeInstance>::LabelClass result;
+        filter(classes[phon.label], result, phon);
+        return result;
+      }
+    }
+
+    bool between(double v, double min, double max) const {
+      return v >= min && v <= max;
+    }
+
+    void filter(const LabelAlphabet<PhonemeInstance>::LabelClass& source,
+                LabelAlphabet<PhonemeInstance>::LabelClass& target,
+                const PhonemeInstance& phon) const {
+      for(auto& p : source)
+        if( (between(fromInt(p).duration / phon.duration, 0.5, 2)
+             && between(fromInt(p).pitch_contour[0] - phon.pitch_contour[0], -0.69, 0.69)
+             && between(fromInt(p).pitch_contour[1] - phon.pitch_contour[1], -0.69, 0.69)
+             ) || target.empty()) {
+          target.push_back(p);
+          if(fromInt(p).duration / phon.duration < 0.5)
+            std::cout << "Err";
+        }
     }
 
     FileData file_data_of(const PhonemeInstance& phon) {

@@ -1,10 +1,8 @@
-#include<cassert>
-
 #include"gridsearch.hpp"
 #include"threadpool.h"
 #include"crf.hpp"
 #include"tool.hpp"
-#include"fourier.hpp"
+#include"parser.hpp"
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -13,8 +11,10 @@ struct Range {
     assert(step > 0 && from <= to);
   }
 
-  bool has_next() { return (current + step) <= to; }
+  bool has_next() const { return (current + step) <= to; }
   void next() { current += step; }
+
+  void reset() { current = from; }
   
   double from, to, step, current;
   std::string feature;
@@ -23,6 +23,77 @@ struct Range {
     std::stringstream str;
     str << "[" << feature << ", " << from << ", " << to << ", " << step << "]";
     return str.str();
+  }
+};
+
+template<int FeatureCount>
+struct ValueCache {
+  ValueCache(std::string path): path(path) {
+    init();
+  }
+
+  std::string path;
+  std::vector<gridsearch::Comparisons> values;
+  std::vector<std::array<double, FeatureCount> > args;
+
+  bool load(std::array<Range, FeatureCount>& ranges, gridsearch::Comparisons& result) const {
+    for(unsigned i = 0; i < args.size(); i++) {
+      bool found = true;
+      for(unsigned j = 0; j < args[i].size(); j++)
+        found = found && args[i][j] == ranges[j].current;
+      if(found) {
+        result = values[i];
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void save(std::array<Range, FeatureCount>& ranges, const gridsearch::Comparisons& result) {
+    values.push_back(result);
+    std::array<double, FeatureCount> new_args;
+    for(unsigned i = 0; i < ranges.size(); i++)
+      new_args[i] = ranges[i].current;
+    args.push_back(new_args);
+  }
+
+  void persist() {
+    std::ofstream str(path);
+    BinaryWriter w(&str);
+    unsigned size = values.size();
+    w << size;
+    for(unsigned i = 0; i < size; i++) {
+      for(unsigned j = 0; j < FeatureCount; j++)
+        w << args[i][j];
+      w << values[i].ItakuraSaito;
+      w << values[i].LogSpectrum;
+    }
+    INFO("Persisted " << size << " values in " << path);
+  }
+
+private:
+  void init() {
+    std::ifstream str(path);
+    BinaryReader reader(&str);
+    unsigned size; reader >> size;
+    if(!reader.ok()) {
+      INFO("No existing value cache");
+      return;
+    }
+    INFO("Values in cache " << path << " " << size);
+    for(unsigned i = 0; i < size; i++) {
+      std::array<double, FeatureCount> args;
+      gridsearch::Comparisons values;
+      double arg;
+      for(unsigned j = 0; j < FeatureCount; j++) {
+        reader >> arg;
+        args[j] = arg;
+      }
+      reader >> values.ItakuraSaito;
+      reader >> values.LogSpectrum;
+      this->args.push_back(args);
+      this->values.push_back(values);
+    }
   }
 };
 
@@ -59,7 +130,7 @@ namespace gridsearch {
       ft::FT(td_values, frame.size(), values, values.size());
       result.push_back(values);
     }
-    delete td_values;
+    delete[] td_values;
     assert(result.size() > 0);
     return result;
   }
@@ -76,16 +147,17 @@ namespace gridsearch {
   }
 
   //__attribute__ ((optnone))
-   double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>& frames2) {
+  double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>& frames2) {
     auto frames1 = toFFTdFrames(result);
-    assert(frames1.size() == frames2.size());
+    assert(std::abs((int) frames1.size() - (int) frames2.size()) <= 1);
 
+    int minSize = std::min(frames1.size(), frames2.size());
     double value = 0;
-    for(unsigned j = 0; j < frames1.size(); j++) {
+    for(auto j = 0; j < minSize; j++) {
       double diff = 0;
       auto& freqs1 = frames1[j];
       auto& freqs2 = frames2[j];
-      for(unsigned i = 0; i < freqs1.size(); i++) {
+      for(auto i = 0; i < minSize; i++) {
         double m1 = freqs1[i].magn();
         m1 = m1 ? m1 : 1;
         double m2 = freqs2[i].magn();
@@ -169,8 +241,26 @@ namespace gridsearch {
       *max = params[maxIndex];
   }
 
+  double randDouble() {
+    static int c = 0;
+    c++;
+    return - (c * c) % 357;
+  }
+
+  void precomputeFrames(std::vector< std::vector<FrameFrequencies> >& precompFrames) {
+    //return;
+    for(unsigned i = 0; i < corpus_test.size(); i++) {
+      FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
+      Wave sourceSignal;
+      sourceSignal.read(fileData.file);
+      auto frames = toFFTdFrames(sourceSignal);
+      precompFrames.push_back(frames);
+    }
+  }
+  
   Comparisons do_train(ThreadPool& tp,
                        std::vector< std::vector<FrameFrequencies> > *precompFrames) {
+    //return Comparisons().dummy(randDouble());
     unsigned count = corpus_test.size();
     bool flags[count];
 
@@ -193,6 +283,61 @@ namespace gridsearch {
     aggregate(comps, &result);
     return result;
   }
+  
+  void executeTraining(unsigned passes, std::array<Range, FC>& ranges, std::vector< std::vector<FrameFrequencies> > &precompFrames, ThreadPool& tp, ValueCache<FC>& vc) {
+    int iteration = 0;
+    for (unsigned passNumber = 1; passNumber <= passes; passNumber++) {
+      INFO("Pass " << passNumber);
+
+      for(unsigned i = (passNumber == 1); i < ranges.size(); i++) {
+        Range& range = ranges[i];
+        range.reset();
+        std::vector<Comparisons> comps;
+        double bestCoef = -1;
+        Comparisons bestVals;
+        while(range.has_next()) {
+          iteration++;
+
+          // Update coefficient
+          crf.set(range.feature, range.current);
+
+          INFO("Pass: " << passNumber << ", iteration: " << iteration);
+          INFO("Trying " << range.feature << " = " << range.current);
+          DEBUG(for(unsigned k = 0; k < ranges.size(); k++)
+                  LOG(ranges[k].feature << "=" << ranges[k].current););
+
+          Comparisons result;
+          bool inCache = vc.load(ranges, result);
+
+          if(!inCache)
+            // And actual work...
+            result = do_train(tp, &precompFrames);
+
+          if(bestCoef == -1 || result < bestVals) {
+            bestCoef = ranges[i].current;
+            bestVals = result;
+          }
+
+          if(!inCache) {
+            vc.save(ranges, result);
+            vc.persist();
+          }
+
+          // Advance
+          range.next();
+
+          INFO("Value: " << result.value());
+        }
+
+        if(bestCoef != -1) {
+          INFO(range.feature << " best value = " << bestCoef);
+          range.current = bestCoef;
+        } else {
+          INFO("Skipped " << range.feature);
+        }
+      }
+    }    
+  }
 
   int train(const Options& opts) {
     Progress::enabled = false;
@@ -208,7 +353,7 @@ namespace gridsearch {
     }
 
     std::array<Range, FC> ranges = {{
-        Range("trans-ctx", 1, 1, 1),
+        Range("trans-ctx", 1, 150, 1),
         Range("trans-pitch", 1, 150, 1),
         Range("state-pitch", 1, 150, 1),
         Range("trans-mfcc", 0, 10, 0.1),
@@ -217,50 +362,19 @@ namespace gridsearch {
     for(auto it : ranges)
       INFO("Range " << it.to_string());
 
+    std::string valueCachePath = opts.get_opt<std::string>("value-cache", "value-cache.bin");
+    ValueCache<FC> vc(valueCachePath);
+
     // Pre-compute FFTd frames of source signals
     INFO("Precomputing FFTs");
     std::vector< std::vector<FrameFrequencies> > precompFrames;
-    for(unsigned i = 0; i < corpus_test.size(); i++) {
-      FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
-      Wave sourceSignal;
-      sourceSignal.read(fileData.file);
-      auto frames = toFFTdFrames(sourceSignal);
-      precompFrames.push_back(frames);
-    }
+    precomputeFrames(precompFrames);
     INFO("Done");
 
-    int iteration = 0;
-    int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
     std::vector<TrainingOutput> outputs;
-    for(unsigned i = 1; i < ranges.size(); i++) {
-      std::vector<Comparisons> comps;
-      double bestCoef = -1;
-      Comparisons bestVals;
-      while(ranges[i].has_next()) {
-        iteration++;
-        if(iteration > maxIterations)
-          break;
-        // Update coefficient
-        crf.set(ranges[i].feature, ranges[i].current);
-        // Log
-        LOG("");
-        INFO("Iteration: " << iteration);
-        for(unsigned k = 0; k < ranges.size(); k++)
-          LOG(ranges[k].feature << "=" << ranges[k].current);
+    unsigned passes = opts.get_opt<int>("training-passes", 3);
 
-        // And actual work...
-        Comparisons result = do_train(tp, &precompFrames);
-        if(bestCoef == -1 || result < bestVals)
-          bestCoef = ranges[i].current;
-
-        // Advance
-        ranges[i].next();
-
-        INFO("Value: " << result.value());
-      }
-      INFO(ranges[i].feature << " best value = " << bestCoef);
-      ranges[i].current = bestCoef;
-    }
+    executeTraining(passes, ranges, precompFrames, tp, vc);
 
     INFO("Best at: ");
     for(unsigned k = 0; k < ranges.size(); k++)

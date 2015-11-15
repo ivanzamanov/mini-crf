@@ -51,6 +51,10 @@ namespace tool {
     *opts = Options::parse_options(argc, argv);
     if(!Options::has_required(*opts))
       return false;
+    COLOR_ENABLED = !opts->has_opt("no-color");
+    FORCE_SCALE = opts->has_opt("force-scale");
+    SMOOTH = opts->has_opt("smooth");
+
     crf.label_alphabet = &alphabet_synth;
     build_data(*opts);
 

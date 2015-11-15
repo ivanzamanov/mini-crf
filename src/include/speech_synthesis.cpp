@@ -2,6 +2,8 @@
 
 using namespace tool;
 
+bool FORCE_SCALE = false;
+
 void tool::build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus* corpus, StringLabelProvider& label_provider) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
@@ -10,6 +12,7 @@ void tool::build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, C
   std::vector<std::string> files_map;
 
   while(list_input >> buffer) {
+    LOG("Parsing " << buffer);
     FileData fileData = FileData::of(buffer);
     std::vector<PhonemeInstance> phonemes_from_file = parse_file(fileData, label_provider);
     list_input >> buffer;

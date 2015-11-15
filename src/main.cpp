@@ -62,10 +62,29 @@ int resynthesize(Options& opts) {
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
+
+  bool FD = !opts.has_opt("td");
   Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-    .get_resynthesis();
+    .get_resynthesis(FD);
+
+  if(opts.has_opt("verbose")) {
+    Wave tdSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
+      .get_resynthesis(false);
+
+    double diff = 0;
+    for(unsigned i = 0; i < tdSignal.length(); i++)
+      diff += std::abs(outputSignal[i] - tdSignal[i]);
+
+    INFO("Samples: " << tdSignal.length());
+    INFO("TD/FD Error: " << diff);
+    INFO("TD/FD Error mean: " << diff / tdSignal.length());
+  }
+
   outputSignal.write(wav_output);
-  
+
+  for(int i = 0; i < (int) input.size(); i++)
+    DEBUG(input[i].id << " -> " << output[i].id);
+
   FileData fileData = alphabet_test.file_data_of(input[0]);
   Wave sourceSignal;
   sourceSignal.read(fileData.file);

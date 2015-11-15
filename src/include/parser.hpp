@@ -22,6 +22,19 @@ PitchContour to_pitch_contour(const PhonemeInstance& p) {
   return result;
 }
 
+void check_buffer(const std::string& expected, const std::string& actual);
+
+template<class T>
+T next_value(std::istream& stream, const std::string& check, std::string& buffer) {
+  T result;
+  stream >> buffer;
+  int index = buffer.find_first_of('=');
+  check_buffer(check, buffer.substr(0, index));
+  std::stringstream string_stream(buffer.substr(index + 1));
+  string_stream >> result;
+  return result;
+}
+
 void print_synth_input_csv(std::ostream&, std::vector<PhonemeInstance>&);
 std::vector<PhonemeInstance> parse_synth_input_csv(std::istream&);
 

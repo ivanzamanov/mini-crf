@@ -1,30 +1,26 @@
 #include<sstream>
 #include<string>
 #include<cstring>
+#include<cassert>
 
 #include"parser.hpp"
 
-static void check_buffer(const std::string& expected, const std::string& actual) {
+void check_buffer(const std::string& expected, const std::string& actual) {
   if(actual.compare(expected)) {
     std::cerr << "Expected: " << expected << " got: " << actual << '\n';
+    assert(false);
   }
 }
 
 static std::string buffer;
+template<class T>
+T value(std::istream& stream, const std::string& check) {
+  return next_value<T>(stream, check, buffer);
+}
+
 static void section(std::istream& stream, const std::string& check) {
   stream >> buffer;
   check_buffer(check, buffer);
-}
-
-template<class T>
-T value(std::istream& stream, const std::string& check) {
-  T result;
-  stream >> buffer;
-  int index = buffer.find_first_of('=');
-  check_buffer(check, buffer.substr(0, index));
-  std::stringstream string_stream(buffer.substr(index + 1));
-  string_stream >> result;
-  return result;
 }
 
 std::string string_value(std::istream& stream, const std::string& check) {
@@ -205,7 +201,6 @@ std::vector<PhonemeInstance> parse_synth_input_csv(std::istream& is) {
     return result;
   }
 
-  std::string buffer;
   char id;
   while(is >> id) {
     char c;

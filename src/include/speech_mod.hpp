@@ -9,6 +9,8 @@
 
 using namespace tool;
 
+extern bool SMOOTH;
+
 struct SpeechWaveSynthesis {
   SpeechWaveSynthesis(std::vector<PhonemeInstance>& source,
              std::vector<PhonemeInstance>& target,
@@ -20,10 +22,9 @@ struct SpeechWaveSynthesis {
   std::vector<PhonemeInstance>& target;
   PhonemeAlphabet& origin;
 
-  Wave get_resynthesis();
+  Wave get_resynthesis(bool FD=true);
 private:
-  void do_resynthesis_td(WaveData, SpeechWaveData*);
-  void do_resynthesis_fd(WaveData, SpeechWaveData*);
+  void do_resynthesis(WaveData, SpeechWaveData*, bool FD);
 };
 
 // F0 of less than 50 Hz will be considered voiceless
@@ -71,10 +72,5 @@ struct PitchTier {
     return ranges[length - 1].at(offset + len - 1);
   }
 };
-
-PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target);
-double hann(int i, int size);
-void gen_rise(double* data, int size, bool);
-void gen_fall(double* data, int size, bool);
 
 #endif

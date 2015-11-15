@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 CORPUS_PATH="/home/ivo/SpeechSynthesis/corpus-small"
 OUTPUT_PATH="/home/ivo/corpus-features"
@@ -35,7 +36,7 @@ do
         echo "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
     fi
-done | xargs -P 7 -n 3 -t $EXTRACTOR_SCRIPT
+done | xargs -P 1 -n 3 -t $EXTRACTOR_SCRIPT
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"

@@ -3,30 +3,72 @@
 # Object: Sound
 # Output: maxEnergyPoint
 procedure findMaxEnergyPoint
-  analysisFrame_ = timeStep
-  count_ = (endPoint - startPoint - timeStep * 2) / analysisFrame_
+  startSample = Get sample number from time... startPoint
+  startSample = floor(startSample + 1)
+  endSample = Get sample number from time... endPoint
+  endSample = floor(endSample)
+
   max_ = 0
   maxEnergyPoint = 0
-  for i_ to count_
-    p1_ = startPoint + (i_ * analysisFrame_)
-    p2_ = p1_ + analysisFrame_
-    energy_ = Get energy... p1_ p2_
-    #appendInfoLine: p1_, " ", p2_
-    # Undefined check for edge case at end of file
-    if (energy_ != undefined) && energy_ > max_
-      maxEnergyPoint = (p1_ + p2_) / 2
-      max_ = energy_
+  for i_ from startSample to endSample
+    value_ = Get value at sample number... i_
+    value_ = abs(value_)
+    #appendInfoLine: i_, " = ", value_
+    if max_ < value_
+       #appendInfoLine: i, ": MAX from ", max_, " to ", value_
+       maxEnergyPoint = i_
+       max_ = value_
     endif
   endfor
+  maxEnergyPoint = Get time from sample number... maxEnergyPoint
+  selectObject: pointProcess
+  appendInfo: "nearest to ", maxEnergyPoint
+  maxEnergyPoint = Get nearest index... maxEnergyPoint
+  maxEnergyPoint = Get time from index... maxEnergyPoint
+  appendInfoLine: " ", maxEnergyPoint
+  #appendInfoLine: i, ": Max en == ", maxEnergyPoint, " value = ", max_
 
   # Extreme edge cases
-  invalid = maxEnergyPoint == startPoint
-  invalid = maxEnergyPoint >= endPoint || invalid
-  invalid = maxEnergyPoint == 0 || invalid
-  invalid = (maxEnergyPoint - startPoint) < minLength
-  invalid = (endPoint - maxEnergyPoint) < minLength
-  if invalid
-    maxEnergyPoint = (endPoint - startPoint) / 2
+  maxEnIndex = 0
+  if maxEnergyPoint == startPoint
+     appendInfoLine: i, ": MaxEn point == start point"
+     maxEnIndex = Get high index... maxEnergyPoint
+  endif
+  if maxEnergyPoint >= endPoint
+     appendInfoLine: i, ": MaxEn point >= end point"
+     maxEnIndex = Get low index... maxEnergyPoint
+  endif
+  if maxEnergyPoint == 0
+     appendInfoLine: i, ": MaxEn point == 0"
+  endif
+  if (maxEnergyPoint - startPoint) < minLength
+     appendInfoLine: i, ": MaxEn too close to start"
+     maxEnIndex = Get high index... (maxEnergyPoint + 0.000001)
+  endif
+  if (endPoint - maxEnergyPoint) < minLength
+     appendInfoLine: i, ": MaxEn too close to end"
+     maxEnIndex = Get low index... (maxEnergyPoint - 0.000001)
+     appendInfoLine: "adjust to ", maxEnergyPoint
+  endif
+  if (maxEnIndex == startIndex || maxEnIndex == endIndex) && endIndex > startIndex + 1
+    maxEnIndex = floor( (endIndex - startIndex) / 2 )
+  endif
+  # if this is still too short
+  if maxEnIndex == 0
+     maxEnergyPoint = 0
+  else
+    maxEnergyPoint = Get time from index... maxEnIndex
+
+    if startPoint == maxEnergyPoint || endPoint == maxEnergyPoint
+      maxEnergyPoint = 0
+      #appendInfoLine: "Error ", startPoint, " ", maxEnergyPoint, " ", endPoint
+      #exitScript: ""
+    endif
+    # Extreme edge case of a small noise at the end
+    if maxEnergyPoint < startPoint
+       maxEnergyPoint = (startPoint + endPoint) / 2
+       appendInfoLine: "-------- mid -------------"
+    endif
   endif
 endproc
 
@@ -37,8 +79,8 @@ procedure getPulseBoundaries
   #appendInfoLine: i, ": ", startPoint_, " ", endPoint_
   selectObject: pointProcess
   maxIndex_ = Get number of points
-  startIndex = Get high index... startPoint_
-  endIndex = Get high index... endPoint_
+  startIndex = Get nearest index... startPoint_
+  endIndex = Get nearest index... endPoint_
 
   # Required for edge cases such as start and end of file
   startIndex = minStartIndex
@@ -69,7 +111,7 @@ procedure forcePointProcess
   selectObject: pointProcess
   originalPointProcess = Copy... "PointProcessOriginal"
   selectObject: pointProcess
-  Voice... 0.01 0.02000000001
+  Voice... 0.005 0.01000000001
 endproc
 
 procedure unforcePointProcess

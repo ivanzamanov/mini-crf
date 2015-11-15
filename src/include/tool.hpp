@@ -5,6 +5,7 @@
 #include"options.hpp"
 #include"crf.hpp"
 #include"features.hpp"
+#include"speech_mod.hpp"
 
 namespace tool {
   extern Corpus corpus_synth, corpus_test;
