@@ -67,8 +67,8 @@ public:
   typedef cost (*EdgeFeature)(const Label&, const Label&, const int, const vector<Input>&);
   typedef cost (*VertexFeature)(const Label&, int, const vector<Input>&);
 
-  CRandomField(): mu(sizeof(features.g) / sizeof(features.g[0])),
-                  lambda(sizeof(features.f) / sizeof(features.f[0]))
+  CRandomField(): mu(features.VSIZE),
+                  lambda(features.ESIZE)
   { };
 
   probability probability_of(const vector<Label>& y, const vector<Input>& x) const {
@@ -105,6 +105,22 @@ public:
     for(unsigned i = 0; i < mu.size(); i++)
       if(features.vnames[i] == feature)
         mu[i] = coef;
+  }
+
+  cost invoke_transition_features(const Label& src,
+                                  const Label& dest,
+                                  int pos, const vector<Label>& x,
+                                  const vector<coefficient>& lambda,
+                                  const vector<coefficient>& mu) const {
+    return features.invoke_transition(src, dest, pos, x, lambda, mu);
+  }
+
+  cost invoke_state_features(const Label& src,
+                             const Label& dest,
+                             int pos, const vector<Label>& x,
+                             const vector<coefficient>& lambda,
+                             const vector<coefficient>& mu) const {
+    return features.invoke_state(src, dest, pos, x, lambda, mu);
   }
 
   _Features features;
@@ -209,23 +225,11 @@ struct FunctionalAutomaton {
   template<bool includeState, bool includeTransition>
   cost calculate_value(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
     cost result = 0;
-    if(includeTransition) {
-      for (unsigned i = 0; i < lambda.size(); i++) {
-        auto* func = crf.features.f[i];
-        cost coef = lambda[i];
-        cost val = (*func)(src, dest, pos, x);
-        result += coef * val;
-      }
-    }
+    if(includeTransition)
+      result = crf.invoke_transition_features(src, dest, pos, x, lambda, mu);
 
-    if(includeState) {
-      for(unsigned i = 0; i < mu.size(); i++) {
-        auto* func = crf.features.g[i];
-        cost coef = mu[i];
-        cost val = (*func)(dest, pos, x);
-        result += coef * val;
-      }
-    }
+    if(includeState)
+      result += crf.invoke_state_features(src, dest, pos, x, lambda, mu);
     return result;
   }
 

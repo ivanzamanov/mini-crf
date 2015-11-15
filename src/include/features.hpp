@@ -64,7 +64,7 @@ struct Features {
     }
     for (unsigned i = 0; i < mfcc1.size(); i++)
       result += tmp[i] * tmp[i];
-  
+
     return std::sqrt(result);
   }
 
@@ -131,20 +131,38 @@ struct PhoneticFeatures {
     "trans-mfcc",
     "trans-ctx"
   };
-  const _EdgeFeature f[ESIZE] = {
-    Features::Pitch,
-    Features::MFCCDist,
-    Features::LeftContext
-  };
 
   const std::string vnames[VSIZE] = {
     "state-duration",
     "state-pitch"
   };
-  const _VertexFeature g[VSIZE] = {
-    Features::Duration,
-    Features::PitchState
-  };
+
+#define INVOKE_TR(func) result += lambda[FEATURE_INDEX++] * func(src, dest, pos, x)
+  cost invoke_transition(const PhonemeInstance& src,
+                         const PhonemeInstance& dest,
+                         int pos, const vector<PhonemeInstance>& x,
+                         const vector<coefficient>& lambda,
+                         const vector<coefficient>&) const {
+    cost result = 0;
+    int FEATURE_INDEX = 0;
+    INVOKE_TR(Features::Pitch);
+    INVOKE_TR(Features::MFCCDist);
+    INVOKE_TR(Features::LeftContext);
+    return result;
+  }
+
+#define INVOKE_STATE(func) result += mu[FEATURE_INDEX++] * func(dest, pos, x)
+  cost invoke_state(const PhonemeInstance&,
+                    const PhonemeInstance& dest,
+                    int pos, const vector<PhonemeInstance>& x,
+                    const vector<coefficient>&,
+                    const vector<coefficient>& mu) const {
+    cost result = 0;
+    int FEATURE_INDEX = 0;
+    INVOKE_STATE(Features::Duration);
+    INVOKE_STATE(Features::PitchState);
+    return result;
+  }
 };
 
 struct BaselineFeatures;
@@ -154,13 +172,35 @@ struct BaselineFeatures {
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
+  const int ESIZE = 1;
+  const int VSIZE = 0;
+
   const std::string enames[1] = {
     "trans-baseline"
   };
-  const _EdgeFeature f[1] = { Features::BaselineFunction };
 
   const std::string vnames[0] = {};
   const _VertexFeature g[0] = { };
+
+#define INVOKE_TR(func) result += lambda[FEATURE_INDEX++] * func(src, dest, pos, x)
+  cost invoke_transition(const PhonemeInstance& src,
+                         const PhonemeInstance& dest,
+                         int pos, const vector<PhonemeInstance>& x,
+                         const vector<coefficient>& lambda,
+                         const vector<coefficient>&) const {
+    cost result = 0;
+    int FEATURE_INDEX = 0;
+    INVOKE_TR(Features::BaselineFunction);
+    return result;
+  }
+
+  cost invoke_state(const PhonemeInstance&,
+                    const PhonemeInstance&,
+                    int, const vector<PhonemeInstance>&,
+                    const vector<coefficient>&,
+                    const vector<coefficient>&) const {
+    return 0;
+  }
 };
 
 #endif
