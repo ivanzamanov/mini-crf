@@ -88,7 +88,9 @@ int resynthesize(Options& opts) {
   FileData fileData = alphabet_test.file_data_of(input[0]);
   Wave sourceSignal;
   sourceSignal.read(fileData.file);
-  gridsearch::Comparisons cmp; cmp.fill(outputSignal, sourceSignal); cmp.print();
+  if(opts.has_opt("verbose")) {
+    gridsearch::Comparisons cmp; cmp.fill(outputSignal, sourceSignal); cmp.print();
+  }
   return 0;
 }
 

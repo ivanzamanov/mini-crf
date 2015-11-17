@@ -101,8 +101,9 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target) {
     //offset = WaveData::toSamples(totalDuration);
     offset = 0;
     left = (std::exp(target[i].pitch_contour[0]) + tier[i-1].right) / 2;
+    left = std::exp(target[i].pitch_contour[0]);
     // Smooth out pitch at the concatenation points
-    tier[i-1].right = left;
+    //tier[i-1].right = left;
     right = std::exp(target[i].pitch_contour[1]);
 
     duration = target[i].end - target[i].start;
@@ -289,9 +290,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, 
     WaveDataTemp tmp(WaveData::allocate(targetDuration));
 
     double durationScale = targetDuration / WaveData::toDuration(p.length);
-    if(durationScale < 0.5 || durationScale > 2) {
-      WARN("Duration scale " << durationScale << " at " << i);
-    }
+    PRINT_SCALE(i << ": duration scale " << durationScale << " at " << i);
 
     //int startOffsetGuide = WaveData::toSamples(totalDuration);
     int startOffset = 0;
@@ -370,7 +369,7 @@ void scaleToPitchAndDurationSimpleFD(WaveData& dest, int& startOffset,
                                      double,
                                      int debugIndex) {
   copyVoicedPartFD(source, startOffset, dest.length, 0,
-                   dest.length, pitch, dest, debugIndex);
+                   source.length, pitch, dest, debugIndex);
 }
 
 void scaleToPitchAndDuration(WaveData& dest,
@@ -452,7 +451,7 @@ void copyVoicedPartFD(const SpeechWaveData& oSource,
   cdouble* frequencies = new cdouble[NF + 1];
   ft::FT(values, sourceLen, frequencies, NF);
 
-  double sourcePitch = 1 / WaveData::toDuration(nMark - mark);
+  double sourcePitch = 1 / WaveData::toDuration(sourceLen);
 
   while (destOffset < dest.length && destOffset < destOffsetBound) {
     double destPitch = pitch.at(destOffset);
@@ -460,10 +459,9 @@ void copyVoicedPartFD(const SpeechWaveData& oSource,
 
     if (std::abs(pitchScale - 1) < 0.1)
       pitchScale = 1;
-    if (pitchScale >= 2 || pitchScale <= 0.5) {
-      WARN("Pitch scale " << pitchScale << " at " << debugIndex << ", "
+
+    PRINT_SCALE(debugIndex << ": pitch scale " << pitchScale << " at " << debugIndex << ", "
            << sourcePitch << " -> " << destPitch);
-    }
 
     int newPeriod = sourceLen / pitchScale;
     if (newPeriod != sourceLen)

@@ -3,6 +3,8 @@
 #include"util.hpp"
 
 bool COLOR_ENABLED = true;
+bool PRINT_SCALE = false;
+bool REPORT_PROGRESS = false;
 
 namespace util {
   float mult_exp(float x, float y) {

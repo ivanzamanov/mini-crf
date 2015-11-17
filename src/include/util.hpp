@@ -19,6 +19,9 @@ enum ColorCode {
 };
 
 extern bool COLOR_ENABLED;
+extern bool PRINT_SCALE;
+extern bool REPORT_PROGRESS;
+
 struct Color {
   Color(int code=ColorCode::DEFAULT): code(code) { }
   int code;
@@ -35,6 +38,8 @@ struct Color {
 #define INFO(x) LOG_COLOR_OPT("INFO: ", x, GREEN)
 #define WARN(x) LOG_COLOR_OPT("WARN: ", x, YELLOW)
 #define ERROR(x) LOG_COLOR_OPT("ERROR: ", x, RED)
+
+#define PRINT_SCALE(x) if(PRINT_SCALE) LOG(x)
 
 #define MY_E 2.71828182845904523536028747135266250 // e
 
@@ -196,14 +201,14 @@ struct Progress {
   std::string prefix;
 
   void update() {
-    if(Progress::enabled) {
+    if(REPORT_PROGRESS) {
       std::cerr << '\r' << prefix << progress++ << '/' << total << " ";
       std::cerr.flush();
     }
   }
 
   void finish() {
-    if(Progress::enabled)
+    if(REPORT_PROGRESS)
       std::cerr << " Done " << std::endl;
   }
 };
