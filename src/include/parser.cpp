@@ -61,7 +61,10 @@ std::vector<PhonemeInstance> parse_file(FileData& fileData, StringLabelProvider&
     result[i].end = value<stime_t>(stream, "end");
     int frames = value<int>(stream, "frames");
     stime_t duration = value<stime_t>(stream, "duration");
+    double energy = value<double>(stream, "energy");
+
     result[i].duration = duration;
+    result[i].energy = energy;
     //result[i].frames.length = frames;
     if (frames < 0)
       std::cerr << "Error at " << stream.tellg() << std::endl;
