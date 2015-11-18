@@ -44,13 +44,6 @@ struct Features {
     return prev.label != next.ctx_left;
   }
 
-  static cost PitchState(const PhonemeInstance& p1,
-                         int pos,
-                         const vector<PhonemeInstance>& x) {
-    const PhonemeInstance& p2 = x[pos];
-    return p1.pitch_contour.diff(p2.pitch_contour);
-  }
-
   static cost MFCCDist(const PhonemeInstance& prev,
                        const PhonemeInstance& next,
                        int, const vector<PhonemeInstance>&) {
@@ -80,6 +73,19 @@ struct Features {
       result += std::abs(diff);
     }
     return result;
+  }
+
+  static cost PitchState(const PhonemeInstance& p1,
+                         int pos,
+                         const vector<PhonemeInstance>& x) {
+    const PhonemeInstance& p2 = x[pos];
+    return p1.pitch_contour.diff(p2.pitch_contour);
+  }
+
+  static cost EnergyState(const PhonemeInstance& p1,
+                          int pos,
+                          const vector<PhonemeInstance>& x) {
+    return p1.energy / x[pos].energy;
   }
 
   static cost Duration(const PhonemeInstance& prev,
@@ -124,7 +130,7 @@ struct PhoneticFeatures {
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
   static const int ESIZE = 3;
-  static const int VSIZE = 2;
+  static const int VSIZE = 3;
 
   const std::string enames[ESIZE] = {
     "trans-pitch",
@@ -134,7 +140,8 @@ struct PhoneticFeatures {
 
   const std::string vnames[VSIZE] = {
     "state-duration",
-    "state-pitch"
+    "state-pitch",
+    "state-energy"
   };
 
 #define INVOKE_TR(func) result += lambda[FEATURE_INDEX++] * func(src, dest, pos, x)
@@ -161,6 +168,7 @@ struct PhoneticFeatures {
     int FEATURE_INDEX = 0;
     INVOKE_STATE(Features::Duration);
     INVOKE_STATE(Features::PitchState);
+    INVOKE_STATE(Features::EnergyState);
     return result;
   }
 };

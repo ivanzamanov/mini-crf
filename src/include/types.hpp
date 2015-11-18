@@ -50,6 +50,7 @@ struct PhonemeInstance {
     :start(0),
      end(0),
      duration(0),
+     energy(0),
      id(0),
      label(INVALID_LABEL),
      ctx_left(INVALID_LABEL),
@@ -62,6 +63,7 @@ struct PhonemeInstance {
   stime_t start;
   stime_t end;
   stime_t duration;
+  double energy;
   id_t id;
   PhoneticLabel label;
   PhoneticLabel ctx_left;

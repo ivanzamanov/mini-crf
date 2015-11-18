@@ -198,14 +198,17 @@ for i to 0
   endif
 endfor
 
-selectObject: mfccObj
 for i to semiPhonCount
+  selectObject: mfccObj
   #appendInfoLine: semiPhonStart[i], " ", semiPhonEnd[i]
   startFrames[i] = Get frame number from time... semiPhonStart[i]
   endFrames[i] = Get frame number from time... semiPhonEnd[i]
 
   startFrames[i] = floor(startFrames[i])
   endFrames[i] = floor(endFrames[i])
+
+  selectObject: soundObj
+  semiPhonEnergy[i] = Get energy... semiPhonStart[i] semiPhonEnd[i]
 endfor
 
 for i to semiPhonCount
@@ -248,6 +251,7 @@ for i to semiPhonCount
   duration = endPoint_ - startPoint_
   startFrame_ = startFrames[i]
   endFrame_ = endFrames[i]
+  energy = semiPhonEnergy[i]
 
   checkDuration += duration
   #appendInfoLine: startPoint_, " ", endPoint_, " ", label_$, " ", duration, " ", startFrame_, " ", endFrame_
@@ -306,6 +310,7 @@ procedure outputEntry
   #appendFileLine: outputFile$, "frames=", (endFrame - startFrame + 1)
   appendFileLine: outputFile$, "frames=", 2
   appendFileLine: outputFile$, "duration=", duration
+  appendFileLine: outputFile$, "energy=", energy
 
   featureFrames[1] = startFrame_
   featureFrames[2] = endFrame_
