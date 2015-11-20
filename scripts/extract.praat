@@ -207,7 +207,7 @@ for i to semiPhonCount
   startFrames[i] = floor(startFrames[i])
   endFrames[i] = floor(endFrames[i])
 
-  selectObject: sound
+  selectObject: soundObj
   semiPhonEnergy[i] = Get energy... semiPhonStart[i] semiPhonEnd[i]
 endfor
 
