@@ -248,15 +248,45 @@ namespace gridsearch {
     return - (c * c) % 357;
   }
 
-  void precomputeFrames(std::vector< std::vector<FrameFrequencies> >& precompFrames) {
-    //return;
+  struct FFTPrecomputeParams {
+    void init(int index, bool* flag, std::string file, std::vector< std::vector<FrameFrequencies> >* precompFrames) {
+      this->index = index;
+      this->flag = flag;
+      this->file = file;
+      this->precompFrames = precompFrames;
+    }
+
+    std::string file;
+    int index;
+    bool* flag;
+
+    std::vector< std::vector<FrameFrequencies> >* precompFrames;
+  };
+
+  void precomputeSingleFrames(FFTPrecomputeParams* params) {
+    Wave sourceSignal;
+    sourceSignal.read(params->file);
+    auto frames = toFFTdFrames(sourceSignal);
+    (*params->precompFrames)[params->index] = frames;
+  }
+
+  void precomputeFrames(std::vector< std::vector<FrameFrequencies> >& precompFrames,
+                        ThreadPool& tp) {
+    FFTPrecomputeParams *params = new FFTPrecomputeParams[corpus_test.size()];
+    unsigned count = corpus_test.size();
+    bool flags[count];
+
     for(unsigned i = 0; i < corpus_test.size(); i++) {
       FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
-      Wave sourceSignal;
-      sourceSignal.read(fileData.file);
-      auto frames = toFFTdFrames(sourceSignal);
-      precompFrames.push_back(frames);
+      
+      params[i].init(i, flags + count, fileData.file, &precompFrames);
+
+      Task* t = new ParamTask<FFTPrecomputeParams>(&precomputeSingleFrames, &params[i]);
+      tp.add_task(t);
     }
+    wait_done(flags, count);
+
+    delete[] params;
   }
   
   Comparisons do_train(ThreadPool& tp,
@@ -370,7 +400,8 @@ namespace gridsearch {
     // Pre-compute FFTd frames of source signals
     INFO("Precomputing FFTs");
     std::vector< std::vector<FrameFrequencies> > precompFrames;
-    precomputeFrames(precompFrames);
+    precompFrames.resize(corpus_test.size());
+    precomputeFrames(precompFrames, tp);
     INFO("Done");
 
     std::vector<TrainingOutput> outputs;
