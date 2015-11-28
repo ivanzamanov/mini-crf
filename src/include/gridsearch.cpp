@@ -193,8 +193,9 @@ namespace gridsearch {
     max_path(input, crf, crf.lambda, crf.mu, &path);
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
+    Options opts;
     Wave resultSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-      .get_resynthesis();
+      .get_resynthesis(opts);
 
     FileData fileData = alphabet_test.file_data_of(input[0]);
     Wave sourceSignal;

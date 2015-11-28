@@ -63,13 +63,12 @@ int resynthesize(Options& opts) {
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
 
-  bool FD = !opts.has_opt("td");
   Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-    .get_resynthesis(FD);
+    .get_resynthesis(opts);
 
   if(opts.has_opt("verbose")) {
     Wave tdSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-      .get_resynthesis(false);
+      .get_resynthesis_td();
 
     double diff = 0;
     for(unsigned i = 0; i < tdSignal.length(); i++)

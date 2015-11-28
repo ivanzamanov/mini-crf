@@ -17,12 +17,12 @@ short truncate(T v) {
   return (short) v;
 }
 
-double hann(int i, int size) {
+double hann(double i, int size) {
   return 0.5 * (1 - cos(2 * M_PI * i / size));
 }
 
-void smooth(WaveData& dest, int offset, frequency pitch,
-            const PhonemeInstance& left, const PhonemeInstance& right);
+void smooth(WaveData& dest, int offset,
+            const PhonemeInstance& left, const PhonemeInstance& right, double crossfadeTime);
 
 void scaleToPitchAndDurationSimpleFD(WaveData& dest,
                                      int& startOffset,
@@ -159,7 +159,13 @@ static unsigned from_chars(Arr arr) {
   return result;
 }
 
-Wave SpeechWaveSynthesis::get_resynthesis(bool FD) {
+Wave SpeechWaveSynthesis::get_resynthesis_td() {
+  Options opts;
+  opts.add_opt("td", "");
+  return get_resynthesis(opts);
+}
+
+Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // First off, prepare for output, build some default header...
   WaveHeader h = {
     .chunkId = from_chars("RIFF"),
@@ -191,7 +197,7 @@ Wave SpeechWaveSynthesis::get_resynthesis(bool FD) {
   WaveData result = WaveData::allocate(completeDuration);
 
   DEBUG(INFO("Using " << (FD ? "FD" : "TD") << "-PSOLA");)
-    do_resynthesis(result, waveData, FD);
+    do_resynthesis(result, waveData, opts);
 
   wb.append(result);
 
@@ -270,7 +276,10 @@ void copyVoicelessPart(const SpeechWaveData& source,
   }
 }
 
-void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, bool FD) {
+void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
+                                         const Options& opts) {
+  bool FD = !opts.has_opt("td");
+
   PitchRange pitchTier[target.size()];
 
   PitchTier pt = initPitchTier(pitchTier, target);
@@ -314,10 +323,13 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, 
     return;
   prog = Progress(target.size(), "Smoothing: ");
   totalDuration = target[0].duration;
+
+  double crossfadeTime = opts.get_opt<double>("crossfade", -1);
+  bool isCFTimeSet = crossfadeTime != -1;
   for(unsigned i = 1; i < target.size() - 1; i++) {
     int offset = WaveData::toSamples(totalDuration);
 
-    smooth(dest, offset, pt.at(offset), target[i], target[i+1]);
+    smooth(dest, offset, target[i], target[i+1], isCFTimeSet ? crossfadeTime : (1 / pt.at(offset)));
 
     PhonemeInstance& tgt = target[i];
     double targetDuration = tgt.end - tgt.start;
@@ -327,8 +339,8 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces, 
   prog.finish();
 }
 
-int getSmoothingCount(double duration, frequency pitch) {
-  int MAX_SMOOTHING_COUNT = 1;
+int getSmoothingCount(double duration, frequency pitch, const Options& opts) {
+  int MAX_SMOOTHING_COUNT = opts.get_opt<int>("smoothing-pitch-count", 1);
   int count = 1;
   while((count <= MAX_SMOOTHING_COUNT) & (duration / 2 > 1 / pitch * count))
     count++;
@@ -336,31 +348,43 @@ int getSmoothingCount(double duration, frequency pitch) {
   return std::max(count, 0);
 }
 
-void smooth(WaveData& dest, int offset, frequency pitch,
-            const PhonemeInstance& left, const PhonemeInstance& right) {
-  int countLeft = getSmoothingCount(left.duration, pitch);
-  int countRight = getSmoothingCount(right.duration, pitch);
+void smooth(WaveData& dest, int offset,
+            const PhonemeInstance& left,
+            const PhonemeInstance& right,
+            double crossfadeTime) {
+  crossfadeTime = std::min({ (double) left.duration / 2, (double) right.duration / 2, crossfadeTime });
 
-  int valuesCount = WaveData::toSamples(1 / pitch);
-  short valuesLeft[valuesCount];
-  dest.extract(valuesLeft, valuesCount, offset - countLeft * valuesCount);
-  short valuesRight[valuesCount];
-  dest.extract(valuesRight, valuesCount, offset + (countRight - 1) * valuesCount);
+  int crossfadeSamples = WaveData::toSamples(crossfadeTime);
+  short combined[crossfadeSamples * 2];
 
-  int startDestOffset = offset + (countRight - 1) * valuesCount;
-  int totalCount = countLeft + countRight;
-  short combined[valuesCount];
-  for(int i = 0; i < totalCount; i++) {
-    // combine left and right
-    float t = (float) i / totalCount;
-    for(int j = 0; j < valuesCount; j++)
-      combined[j] = valuesLeft[j] * (1 - t) + valuesRight[j] * t;
+  short *cfLeft = combined,
+   *cfRight = combined + crossfadeSamples;
 
-    // and copy
-    for(int j = 0; j < valuesCount; j++)
-      dest[startDestOffset + j] = combined[j];
-    startDestOffset += valuesCount;
+  // To a temp location
+  for(int i = 0; i < crossfadeSamples; i++) {
+    cfLeft[i] = dest[offset - crossfadeSamples + i];
+    cfRight[i] = dest[offset + i];
   }
+
+  // Apply crossfading window
+  for(int i = 0; i < crossfadeSamples; i++) {
+    cfLeft[i] *= hann(i + crossfadeSamples, crossfadeSamples * 2);
+
+    cfRight[i] *= hann(i, crossfadeSamples * 2);
+  }
+
+  // Combine
+  for(int i = 0; i < crossfadeSamples; i++) {
+    long l = cfLeft[i];
+    long r = cfRight[i];
+
+    cfLeft[i] = (4 * l + 2 * r) / 3;
+    cfRight[i] = (2 * l + 4 * r) / 3;
+  }
+
+  // Copy back to signal
+  for(int i = 0; i < crossfadeSamples * 2; i++)
+    dest[offset - crossfadeSamples + i] = combined[i];
 }
 
 void scaleToPitchAndDurationSimpleFD(WaveData& dest, int& startOffset,

@@ -6,6 +6,7 @@
 
 #include"speech_synthesis.hpp"
 #include"wav.hpp"
+#include"options.hpp"
 
 using namespace tool;
 
@@ -22,9 +23,11 @@ struct SpeechWaveSynthesis {
   std::vector<PhonemeInstance>& target;
   PhonemeAlphabet& origin;
 
-  Wave get_resynthesis(bool FD=true);
+  Wave get_resynthesis(const Options& opts);
+  Wave get_resynthesis_td();
 private:
-  void do_resynthesis(WaveData, SpeechWaveData*, bool FD);
+  void do_resynthesis(WaveData, SpeechWaveData*, const Options& opts);
+  Wave get_resynthesis(bool FD);
 };
 
 // F0 of less than 50 Hz will be considered voiceless

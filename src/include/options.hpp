@@ -50,11 +50,17 @@ struct Options {
 
   std::vector<std::string> args;
 
+  void add_opt(std::string opt, std::string val) {
+    args.push_back(std::string("--") + opt);
+    args.push_back(val);
+  }
+  
   bool has_opt(std::string opt) const {
     opt = std::string("--") + opt;
     for(unsigned i = 0; i < args.size(); i++) {
       std::string test(args[i]);
       if(opt == test) {
+        INFO(opt);
         return true;
       }
     }
