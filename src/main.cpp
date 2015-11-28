@@ -81,9 +81,6 @@ int resynthesize(Options& opts) {
 
   outputSignal.write(wav_output);
 
-  for(int i = 0; i < (int) input.size(); i++)
-    DEBUG(input[i].id << " -> " << output[i].id);
-
   FileData fileData = alphabet_test.file_data_of(input[0]);
   Wave sourceSignal;
   sourceSignal.read(fileData.file);

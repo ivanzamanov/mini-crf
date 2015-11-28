@@ -69,7 +69,7 @@ struct Options {
 
   std::string get_string(std::string opt, bool* found=0) const {
     if(found) *found = false;
-    for(unsigned i = 0; i < args.size() - 1; i++) {
+    for(int i = 0; i < (int) args.size() - 1; i++) {
       std::string test(args[i]);
       if(opt == test) {
         std::string result(args[i + 1]);

@@ -268,18 +268,20 @@ namespace gridsearch {
     sourceSignal.read(params->file);
     auto frames = toFFTdFrames(sourceSignal);
     (*params->precompFrames)[params->index] = frames;
+    *(params->flag) = 1;
   }
 
   void precomputeFrames(std::vector< std::vector<FrameFrequencies> >& precompFrames,
                         ThreadPool& tp) {
-    FFTPrecomputeParams *params = new FFTPrecomputeParams[corpus_test.size()];
     unsigned count = corpus_test.size();
     bool flags[count];
 
-    for(unsigned i = 0; i < corpus_test.size(); i++) {
+    FFTPrecomputeParams *params = new FFTPrecomputeParams[count];
+    for(unsigned i = 0; i < count; i++) {
+      flags[i] = 0;
       FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
       
-      params[i].init(i, flags + count, fileData.file, &precompFrames);
+      params[i].init(i, &flags[i], fileData.file, &precompFrames);
 
       Task* t = new ParamTask<FFTPrecomputeParams>(&precomputeSingleFrames, &params[i]);
       tp.add_task(t);
@@ -297,7 +299,6 @@ namespace gridsearch {
 
     ResynthParams params[count];
     for(unsigned i = 0; i < count; i++) {
-      flags[i] = 0;
       params[i].init(i, &flags[i]);
 
       params[i].precompFrames = precompFrames;

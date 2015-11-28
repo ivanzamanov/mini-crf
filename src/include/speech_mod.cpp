@@ -196,8 +196,7 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // preallocate the complete wave result
   WaveData result = WaveData::allocate(completeDuration);
 
-  DEBUG(INFO("Using " << (FD ? "FD" : "TD") << "-PSOLA");)
-    do_resynthesis(result, waveData, opts);
+  do_resynthesis(result, waveData, opts);
 
   wb.append(result);
 
