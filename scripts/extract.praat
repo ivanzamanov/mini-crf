@@ -70,7 +70,28 @@ const_total_time = Get total duration
 
 # Extract pitch tier
 #pitch = To Pitch (ac)... timeStep 75 20 1 0 0 0.01 0.35 0.14 600
-pitch = To Pitch (ac)... timeStep 75 20 1 0.03 0.45 0.01 0.35 0.14 600
+# Autocorrelation parameters
+
+# Defaults are:
+# pitchFloor = 75
+# maxCandidates = 15 # 15
+# silenceThreshold = 0.03 # 0.03
+# voicingThreshold = 0.45 # 0.45
+# octaveCost = 0.02 # 0.01
+# octaveJumpCost = 0.5 # 0.35
+# voicedUnvoicedCost = 0.14 # 0.14
+# pitchCeiling = 600 # 600
+
+pitchFloor = 75
+maxCandidates = 15
+silenceThreshold = 0.03
+voicingThreshold = 0.45
+octaveCost = 0.02
+octaveJumpCost = 0.5
+voicedUnvoicedCost = 0.14
+pitchCeiling = 600
+
+pitch = To Pitch (ac)... timeStep pitchFloor maxCandidates 1 silenceThreshold voicingThreshold octaveCost octaveJumpCost voicedUnvoicedCost pitchCeiling
 # Extract pulses to be used to determine cut points
 pointProcess = To PointProcess
 
@@ -270,9 +291,6 @@ appendInfoLine: "Total duration of extracted ", checkDuration, " from ", semiPho
 # Extract pulses to be used to determine cut points
 # Ok, sooo I need to know which parts are voiced/unvoiced, hence I can't use the
 # 'forced' version above
-selectObject: soundObj
-pitch = To Pitch... timeStep 75 600
-#pointProcess = To PointProcess
 selectObject: pointProcess
 pointsCount = Get number of points
 appendFileLine: outputFile$, "pulses=", pointsCount
