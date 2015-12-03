@@ -1,10 +1,10 @@
 
 CC = clang++
 CFLAGS = -std=c++11 -Wall -I./include -g
-OPTS = -Ofast -mtune=native
+OPTS = -O3 -Ofast -mtune=native
 #CLIB = -stdlib=libc++
 CMD = $(CC) $(CLIB) $(CFLAGS) $(OPTS)
-LIBS = -lpthread
+LIBS = -lpthread -lOpenCL
 CMD_NOOPT = $(CC) $(CLIB) $(CFLAGS)
 CPP_FILES = $(wildcard */*.cpp)
 OBJ_FILES = $(patsubst %.cpp,%.o,$(CPP_FILES))
@@ -26,10 +26,10 @@ include/tool.o: include/tool.cpp
 	$(CMD) $< -c -o $@
 
 main-opt: $(MAIN_DEPS)
-	$(CMD) $(OPTS) main.cpp include/*.o -o main-opt $(LIBS)
+	$(CMD) main.cpp include/*.o -o main-opt $(LIBS)
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
-	$(CMD) text2bin.cpp -g include/*.o -o text2bin $(LIBS)
+	$(CMD_NOOPT) text2bin.cpp -g include/*.o -o text2bin $(LIBS)
 
 single: speech_mod_single.cpp $(OBJ_FILES)
 	$(CMD) $< $(OBJ_FILES) -o $@ $(LIBS)

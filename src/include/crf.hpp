@@ -7,11 +7,32 @@
 #include<cassert>
 
 #include"alphabet.hpp"
-#include"types.hpp"
+#include"opencl-utils.hpp"
 #include"matrix.hpp"
 #include"dot/dot.hpp"
 
 using std::vector;
+using namespace util;
+
+template<class _LabelAlphabet, class _Input, class _Features>
+class CRandomField;
+
+template<class Input, class Label>
+class _Corpus;
+
+template<class CRF>
+struct FunctionalAutomaton;
+
+template<typename CRF,
+         bool includeState,
+         bool includeTransition>
+void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
+                                    const typename CRF::Alphabet::LabelClass& allowed,
+                                    Transition* children,
+                                    Transition* next_children,
+                                    int children_length,
+                                    int pos,
+                                    Matrix<unsigned> &paths);
 
 const double TRAINING_RATIO = 0.3;
 
@@ -136,10 +157,6 @@ public:
   _LabelAlphabet *label_alphabet;
 };
 
-
-template<class CRF>
-struct FunctionalAutomaton;
-
 template<class CRF>
 cost traverse_automaton(const vector<typename CRF::Input>& x, CRF& crf, const vector<coefficient>& lambda, const vector<coefficient>& mu, vector<int>* max_path) {
   FunctionalAutomaton<CRF> a(crf);
@@ -153,20 +170,6 @@ cost traverse_automaton(const vector<typename CRF::Input>& x, CRF& crf, const ve
 template<class CRF>
 struct FunctionalAutomaton {
   FunctionalAutomaton(const CRF& crf): crf(crf), alphabet(crf.alphabet()), mu(crf.mu), lambda(crf.lambda) { }
-
-  struct Transition {
-    Transition() { }
-    Transition(int child, cost value):
-      base_value(value), child(child) { }
-
-    void set(int child, cost value) {
-      this->child = child;
-      this->base_value = value;
-    }
-
-    cost base_value;
-    int child;
-  };
 
   struct MinPathFindFunctions {
     // Usually sum, i.e. transition + child
@@ -260,6 +263,26 @@ struct FunctionalAutomaton {
     return agg;
   }
 
+  template<bool includeState, bool includeTransition>
+  void traverse_at_position(const typename CRF::Alphabet::LabelClass& allowed,
+                            Transition* children,
+                            Transition* next_children,
+                            int children_length,
+                            int pos,
+                            Matrix<unsigned> &paths) {
+    for(unsigned m = 0; m < allowed.size(); m++) {
+      auto srcId = allowed[m];
+
+      const typename CRF::Label& src = alphabet.fromInt(srcId);
+      unsigned max_child;
+      cost value = traverse_transitions<includeState, includeTransition>(children, children_length,
+                                                                         src, pos + 1, max_child);
+      next_children[m].set(srcId, value);
+
+      paths(srcId, pos) = max_child;
+    }
+  }
+
   cost traverse(vector<int>* max_path_ptr) {
     Progress prog(x.size());
 
@@ -297,20 +320,14 @@ struct FunctionalAutomaton {
       options.push_back(allowed.size());
 
       next_children_length = allowed.size();
-      if(children_length == 0)
-        LOG("Error");
-      //      #pragma omp parallel for
-      for(unsigned m = 0; m < allowed.size(); m++) {
-        auto srcId = allowed[m];
-
-        const typename CRF::Label& src = alphabet.fromInt(srcId);
-        unsigned max_child;
-        cost value = traverse_transitions<true, true>(children, children_length,
-                                                      src, pos + 1, max_child);
-        next_children[m].set(srcId, value);
-
-        paths(srcId, pos) = max_child;
+      if(children_length == 0) {
+        ERROR("No matching labels found");
       }
+
+      traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
+                                                      next_children,
+                                                      children_length, pos,
+                                                      paths);
 
       children_length = 0;
       std::swap(children, next_children);
@@ -408,6 +425,103 @@ struct NormFactorFunctions {
 template<class CRF>
 cost norm_factor(const vector<typename CRF::Input>& x, CRF& crf, const vector<cost>& lambda, const vector<cost>& mu) {
   return traverse_automaton<CRF, NormFactorFunctions>(x, crf, lambda, mu, 0);
+}
+
+template<typename CRF,
+         bool includeState,
+         bool includeTransition>
+void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
+                                    const typename CRF::Alphabet::LabelClass& allowed,
+                                    Transition* children,
+                                    Transition* next_children,
+                                    int children_length,
+                                    int pos,
+                                    Matrix<unsigned> &paths) {
+  sclHard hardware;
+  sclSoft software;
+
+  sclHard hardware2;
+  sclSoft software2;
+  
+  int found = 0;
+  // Get the hardware
+  hardware = sclGetGPUHardware( 0, &found );
+  // Get the software
+  software = sclGetCLSoftware(FEATURES_CL_FILE.data(),
+                              FEATURES_KERNEL_NAME.data(),
+                              hardware);
+
+  clPhonemeInstance *sources, *dests;
+  const int srcCount = allowed.size();
+  const int destCount = children_length;
+
+  sources = new clPhonemeInstance[srcCount];
+  dests = new clPhonemeInstance[destCount];
+  cl_double* outputs = new cl_double[srcCount * destCount];
+  cl_int coefCount = a.crf.features.VSIZE + a.crf.features.ESIZE;
+  cl_double* coefficients = new double[coefCount];
+  clVertexResult* bests = new clVertexResult[srcCount];
+  clPhonemeInstance stateLabel = toCL( a.x[pos] );
+
+  int coefIndex = 0;
+  for(auto& c : a.crf.lambda)
+    coefficients[coefIndex++] = c * (includeTransition ? 0 : 1);
+
+  for(auto& c : a.crf.mu)
+    coefficients[coefIndex++] = c * (includeState ? 0 : 1);
+
+  for(unsigned m = 0; m < srcCount; m++) {
+    auto srcId = allowed[m];
+    sources[m] = toCL( a.alphabet.fromInt(srcId) );
+  }
+
+  for(int m = 0; m < destCount; m++) {
+    auto destId = children[m].child;
+    dests[m] = toCL( a.alphabet.fromInt(destId) );
+  }
+
+  size_t work_groups[2] = { (size_t) srcCount, (size_t) destCount }, work_items[2] = {1, 1};
+  size_t inputSizeSrc = sizeof(clPhonemeInstance) * srcCount;
+  size_t inputSizeDest = sizeof(clPhonemeInstance) * destCount;
+  cl_int destCountCL = destCount;
+
+  sclManageArgsLaunchKernel(hardware, software, work_groups, work_items,
+                            " %r %r %w %r %r %r",
+                            inputSizeSrc, sources,
+                            inputSizeDest, dests,
+                            sizeof(cl_double) * srcCount * destCount, outputs,
+                            sizeof(cl_int), &destCountCL,
+                            sizeof(clPhonemeInstance), &stateLabel,
+                            sizeof(cl_double) * coefCount, coefficients);
+
+  // Now to find the best paths
+  software2 = sclGetCLSoftware(FEATURES_CL_FILE.data(),
+                               BEST_KERNEL_NAME.data(),
+                               hardware);
+
+  work_groups[0] = srcCount, work_groups[1] = 1;
+  sclManageArgsLaunchKernel(hardware2, software2, work_groups, work_items,
+                            " %r %r %w",
+                            sizeof(cl_double) * srcCount * destCount, outputs,
+                            sizeof(cl_int), &destCountCL,
+                            sizeof(clVertexResult) * srcCount, bests);
+
+  // And just copy back
+  for(unsigned m = 0; m < allowed.size(); m++) {
+    auto srcId = allowed[m];
+
+    cost value = bests[m].agg;
+    next_children[m].set(srcId, value);
+
+    paths(srcId, pos) = bests[m].index;
+  }
+
+  // ... And clean up
+  delete[] bests;
+  delete[] outputs;
+  delete[] coefficients;
+  delete[] dests;
+  delete[] sources;
 }
 
 #endif

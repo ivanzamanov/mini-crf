@@ -132,12 +132,14 @@ struct PhoneticFeatures {
   static const int ESIZE = 3;
   static const int VSIZE = 3;
 
+  // Keep order in sync with features.cl:transition
   const std::string enames[ESIZE] = {
     "trans-pitch",
     "trans-mfcc",
     "trans-ctx"
   };
 
+  // Keep order in sync with features.cl:transition
   const std::string vnames[VSIZE] = {
     "state-duration",
     "state-pitch",

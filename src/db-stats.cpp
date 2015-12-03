@@ -1,91 +1,58 @@
 #include<algorithm>
 
-#include"features.hpp"
+#include"opencl-utils.hpp"
+#include"gridsearch.hpp"
 #include"tool.hpp"
 
 using namespace tool;
 
-void print_min_sent(Corpus corpus) {
-  unsigned min = 0, minSize = corpus.input(0).size();
-  for(unsigned i = 0; i < corpus.size(); i++)
-    if(corpus.input(i).size() < minSize) {
-      min = i;
-      minSize = corpus.input(i).size();
-    }
-  std::cout << "Shortest sentence: " << min << std::endl;
-}
+void print_test() {
+  sclHard hardware;
+  sclSoft software;
+  int found = 0;
+  // Get the hardware
+  hardware = sclGetGPUHardware( 0, &found );
+  // Get the software
+  software = sclGetCLSoftware( "features.cl", "transition", hardware );
 
-void print_max_sent(tool::Corpus corpus) {
-  unsigned max = 0, maxSize = corpus.input(0).size();
-  for(unsigned i = 0; i < corpus.size(); i++)
-    if(corpus.input(i).size() > maxSize) {
-      max = i;
-      maxSize = corpus.input(i).size();
-    }
-  std::cout << "Longest sentence: " << max << std::endl;
-}
-
-void populate_cache(FeatureValuesCache& cache,
-                    vector<PhoneticLabel> c1, vector<PhoneticLabel> c2,
-                    PhonemeAlphabet& alphabet) {
-  std::vector<PhonemeInstance> dummy;
-  unsigned i = 0, j = 0;
-  for(id_t id1 : c1) {
-    for(id_t id2: c2) {
-      cache(i, j) = MFCCDist( alphabet.fromInt(id1), alphabet.fromInt(id2), 0, dummy);
-      j++;
-    }
-    i++;
-    j = 0;
+  const int N = 10000;
+  clPhonemeInstance *input1 = new clPhonemeInstance[N];
+  clPhonemeInstance *input2 = new clPhonemeInstance[N];
+  cl_double *output = new cl_double[N * N];
+  for(int i = 0; i < N; i++) {
+    input1[i] = input2[i] = toCL(alphabet_synth.fromInt(i));
+    for(int j = 0; j < N; j++)
+      output[i * N + j] = 0;
   }
+  
+  // The lib only works with 2-dimensional tasks
+  size_t work_groups[2] = {N, N}, work_items[2] = {1, 1};
+  sclManageArgsLaunchKernel( hardware, software, work_groups, work_items,
+                             " %r %r %w %r",
+                             sizeof(clPhonemeInstance) * N, input1,
+                             sizeof(clPhonemeInstance) * N, input2,
+                             sizeof(cl_double) * N * N, output,
+                             sizeof(cl_int), &N);
+
+  //for(int i = 0; i < N * N; i++)
+    //  std::cout << output[i] << ' ';
+  std::cout << std::endl;
+  delete[] input1;
+  delete[] input2;
 }
 
-void print_transition_counts(PhonemeAlphabet& alphabet, Corpus& corpus) {
-  unsigned result = 0;
-  FeatureValuesCacheProvider prov;
-  for(unsigned s = 0; s < corpus.size(); s++) {
-    auto sent = corpus.label(s);
-    for(unsigned i = 1; i < sent.size(); i++) {
-      auto class1 = alphabet.get_class( sent[i - 1] );
-      auto class2 = alphabet.get_class( sent[i] );
-      FeatureValuesCache& cache = prov.get(sent[i-1].label, sent[i].label);
-
-      if(cache.values == 0) {
-        result += class1.size() * class2.size();
-        std::cout << "So far: " << result << std::endl;
-        cache.init(class1.size(), class2.size());
-        populate_cache(cache, class1, class2, alphabet);
-      }
-    }
-  }
-
-  unsigned classCount = 0;
-  for(auto cl : alphabet.classes) {
-    if(cl.size() > 0)
-      classCount++;
-  }
-  std::cout << "Total classes: " << classCount << std::endl;
-  std::cout << "Class pairs: " << prov.values.size() << std::endl;
-  std::cout << "Transitions: " << result << std::endl;
-}
+bool Progress::enabled = true;
+std::string gridsearch::Comparisons::metric = "";
+std::string gridsearch::Comparisons::aggregate = "";
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-
-  if(!init_tool(argc, argv))
+  Options opts;
+  if(!init_tool(argc, argv, &opts))
     return 1;
 
   std::cout << "Size: " << alphabet_synth.size() << std::endl;
   std::cout << "Corpus: " << corpus_synth.size() << std::endl;
-  print_transition_counts(alphabet_synth, corpus_test);
-  //return 0;
-  //print_min_sent();
-  //print_max_sent();
-  //print_transition_counts();
-  //return 0;
-
-  //test_performance();
-  //print_function_stats(alphabet_synth, "Pitch", Pitch);
-  //print_function_stats(alphabet_synth, "MFCC Transition", MFCCDist);
+  print_test();
   return 0;
 }
