@@ -17,8 +17,8 @@ struct clPhonemeInstance {
 };
 
 struct clVertexResult {
-  cl_double agg;
-  cl_int index;
+  double agg;
+  int index;
 };
 
 // Features
@@ -31,26 +31,32 @@ double Pitch(const struct clPhonemeInstance prev,
 
 double Duration(const struct clPhonemeInstance prev,
              const struct clPhonemeInstance next) {
-  double val = prev.duration - next.duration;
-  return fabs(val);
+  return fabs(prev.duration - next.duration);
+}
+
+double PitchState(const struct clPhonemeInstance prev,
+             const struct clPhonemeInstance next) {
+  return fabs(prev.pitch_r - next.pitch_r) + fabs(prev.pitch_l - next.pitch_l);
 }
 
 double Energy(const struct clPhonemeInstance prev,
              const struct clPhonemeInstance next) {
-  double val = prev.energy - next.energy;
+  double val = prev.energy / next.energy;
   return fabs(val);
 }
 
 double LeftContext(const struct clPhonemeInstance prev,
                    const struct clPhonemeInstance next) {
-  return prev.label != next.ctx_left;
+  return (prev.label == next.ctx_left) ? 0 : 1;
 }
 
 double MFCCDist(const struct clPhonemeInstance prev,
                 const struct clPhonemeInstance next) {
   double result = 0;
-  for (unsigned i = 0; i < MFCC_N; i++)
-    result += prev.mfcc_r[i] * next.mfcc_l[i];
+  for (unsigned i = 0; i < MFCC_N; i++) {
+    double diff = prev.mfcc_r[i] - next.mfcc_l[i];
+    result += diff * diff;
+  }
   return sqrt(result);
 }
 
@@ -60,8 +66,8 @@ __kernel void transition(__global struct clPhonemeInstance* srcArr,
                          __global struct clPhonemeInstance* destArr,
                          __global double* outputArr,
                          __global int* rowSizePtr,
-                         __global clPhonemeInstance* stateLabelPtr,
-                         __global double coeffs) {
+                         __global struct clPhonemeInstance* stateLabelPtr,
+                         __global double* coeffs) {
   int x = get_global_id(0);
   int y = get_global_id(1);
   int rowSize = *rowSizePtr;
@@ -71,26 +77,28 @@ __kernel void transition(__global struct clPhonemeInstance* srcArr,
   const struct clPhonemeInstance state = *stateLabelPtr;
 
   double result = 0;
-  int coefIdx = 0;
   // Keep order in sync with features.hpp:PhoneticFeatures
-  result += coeffs[coefIdx++] * Pitch(src, dest);
-  result += coeffs[coefIdx++] * MFCCDist(src, dest);
-  result += coeffs[coefIdx++] * LeftContext(src, dest);
 
-  result += coeffs[coefIdx++] * Pitch(state, dest);
-  result += coeffs[coefIdx++] * Duration(state, dest);
-  result += coeffs[coefIdx++] * Energy(state, dest);
+  // TR
+  result += coeffs[0] * Pitch(src, dest);
+  result += coeffs[1] * MFCCDist(src, dest);
+  result += coeffs[2] * LeftContext(src, dest);
 
-  outputArr[x * row + y] = result;
+  // ST
+  result += coeffs[3] * Duration(state, dest);
+  result += coeffs[4] * PitchState(state, dest);
+  result += coeffs[5] * Energy(state, dest);
+
+  outputArr[x * rowSize + y] = result;
 }
 
 __kernel void findBest(__global double* transitions,
                        __global int* rowSizePtr,
-                       __global clVertexResult* results) {
+                       __global struct clVertexResult* results) {
   int x = get_global_id(0);
   int rowSize = *rowSizePtr;
 
-  int transitionOffset = x * rowSize;
+  long transitionOffset = x * rowSize;
 
   int index = 0;
   double best = transitions[transitionOffset];
@@ -101,5 +109,9 @@ __kernel void findBest(__global double* transitions,
     }
   }
   results[x].index = index;
-  results[x].best = best;
+  results[x].agg = best;
+}
+
+__kernel void test(__global char* debug) {
+  *debug = 'B';
 }

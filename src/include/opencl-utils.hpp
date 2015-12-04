@@ -9,6 +9,10 @@ namespace util {
   const std::string FEATURES_KERNEL_NAME = "transition";
   const std::string BEST_KERNEL_NAME = "findBest";
 
+  extern sclHard hardware;
+  extern sclSoft SOFT_FEATURES;
+  extern sclSoft SOFT_BEST;
+
   struct clVertexResult {
     cl_double agg;
     cl_int index;
@@ -30,6 +34,8 @@ namespace util {
   };
 
   clPhonemeInstance toCL(const PhonemeInstance& p);
+
+  void initCL();
 }
 
 

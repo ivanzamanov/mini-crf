@@ -50,14 +50,10 @@ struct Features {
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     cost result = 0;
-    std::array<mfcc_t, MFCC_N> tmp;
     for (unsigned i = 0; i < mfcc1.size(); i++) {
       auto diff = mfcc1[i] - mfcc2[i];
-      tmp[i] = diff;
+      result += diff * diff;
     }
-    for (unsigned i = 0; i < mfcc1.size(); i++)
-      result += tmp[i] * tmp[i];
-
     return std::sqrt(result);
   }
 
@@ -92,9 +88,7 @@ struct Features {
                        int pos,
                        const vector<PhonemeInstance>& x) {
     const PhonemeInstance& next = x[pos];
-    stime_t d1 = prev.end - prev.start;
-    stime_t d2 = next.end - next.start;
-    return std::abs(std::log(d1 / d2));
+    return std::abs(prev.log_duration - next.log_duration);
   }
 
   inline static cost BaselineFunction(const PhonemeInstance& prev,
@@ -146,31 +140,29 @@ struct PhoneticFeatures {
     "state-energy"
   };
 
-#define INVOKE_TR(func) result += lambda[FEATURE_INDEX++] * func(src, dest, pos, x)
+#define INVOKE_TR(idx, func) result += lambda[idx] * func(src, dest, pos, x)
   cost invoke_transition(const PhonemeInstance& src,
                          const PhonemeInstance& dest,
                          int pos, const vector<PhonemeInstance>& x,
                          const vector<coefficient>& lambda,
                          const vector<coefficient>&) const {
     cost result = 0;
-    int FEATURE_INDEX = 0;
-    INVOKE_TR(Features::Pitch);
-    INVOKE_TR(Features::MFCCDist);
-    INVOKE_TR(Features::LeftContext);
+    INVOKE_TR(0, Features::Pitch);
+    INVOKE_TR(1, Features::MFCCDist);
+    INVOKE_TR(2, Features::LeftContext);
     return result;
   }
 
-#define INVOKE_STATE(func) result += mu[FEATURE_INDEX++] * func(dest, pos, x)
+#define INVOKE_STATE(idx, func) result += mu[idx] * func(dest, pos, x)
   cost invoke_state(const PhonemeInstance&,
                     const PhonemeInstance& dest,
                     int pos, const vector<PhonemeInstance>& x,
                     const vector<coefficient>&,
                     const vector<coefficient>& mu) const {
     cost result = 0;
-    int FEATURE_INDEX = 0;
-    INVOKE_STATE(Features::Duration);
-    INVOKE_STATE(Features::PitchState);
-    INVOKE_STATE(Features::EnergyState);
+    INVOKE_STATE(0, Features::Duration);
+    INVOKE_STATE(1, Features::PitchState);
+    INVOKE_STATE(2, Features::EnergyState);
     return result;
   }
 };
@@ -192,15 +184,13 @@ struct BaselineFeatures {
   const std::string vnames[0] = {};
   const _VertexFeature g[0] = { };
 
-#define INVOKE_TR(func) result += lambda[FEATURE_INDEX++] * func(src, dest, pos, x)
   cost invoke_transition(const PhonemeInstance& src,
                          const PhonemeInstance& dest,
                          int pos, const vector<PhonemeInstance>& x,
                          const vector<coefficient>& lambda,
                          const vector<coefficient>&) const {
     cost result = 0;
-    int FEATURE_INDEX = 0;
-    INVOKE_TR(Features::BaselineFunction);
+    INVOKE_TR(0, Features::BaselineFunction);
     return result;
   }
 

@@ -11,7 +11,7 @@ OBJ_FILES = $(patsubst %.cpp,%.o,$(CPP_FILES))
 MAIN_DEPS = $(wildcard */*.hpp *.hpp) main.cpp $(OBJ_FILES)
 
 main: $(MAIN_DEPS)
-	$(CMD_NOOPT) main.cpp $(OBJ_FILES) -o main $(LIBS)
+	$(CMD_NOOPT) main.cpp include/*.o -o main $(LIBS)
 
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test $(LIBS)

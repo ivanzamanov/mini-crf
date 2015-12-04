@@ -324,10 +324,17 @@ struct FunctionalAutomaton {
         ERROR("No matching labels found");
       }
 
+      /*
       traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
                                                       next_children,
                                                       children_length, pos,
                                                       paths);
+      */
+      
+      traverse_at_position<true, true>(allowed, children,
+                                       next_children,
+                                       children_length, pos,
+                                       paths);
 
       children_length = 0;
       std::swap(children, next_children);
@@ -341,7 +348,7 @@ struct FunctionalAutomaton {
     prog.finish();
 
     max_path.push_back(max_child);
-    for(unsigned i = 0; i <= x.size() - 2; i++) {
+    for(int i = 0; i <= (int) x.size() - 2; i++) {
       max_child = paths(max_child, i);
       max_path.push_back(max_child);
     }
@@ -437,20 +444,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
                                     int children_length,
                                     int pos,
                                     Matrix<unsigned> &paths) {
-  sclHard hardware;
-  sclSoft software;
-
-  sclHard hardware2;
-  sclSoft software2;
-  
-  int found = 0;
-  // Get the hardware
-  hardware = sclGetGPUHardware( 0, &found );
-  // Get the software
-  software = sclGetCLSoftware(FEATURES_CL_FILE.data(),
-                              FEATURES_KERNEL_NAME.data(),
-                              hardware);
-
+  initCL();
   clPhonemeInstance *sources, *dests;
   const int srcCount = allowed.size();
   const int destCount = children_length;
@@ -458,17 +452,18 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
   sources = new clPhonemeInstance[srcCount];
   dests = new clPhonemeInstance[destCount];
   cl_double* outputs = new cl_double[srcCount * destCount];
+  memset(outputs, 0, sizeof(cl_double) * srcCount * destCount);
   cl_int coefCount = a.crf.features.VSIZE + a.crf.features.ESIZE;
   cl_double* coefficients = new double[coefCount];
   clVertexResult* bests = new clVertexResult[srcCount];
   clPhonemeInstance stateLabel = toCL( a.x[pos] );
 
   int coefIndex = 0;
-  for(auto& c : a.crf.lambda)
-    coefficients[coefIndex++] = c * (includeTransition ? 0 : 1);
+  for(auto& c : a.lambda)
+    coefficients[coefIndex++] = c * includeTransition;
 
-  for(auto& c : a.crf.mu)
-    coefficients[coefIndex++] = c * (includeState ? 0 : 1);
+  for(auto& c : a.mu)
+    coefficients[coefIndex++] = c * includeState;
 
   for(unsigned m = 0; m < srcCount; m++) {
     auto srcId = allowed[m];
@@ -480,12 +475,14 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
     dests[m] = toCL( a.alphabet.fromInt(destId) );
   }
 
-  size_t work_groups[2] = { (size_t) srcCount, (size_t) destCount }, work_items[2] = {1, 1};
+  size_t work_groups[2] = { (size_t) srcCount, (size_t) destCount };
+  size_t work_items[2] = {1, 1};
+
   size_t inputSizeSrc = sizeof(clPhonemeInstance) * srcCount;
   size_t inputSizeDest = sizeof(clPhonemeInstance) * destCount;
   cl_int destCountCL = destCount;
 
-  sclManageArgsLaunchKernel(hardware, software, work_groups, work_items,
+  sclManageArgsLaunchKernel(util::hardware, util::SOFT_FEATURES, work_groups, work_items,
                             " %r %r %w %r %r %r",
                             inputSizeSrc, sources,
                             inputSizeDest, dests,
@@ -494,13 +491,23 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
                             sizeof(clPhonemeInstance), &stateLabel,
                             sizeof(cl_double) * coefCount, coefficients);
 
-  // Now to find the best paths
-  software2 = sclGetCLSoftware(FEATURES_CL_FILE.data(),
-                               BEST_KERNEL_NAME.data(),
-                               hardware);
+  /*#ifdef DEBUG
+
+  for(int x = 0; x < srcCount; x++) {
+    for(int y = 0; y < destCount; y++) {
+      cost verify;
+      auto p1 = a.alphabet.fromInt(allowed[x]);
+      auto p2 = a.alphabet.fromInt(children[y].child);
+      verify = a.total_cost(p1, p2, pos);
+      INFO(verify << " vs " << outputs[x * destCount + y]);
+      assert(std::abs(verify - outputs[x * destCount + y]) < 0.01);
+    }
+  }
+  
+  #endif*/
 
   work_groups[0] = srcCount, work_groups[1] = 1;
-  sclManageArgsLaunchKernel(hardware2, software2, work_groups, work_items,
+  sclManageArgsLaunchKernel(util::hardware, util::SOFT_BEST, work_groups, work_items,
                             " %r %r %w",
                             sizeof(cl_double) * srcCount * destCount, outputs,
                             sizeof(cl_int), &destCountCL,
@@ -510,7 +517,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
   for(unsigned m = 0; m < allowed.size(); m++) {
     auto srcId = allowed[m];
 
-    cost value = bests[m].agg;
+    double value = bests[m].agg;
     next_children[m].set(srcId, value);
 
     paths(srcId, pos) = bests[m].index;

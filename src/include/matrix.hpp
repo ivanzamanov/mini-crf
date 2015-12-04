@@ -1,6 +1,7 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
+#include<cassert>
 #include<string>
 #include<iostream>
 #include<fstream>
@@ -19,7 +20,7 @@ public:
 
   Value& operator()(unsigned row, unsigned col) {
     if(row >= rows() ||  col >= cols()) {
-      throw "Invalid element requested";
+      assert("Invalid element requested");
     }
 
     unsigned long index = row * c + col;

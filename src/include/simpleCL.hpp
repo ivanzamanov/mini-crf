@@ -20,7 +20,9 @@
    SimpleOpenCL Version 0.010_27_02_2013 
 
 */
-
+#ifndef DEBUG
+#define DEBUG
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
