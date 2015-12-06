@@ -324,18 +324,16 @@ struct FunctionalAutomaton {
         ERROR("No matching labels found");
       }
 
-      /*
-      traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
+      /*traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
                                                       next_children,
                                                       children_length, pos,
                                                       paths);
       */
-      
       traverse_at_position<true, true>(allowed, children,
                                        next_children,
                                        children_length, pos,
                                        paths);
-
+      
       children_length = 0;
       std::swap(children, next_children);
       std::swap(children_length, next_children_length);
@@ -475,7 +473,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
     dests[m] = toCL( a.alphabet.fromInt(destId) );
   }
 
-  size_t work_groups[2] = { (size_t) srcCount, (size_t) destCount };
+  size_t work_groups[2] = {(size_t) srcCount, (size_t) destCount};
   size_t work_items[2] = {1, 1};
 
   size_t inputSizeSrc = sizeof(clPhonemeInstance) * srcCount;
@@ -506,7 +504,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
   
   #endif*/
 
-  work_groups[0] = srcCount, work_groups[1] = 1;
+  work_groups[0] = srcCount; work_groups[1] = 1;
   sclManageArgsLaunchKernel(util::hardware, util::SOFT_BEST, work_groups, work_items,
                             " %r %r %w",
                             sizeof(cl_double) * srcCount * destCount, outputs,

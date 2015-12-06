@@ -95,7 +95,7 @@ __kernel void transition(__global struct clPhonemeInstance* srcArr,
 __kernel void findBest(__global double* transitions,
                        __global int* rowSizePtr,
                        __global struct clVertexResult* results) {
-  int x = get_global_id(0);
+  int x = get_local_id(0);
   int rowSize = *rowSizePtr;
 
   long transitionOffset = x * rowSize;
