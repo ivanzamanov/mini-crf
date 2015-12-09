@@ -10,25 +10,25 @@
 
 #include"types.hpp"
 
-//#pragma GCC push_options
-//#pragma GCC optimize ("O0")
-
-const unsigned DEFAULT_SAMPLE_RATE = 24000;
+const int DEFAULT_SAMPLE_RATE = 24000;
 
 // Does not own data
 struct WaveData {
   WaveData()
-    : data(0), offset(-1), length(-1)
+    : data(0), offset(-1), length(-1), sampleRate(DEFAULT_SAMPLE_RATE)
   { }
-  WaveData(short* data, int offset, int length)
-    : data(data), offset(offset), length(length)
+  WaveData(short* data, int offset, int length, unsigned sampleRate)
+    : data(data), offset(offset), length(length), sampleRate(sampleRate)
   { }
 
   short* data;
   int offset, length;
+  unsigned sampleRate;
 
-  WaveData range(int offset, int length) { return WaveData(data, this->offset + offset, length); }
-  float duration() const { return length / DEFAULT_SAMPLE_RATE; }
+  WaveData range(int offset, int length) {
+    return WaveData(data, this->offset + offset, length, sampleRate);
+  }
+  float duration() const { return length / sampleRate; }
   short* begin() const { return data; }
   short* end() const { return data + length; }
   short& operator[](int i) const { return data[offset + i]; }
@@ -48,7 +48,23 @@ struct WaveData {
       str << data[i] << '\n';
   }
 
-  void extract(short* dest, int count, int sourceOffset=0) {
+  float toDuration(int sampleCount) const {
+    return WaveData::toDuration(sampleCount, sampleRate);
+  }
+
+  int toSamples(float duration) const {
+    return WaveData::toSamples(duration, sampleRate);
+  }
+
+  static float toDuration(int sampleCount, unsigned sampleRate) {
+    return (float) sampleCount / sampleRate;
+  }
+
+  static int toSamples(float duration, unsigned sampleRate) {
+    return duration * sampleRate;
+  }
+
+  void extract(short* dest, int count, int sourceOffset=0) const {
     std::memcpy(dest, data + offset + sourceOffset, sizeof(data[0]) * count);
   }
 
@@ -61,28 +77,20 @@ struct WaveData {
   static WaveData copy(WaveData& origin) {
     short* newData = new short[origin.length];
     memcpy(newData, origin.data, origin.length * sizeof(data[0]));
-    return WaveData(newData, 0, origin.length);
+    return WaveData(newData, 0, origin.length, origin.sampleRate);
   }
 
-  static WaveData allocate(float duration) {
-    int samples = duration * DEFAULT_SAMPLE_RATE;
+  static WaveData allocate(float duration, unsigned sampleRate) {
+    int samples = duration * sampleRate;
     short* data = new short[samples];
     memset(data, 0, samples * sizeof(data[0]));
-    return WaveData(data, 0, samples);
-  }
-
-  static float toDuration(int sampleCount) {
-    return (float) sampleCount / DEFAULT_SAMPLE_RATE;
-  }
-
-  static int toSamples(float duration) {
-    return duration * DEFAULT_SAMPLE_RATE;
+    return WaveData(data, 0, samples, sampleRate);
   }
 };
 
 struct WaveDataTemp : public WaveData {
   WaveDataTemp(WaveData data)
-    : WaveData(data.data, data.offset, data.length)
+    : WaveData(data.data, data.offset, data.length, data.sampleRate)
   { }
   ~WaveDataTemp() {
     delete[] data;
@@ -97,7 +105,7 @@ struct SpeechWaveData : WaveData {
 
   // simply the first mark
   int mark() const { return marks[0]; }
-  float localDuration() const { return ((float)length / 2) / DEFAULT_SAMPLE_RATE; }
+  float localDuration() const { return ((float)length / 2) / sampleRate; }
   float localPitch() const { return 1 / localDuration(); }
 
   const SpeechWaveData& copy_from(const WaveData& wd) const {
@@ -156,6 +164,18 @@ struct Wave {
     ostr.write((char*) data, h.samplesBytes);
   }
 
+  unsigned sampleRate() const {
+    return h.sampleRate;
+  }
+
+  float toDuration(int sampleCount) const {
+    return (float) sampleCount / sampleRate();
+  }
+
+  int toSamples(float duration) const {
+    return duration * sampleRate();
+  }
+
   unsigned bytesPerSample() const { return h.bitsPerSample / 8; }
   unsigned length() const { return h.samplesBytes / bytesPerSample(); }
   float duration() const { return (float) length() / h.sampleRate; }
@@ -174,11 +194,11 @@ struct Wave {
     return ((short*) data)[i];
   }
 
-  WaveData extractBySample(int startSample, int endSample) {
-    return WaveData((short*) data, startSample, endSample - startSample);
+  WaveData extractBySample(int startSample, int endSample) const {
+    return WaveData((short*) data, startSample, endSample - startSample, sampleRate());
   }
 
-  WaveData extractByTime(float start, float end) {
+  WaveData extractByTime(float start, float end) const {
     return extractBySample(at_time(start), at_time(end) - 1);
   }
 };
@@ -218,7 +238,7 @@ struct WaveBuilder {
 template<class F>
 void each_frame(Wave& w1, Wave& w2, double width, F func) {
   int length = std::min(w1.length(), w2.length());
-  int frameSamples = WaveData::toSamples(width);
+  int frameSamples = w1.toSamples(width);
   int frameOffset = 0;
   while(frameOffset < length) {
     int frameLength = std::min(frameSamples, length - frameOffset);
@@ -230,7 +250,5 @@ void each_frame(Wave& w1, Wave& w2, double width, F func) {
     frameOffset += frameSamples;
   }
 }
-
-//#pragma GCC pop_options
 
 #endif

@@ -30,11 +30,20 @@ private:
   Wave get_resynthesis(bool FD);
 };
 
-// F0 of less than 50 Hz will be considered voiceless
-const int MAX_VOICELESS_SAMPLES = WaveData::toSamples(0.02f) * 0.9;
-const double MAX_VOICELESS_PERIOD = WaveData::toDuration(MAX_VOICELESS_SAMPLES);
-const int MAX_VOICELESS_SAMPLES_COPY = WaveData::toSamples(0.01f) * 0.9;
-const double MAX_VOICELESS_PERIOD_COPY = WaveData::toDuration(MAX_VOICELESS_SAMPLES_COPY);
+struct PsolaConstants {
+  PsolaConstants(int sampleRate) {
+    // F0 of less than 50 Hz will be considered voiceless
+    maxVoicelessSamples = WaveData::toSamples(0.02f, sampleRate) * 0.9;
+    maxVoicelessPeriod = WaveData::toDuration(maxVoicelessSamples, sampleRate);
+    maxVoicelessSamplesCopy = WaveData::toSamples(0.01f, sampleRate) * 0.9;
+    maxVoicelessPeriodCopy = WaveData::toDuration(maxVoicelessPeriodCopy, sampleRate);
+  }
+
+  int maxVoicelessSamples;
+  double maxVoicelessPeriod;
+  int maxVoicelessSamplesCopy;
+  double maxVoicelessPeriodCopy;
+};
 
 struct PitchRange {
   void set(frequency left, frequency right, int offset, int length) {
@@ -50,7 +59,6 @@ struct PitchRange {
     return left * (1 - c / length) + right * c / length;
   }
   
-  frequency at(double time) const { return at(WaveData::toSamples(time)); }
   frequency at_mid() const { return at(length / 2); }
 
   frequency left;

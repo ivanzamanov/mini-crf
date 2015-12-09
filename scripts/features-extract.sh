@@ -31,8 +31,8 @@ do
     GRID=$(dirname $WAV)/$GRID_NAME.TextGrid
     if [ -f $GRID ]; then
         #echo "Extracting from $WAV"
-				OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
-				echo "$OUTPUT $WAV" >> $FILES_LIST
+	OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
+	echo "$OUTPUT $WAV" >> $FILES_LIST
         echo "$WAV" "$GRID" "$OUTPUT"
         GRIDS=`expr $GRIDS + 1`
     fi

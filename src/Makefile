@@ -5,13 +5,13 @@ OPTS = -O3 -Ofast -mtune=native
 #CLIB = -stdlib=libc++
 CMD = $(CC) $(CLIB) $(CFLAGS) $(OPTS)
 LIBS = -lpthread -lOpenCL
-CMD_NOOPT = $(CC) $(CLIB) $(CFLAGS)
 CPP_FILES = $(wildcard */*.cpp)
 OBJ_FILES = $(patsubst %.cpp,%.o,$(CPP_FILES))
 MAIN_DEPS = $(wildcard */*.hpp *.hpp) main.cpp $(OBJ_FILES)
 
+main: OPTS= 
 main: $(MAIN_DEPS)
-	$(CMD_NOOPT) main.cpp include/*.o -o main $(LIBS)
+	$(CMD) main.cpp include/*.o -o main $(LIBS)
 
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test $(LIBS)

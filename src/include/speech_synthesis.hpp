@@ -46,8 +46,6 @@ namespace tool {
              && between(fromInt(p).pitch_contour[1] - phon.pitch_contour[1], -0.69, 0.69)
              ) || target.empty()) {
           target.push_back(p);
-          if(fromInt(p).duration / phon.duration < 0.5)
-            std::cout << "Err";
         }
     }
 

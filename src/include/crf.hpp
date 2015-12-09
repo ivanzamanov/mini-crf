@@ -320,9 +320,7 @@ struct FunctionalAutomaton {
       options.push_back(allowed.size());
 
       next_children_length = allowed.size();
-      if(children_length == 0) {
-        ERROR("No matching labels found");
-      }
+      assert(children_length > 0);
 
       /*traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
                                                       next_children,

@@ -22,9 +22,9 @@ MFCC_COUNT=12
 MFCC_WINDOW=0.015
 
 #echo "PRAAT: $(which praat)"
-echo `pwd`
+#echo `pwd`
 EXE="$(which praat)"
 CMD="$EXE $PRAAT_SCRIPT $WAV_FILE $TEXT_GRID $OUTPUT_FILE"
-echo "$CMD"
+#echo "$CMD"
 #echo "Script: $PRAAT_SCRIPT, WAVE: $WAV_FILE, TextGrid: $TEXT_GRID, Output: $OUTPUT_FILE"
-$CMD
+$CMD > /dev/null

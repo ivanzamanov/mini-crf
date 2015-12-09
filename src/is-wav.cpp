@@ -4,13 +4,13 @@
 
 #include"wav.hpp"
 
-#define PRINT(X) std::cout << #X": " << wav.h.X << std::endl
 void printWav(Wave& wav, char* file) {
   std::cout << "File: " << file << std::endl;
   /*  std::cout << "Byte rate: " << wav.h.byteRate << std::endl;
   std::cout << "Sample rate: " << wav.h.sampleRate << std::endl;
   std::cout << "Bits per sample: " << wav.h.bitsPerSample << std::endl;
   std::cout << "Duration (s): " << wav.duration() << std::endl;*/
+#define PRINT(X) std::cout << #X": " << wav.h.X << std::endl
   PRINT(chunkId);
   PRINT(chunkSize);
   PRINT(format);
@@ -68,7 +68,7 @@ void concatWavs(int, char** argv) {
     buf[i - 1] = v1 + v2;
   }
 
-  wb.append((unsigned char*) buf, bufLen * sizeof(buf[0]));
+  wb.append((char*) buf, bufLen * sizeof(buf[0]));
 
   wb.append(wav2, right, wav2.length());
 

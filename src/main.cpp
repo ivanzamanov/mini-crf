@@ -38,6 +38,7 @@ int resynthesize(Options& opts) {
   crf.lambda[2] = opts.get_opt<double>("trans-ctx", 0);
 
   unsigned index = util::parse<int>(opts.input);
+  assert(index < corpus_test.size());
   std::vector<PhonemeInstance> input = corpus_test.input(index);
 
   std::string sentence_string = gridsearch::to_text_string(input);
