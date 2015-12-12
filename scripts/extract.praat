@@ -3,6 +3,7 @@ form Feature Extraction
   sentence soundPath /home/ivo/SpeechSynthesis/corpus-test/Diana_A.1.1.Un2/Diana_A.1.1.Un2_0013.wav
   sentence textGridPath /home/ivo/SpeechSynthesis/corpus-test/Diana_A.1.1.Un2/Diana_A_1_1_Un2_0013.TextGrid
   sentence outputFile /tmp/praat-output.txt
+  sentence laryngographFile _
 endform
 
 writeInfo: ""
@@ -91,7 +92,13 @@ octaveJumpCost = 0.5
 voicedUnvoicedCost = 0.14
 pitchCeiling = 600
 
-pitch = To Pitch (ac)... timeStep pitchFloor maxCandidates 1 silenceThreshold voicingThreshold octaveCost octaveJumpCost voicedUnvoicedCost pitchCeiling
+if laryngographFile$ == "_"
+   pitch = To Pitch (ac)... timeStep pitchFloor maxCandidates 1 silenceThreshold voicingThreshold octaveCost octaveJumpCost voicedUnvoicedCost pitchCeiling
+else
+  laryngographSignal = Read from file... 'laryngographFile$'
+  pitch = To Pitch (ac)... timeStep pitchFloor maxCandidates 1 silenceThreshold voicingThreshold octaveCost octaveJumpCost voicedUnvoicedCost pitchCeiling
+endif
+
 # Extract pulses to be used to determine cut points
 pointProcess = To PointProcess
 

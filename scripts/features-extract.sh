@@ -13,6 +13,13 @@ if [ -n "$2" ]; then
         OUTPUT_PATH="$2"
 fi
 
+LARYNGOGRAPH_DIR="$3"
+if [ -d "$LARYNGOGRAPH_DIR" ]; then
+    N_PARAMS=4
+else
+    N_PARAMS=3
+fi
+
 PRAAT=praat
 EXTRACTOR_SCRIPT="$(dirname $0)/extractor.sh"
 
@@ -31,12 +38,15 @@ do
     GRID=$(dirname $WAV)/$GRID_NAME.TextGrid
     if [ -f $GRID ]; then
         #echo "Extracting from $WAV"
-	OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
-	echo "$OUTPUT $WAV" >> $FILES_LIST
-        echo "$WAV" "$GRID" "$OUTPUT"
+	      OUTPUT=$OUTPUT_PATH/"$GRID_NAME.Features"
+        if [ -d "$LARYNGOGRAPH_DIR" ]; then
+            LARYNGOGRAPH_FILE=$LARYNGOGRAPH_DIR/$(basename $WAV)
+        fi
+	      echo "$OUTPUT $WAV" >> $FILES_LIST
+        echo "$WAV" "$GRID" "$OUTPUT $LARYNGOGRAPH_FILE"
         GRIDS=`expr $GRIDS + 1`
     fi
-done | sort | xargs -P 6 -n 3 -t $EXTRACTOR_SCRIPT
+done | sort | xargs -P 6 -n $N_PARAMS -t $EXTRACTOR_SCRIPT
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"

@@ -394,8 +394,8 @@ void smooth(WaveData& dest, int offset,
     long l = cfLeft[i];
     long r = cfRight[i];
 
-    cfLeft[i] = (4 * l + 2 * r) / 3;
-    cfRight[i] = (2 * l + 4 * r) / 3;
+    cfLeft[i] = (4 * l + 2 * r) / 6;
+    cfRight[i] = (2 * l + 4 * r) / 6;
   }
 
   // Copy back to signal
