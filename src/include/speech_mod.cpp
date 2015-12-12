@@ -8,6 +8,7 @@ using namespace util;
 using std::vector;
 
 bool SMOOTH = false;
+bool SCALE_ENERGY = false;
 // Mod commons
 
 template<class T>
@@ -23,6 +24,8 @@ double hann(double i, int size) {
 
 void smooth(WaveData& dest, int offset,
             const PhonemeInstance& left, const PhonemeInstance& right, double crossfadeTime);
+
+void scaleEnergy(WaveData& data, const PhonemeInstance& phon);
 
 void scaleToPitchAndDurationSimpleFD(WaveData& dest,
                                      int& startOffset,
@@ -194,8 +197,9 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // Ok, so waveData contains all the pieces with pitch marks translated to piece-local time
   double completeDuration = 0;
   each(target, [&](PhonemeInstance& p) { completeDuration += p.duration; });
-  // preallocate the complete wave result
-  WaveData result = WaveData::allocate(completeDuration, sourceData->sampleRate());
+  // preallocate the complete wave result,
+  // but only temporarily
+  WaveDataTemp result = WaveData::allocate(completeDuration, sourceData->sampleRate());
 
   do_resynthesis(result, waveData, opts);
 
@@ -320,24 +324,35 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
     prog.update();
   }
   prog.finish();
-  if(!SMOOTH)
-    return;
-  prog = Progress(target.size(), "Smoothing: ");
-  totalDuration = target[0].duration;
 
-  double crossfadeTime = opts.get_opt<double>("crossfade", -1);
-  bool isCFTimeSet = crossfadeTime != -1;
-  for(unsigned i = 1; i < target.size() - 1; i++) {
-    int offset = dest.toSamples(totalDuration);
-
-    smooth(dest, offset, target[i], target[i+1], isCFTimeSet ? crossfadeTime : (1 / pt.at(offset)));
-
-    PhonemeInstance& tgt = target[i];
-    double targetDuration = tgt.end - tgt.start;
-    totalDuration += targetDuration;
-    prog.update();
+  if(SCALE_ENERGY) {
+    prog = Progress(target.size(), "Scaling Energy: ");
+    for(unsigned i = 0; i < target.size(); i++) {
+      PhonemeInstance& tgt = target[i];
+      scaleEnergy(dest, tgt);
+      prog.update();
+    }
+    prog.finish();
   }
-  prog.finish();
+  
+  if(SMOOTH) {
+    prog = Progress(target.size(), "Smoothing: ");
+    totalDuration = target[0].duration;
+
+    double crossfadeTime = opts.get_opt<double>("crossfade", -1);
+    bool isCFTimeSet = crossfadeTime != -1;
+    for(unsigned i = 1; i < target.size() - 1; i++) {
+      int offset = dest.toSamples(totalDuration);
+
+      smooth(dest, offset, target[i], target[i+1], isCFTimeSet ? crossfadeTime : (1 / pt.at(offset)));
+
+      PhonemeInstance& tgt = target[i];
+      double targetDuration = tgt.end - tgt.start;
+      totalDuration += targetDuration;
+      prog.update();
+    }
+    prog.finish();
+  }
 }
 
 int getSmoothingCount(double duration, frequency pitch, const Options& opts) {
@@ -541,4 +556,19 @@ void scaleToPitchAndDurationSimpleTD(WaveData& dest,
     for(int j = 0; j < source.length && destOffset < dest.length; j++, destOffset++)
       dest.plus(destOffset, source[j]);
   }
+}
+
+void scaleEnergy(WaveData& data, const PhonemeInstance& phon) {
+  int offset = data.toSamples(phon.start);
+  int length = data.toSamples(phon.end - phon.start);
+
+  long energy = 0;
+  for(int i = offset; i < offset + length; i++)
+    energy += data[i] * data[i];
+
+  auto energyScale = (double) phon.energy_val / energy;
+  energyScale = sqrt(energyScale);
+
+  for(int i = offset; i < offset + length; i++)
+    data[i] = truncate(data[i] * energyScale);
 }

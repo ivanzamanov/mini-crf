@@ -89,7 +89,7 @@ struct WaveData {
 };
 
 struct WaveDataTemp : public WaveData {
-  WaveDataTemp(WaveData data)
+  WaveDataTemp(const WaveData& data)
     : WaveData(data.data, data.offset, data.length, data.sampleRate)
   { }
   ~WaveDataTemp() {

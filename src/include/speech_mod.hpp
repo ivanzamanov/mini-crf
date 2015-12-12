@@ -11,6 +11,7 @@
 using namespace tool;
 
 extern bool SMOOTH;
+extern bool SCALE_ENERGY;
 
 struct SpeechWaveSynthesis {
   SpeechWaveSynthesis(std::vector<PhonemeInstance>& source,

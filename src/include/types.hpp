@@ -65,6 +65,7 @@ struct PhonemeInstance {
   stime_t duration;
   stime_t log_duration;
   double energy;
+  long energy_val;
   id_t id;
   PhoneticLabel label;
   PhoneticLabel ctx_left;

@@ -29,7 +29,7 @@ main-opt: $(MAIN_DEPS)
 	$(CMD) main.cpp include/*.o -o main-opt $(LIBS)
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
-	$(CMD_NOOPT) text2bin.cpp -g include/*.o -o text2bin $(LIBS)
+	$(CMD) text2bin.cpp -g include/*.o -o text2bin $(LIBS)
 
 single: speech_mod_single.cpp $(OBJ_FILES)
 	$(CMD) $< $(OBJ_FILES) -o $@ $(LIBS)

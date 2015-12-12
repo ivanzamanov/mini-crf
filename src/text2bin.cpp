@@ -5,12 +5,15 @@ static void print_usage(const char* main) {
   std::cout << "Usage: " << main << ": <input_file>|- <output_file> [<function_value_cache>]\n";
 }
 
+void calculateEnergy(PhonemeAlphabet& alphabet);
+
 Corpus corpus;
 PhonemeAlphabet alphabet;
 StringLabelProvider provider;
 
 void transfer_data(std::istream& input, std::ofstream *output) {
   build_data_txt(input, &alphabet, &corpus, provider);
+  calculateEnergy(alphabet);
   BinaryWriter w(output);
 
   std::cout << "Writing data" << std::endl;
@@ -102,6 +105,22 @@ std::ostream& operator<<(std::ostream& str, const FeatureValues& fv) {
     str << ", " << fv[i];
   str << ")";
   return str;
+}
+
+void calculateEnergy(PhonemeAlphabet& alphabet) {
+  for(auto& p : alphabet.labels) {
+    FileData fileData = alphabet.file_data_of(p);
+    std::ifstream str(fileData.file);
+    Wave w;
+    w.read(str);
+
+    WaveData data( w.extractByTime(p.start, p.end));
+
+    long energy = 0;
+    for(unsigned i = 0; i < data.size(); i++)
+      energy += data[i] * data[i];
+    p.energy_val = energy;
+  }
 }
 
 bool Progress::enabled = true;
