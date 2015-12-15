@@ -3,11 +3,16 @@ CC = clang++
 CFLAGS = -std=c++11 -Wall -I./include -g
 OPTS = -O3 -Ofast -mtune=native
 #CLIB = -stdlib=libc++
-CMD = $(CC) $(CLIB) $(CFLAGS) $(OPTS)
-LIBS = -lpthread -lOpenCL
+
+#OPENCL_LIB = -lOpenCL
+#OPENCL_DEF = -DUSE_OPENCL
+
+LIBS = -lpthread $(OPENCL_LIB)
 CPP_FILES = $(wildcard */*.cpp)
 OBJ_FILES = $(patsubst %.cpp,%.o,$(CPP_FILES))
 MAIN_DEPS = $(wildcard */*.hpp *.hpp) main.cpp $(OBJ_FILES)
+
+CMD = $(CC) $(OPENCL_DEF) $(CLIB) $(CFLAGS) $(OPTS)
 
 main: OPTS= 
 main: $(MAIN_DEPS)

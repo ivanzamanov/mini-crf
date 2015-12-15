@@ -1,6 +1,7 @@
 #include<cassert>
 #include"opencl-utils.hpp"
 
+#ifdef USE_OPENCL
 using namespace util;
 
 sclHard util::hardware;
@@ -41,3 +42,5 @@ clPhonemeInstance util::toCL(const PhonemeInstance& p) {
   result.pitch_r = p.pitch_contour[1];
   return result;
 }
+
+#endif

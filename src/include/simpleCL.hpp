@@ -20,6 +20,8 @@
    SimpleOpenCL Version 0.010_27_02_2013 
 
 */
+#ifdef USE_OPENCL
+
 #ifndef DEBUG
 #define DEBUG
 #endif
@@ -168,4 +170,6 @@ void 			_sclCreateQueues( sclHard* hardList, int found );
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

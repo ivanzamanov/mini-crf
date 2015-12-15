@@ -7,7 +7,13 @@
 #include<cassert>
 
 #include"alphabet.hpp"
+
+#ifdef USE_OPENCL
 #include"opencl-utils.hpp"
+#else
+#include"types.hpp"
+#endif
+
 #include"matrix.hpp"
 #include"dot/dot.hpp"
 
@@ -23,6 +29,7 @@ class _Corpus;
 template<class CRF>
 struct FunctionalAutomaton;
 
+#ifdef USE_OPENCL
 template<typename CRF,
          bool includeState,
          bool includeTransition>
@@ -33,6 +40,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
                                     int children_length,
                                     int pos,
                                     Matrix<unsigned> &paths);
+#endif
 
 const double TRAINING_RATIO = 0.3;
 
@@ -322,16 +330,17 @@ struct FunctionalAutomaton {
       next_children_length = allowed.size();
       assert(children_length > 0);
 
-      /*traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
+#ifdef USE_OPENCL
+      traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
                                                       next_children,
                                                       children_length, pos,
                                                       paths);
-      */
+#else
       traverse_at_position<true, true>(allowed, children,
                                        next_children,
                                        children_length, pos,
                                        paths);
-      
+#endif      
       children_length = 0;
       std::swap(children, next_children);
       std::swap(children_length, next_children_length);
@@ -430,6 +439,7 @@ cost norm_factor(const vector<typename CRF::Input>& x, CRF& crf, const vector<co
   return traverse_automaton<CRF, NormFactorFunctions>(x, crf, lambda, mu, 0);
 }
 
+#ifdef USE_OPENCL
 template<typename CRF,
          bool includeState,
          bool includeTransition>
@@ -526,5 +536,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
   delete[] dests;
   delete[] sources;
 }
+
+#endif
 
 #endif

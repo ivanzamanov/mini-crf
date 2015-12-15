@@ -1,6 +1,8 @@
 #ifndef __OPENCL_UTILS_HPP__
 #define __OPENCL_UTILS_HPP__
 
+#ifdef USE_OPENCL
+
 #include"types.hpp"
 #include"simpleCL.hpp"
 
@@ -38,5 +40,5 @@ namespace util {
   void initCL();
 }
 
-
+#endif
 #endif

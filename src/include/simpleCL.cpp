@@ -20,6 +20,7 @@
    SimpleOpenCL Version 0.010_27_02_2013 
 
 */
+#ifdef USE_OPENCL
 
 #ifdef __cplusplus
 extern "C" {
@@ -1162,4 +1163,5 @@ cl_event sclManageArgsLaunchKernel( sclHard hardware, sclSoft software, size_t *
 
 #ifdef __cplusplus
 }
+#endif
 #endif
