@@ -57,6 +57,7 @@ namespace tool {
     SCALE_ENERGY = opts->has_opt("energy");
     PRINT_SCALE = opts->has_opt("print-scale");
     REPORT_PROGRESS = opts->has_opt("progress");
+    EXTRA_TIME = opts->get_opt("extra-time", 0.0);
 
     crf.label_alphabet = &alphabet_synth;
     build_data(*opts);

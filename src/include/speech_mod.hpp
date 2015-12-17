@@ -12,6 +12,7 @@ using namespace tool;
 
 extern bool SMOOTH;
 extern bool SCALE_ENERGY;
+extern int EXTRA_TIME;
 
 struct SpeechWaveSynthesis {
   SpeechWaveSynthesis(std::vector<PhonemeInstance>& source,
@@ -56,7 +57,11 @@ struct PitchRange {
 
   frequency at(int index) const {
     double c = (index - offset); // centered
-    assert(!(c < 0 || c > length)); // Bad sample index
+    if(c < 0)
+      return at(0);
+    else if (c >= length)
+      return at(length - 1);
+    //assert(!(c < 0 || c > length)); // Bad sample index
     return left * (1 - c / length) + right * c / length;
   }
   

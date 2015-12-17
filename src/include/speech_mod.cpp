@@ -9,6 +9,7 @@ using std::vector;
 
 bool SMOOTH = false;
 bool SCALE_ENERGY = false;
+int EXTRA_TIME = 0;
 // Mod commons
 
 template<class T>
@@ -292,12 +293,13 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
   double totalDuration = 0;
   Progress prog(target.size(), "PSOLA: ");
   int destOffset = 0;
+
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     PhonemeInstance& tgt = target[i];
     PitchRange pitch = pt.ranges[i];
 
-    int extraTime = 0;
+    double extraTime = (float) EXTRA_TIME * 1 / pitch.at(0);
     double targetDuration = tgt.end - tgt.start + extraTime;
     int extra = dest.toSamples(extraTime);
 
