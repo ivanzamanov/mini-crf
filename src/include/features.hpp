@@ -30,21 +30,21 @@ struct FeatureValues : public std::array<float, FEATURES_COUNT> {
 };
 
 struct Features {
-  inline static cost Pitch(const PhonemeInstance& prev,
+  static cost Pitch(const PhonemeInstance& prev,
                     const PhonemeInstance& next,
                     int,
                     const vector<PhonemeInstance>&) {
     return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
   }
 
-  inline static cost LeftContext(const PhonemeInstance& prev,
+  static cost LeftContext(const PhonemeInstance& prev,
                           const PhonemeInstance& next,
                           int,
                           const vector<PhonemeInstance>&) {
     return prev.label != next.ctx_left;
   }
 
-  inline static cost MFCCDist(const PhonemeInstance& prev,
+  static cost MFCCDist(const PhonemeInstance& prev,
                        const PhonemeInstance& next,
                        int, const vector<PhonemeInstance>&) {
     const MfccArray& mfcc1 = prev.last().mfcc;
@@ -57,7 +57,7 @@ struct Features {
     return std::sqrt(result);
   }
 
-  inline static cost MFCCDistL1(const PhonemeInstance& prev,
+  static cost MFCCDistL1(const PhonemeInstance& prev,
                          const PhonemeInstance& next,
                          int,
                          const vector<PhonemeInstance>&) {
@@ -71,27 +71,28 @@ struct Features {
     return result;
   }
 
-  inline static cost PitchState(const PhonemeInstance& p1,
+  static cost PitchState(const PhonemeInstance& p1,
                          int pos,
                          const vector<PhonemeInstance>& x) {
     const PhonemeInstance& p2 = x[pos];
     return p1.pitch_contour.diff(p2.pitch_contour);
   }
 
-  inline static cost EnergyState(const PhonemeInstance& p1,
+  static cost EnergyState(const PhonemeInstance& p1,
                           int pos,
                           const vector<PhonemeInstance>& x) {
     return p1.energy / x[pos].energy;
   }
 
-  inline static cost Duration(const PhonemeInstance& prev,
+  static cost Duration(const PhonemeInstance& prev,
                        int pos,
                        const vector<PhonemeInstance>& x) {
     const PhonemeInstance& next = x[pos];
     return std::abs(prev.log_duration - next.log_duration);
   }
 
-  inline static cost BaselineFunction(const PhonemeInstance& prev,
+  // ---------
+  static cost BaselineFunction(const PhonemeInstance& prev,
                                const PhonemeInstance& next,
                                int,
                                const vector<PhonemeInstance>&) {

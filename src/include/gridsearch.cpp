@@ -388,8 +388,8 @@ namespace gridsearch {
         Range("trans-ctx", 1, 150, 1),
         Range("trans-pitch", 1, 150, 1),
         Range("state-pitch", 1, 150, 1),
-        Range("trans-mfcc", 0, 10, 0.1),
-        Range("state-duration", 50, 200, 1),
+        Range("trans-mfcc", 0, 1, 0.01),
+        Range("state-duration", 1, 150, 1),
         Range("state-energy", 1, 150, 1)
       }};
     for(auto it : ranges)

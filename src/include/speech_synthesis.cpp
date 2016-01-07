@@ -120,6 +120,8 @@ void tool::pre_process(PhonemeAlphabet& alphabet) {
     alphabet.labels[i].pitch_contour = to_pitch_contour<true>(alphabet.labels[i]);
 
     alphabet.labels[i].log_duration = std::log(alphabet.labels[i].duration);
+
+    alphabet.labels[i].energy = alphabet.labels[i].energy / alphabet.labels[i].duration;
   }
 }
 

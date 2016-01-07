@@ -3,14 +3,13 @@
 #include"opencl-utils.hpp"
 #include"gridsearch.hpp"
 #include"tool.hpp"
+#include"features.hpp"
 
 using namespace tool;
 
 bool Progress::enabled = true;
 std::string gridsearch::Comparisons::metric = "";
 std::string gridsearch::Comparisons::aggregate = "";
-
-bool print_stats() { return true; }
 
 bool print_by_id_short(const PhonemeAlphabet& alphabet, id_t phon_id) {
   if(phon_id >= alphabet.size())
@@ -64,16 +63,46 @@ bool extract_by_label(const PhonemeAlphabet& alphabet, std::string label_string)
   return true;
 }
 
+#define AS_STRING(x) #x
+
+template<class Func>
+bool print_stats_func(const PhonemeAlphabet& alphabet, Func f) {
+  double mean = 0, max = 0;
+  int n = 0;
+  const vector<PhonemeInstance> dummy;
+  for(auto& x : alphabet.labels) {
+    for(auto& y : alphabet.labels) {
+      n++;
+      double val = f(x, y, 0, dummy);
+      mean = mean + (val - mean) / n;
+
+      if(val > max)
+        max = val;
+    }
+  }
+
+  std::cout << "AS_STRING(Func) Max = " << max << std::endl
+            << "AS_STRING(Func) Avg = " << mean << std::endl;
+  return true;
+}
+
+bool print_stats(const PhonemeAlphabet& alphabet) {
+  INFO("Stats over " << alphabet.size() << " labels");
+  print_stats_func(alphabet, &Features::MFCCDist);
+  print_stats_func(alphabet, &Features::Pitch);
+  return true;
+}
+
 bool handle(const Options& opts) {
+  std::string db_type = opts.get_string("db");
+  auto* db = &alphabet_synth;
+  if(db_type == std::string("test"))
+    db = &alphabet_test;
+
   if(opts.has_opt("stats"))
-    return print_stats();
+    return print_stats(*db);
 
   if(opts.has_opt("extract")) {
-    std::string db_type = opts.get_string("db");
-    auto* db = &alphabet_synth;
-    if(db_type == std::string("test"))
-      db = &alphabet_test;
-
     if(opts.has_opt("id")) {
       auto id = opts.get_opt<id_t>("id", 0);
       std::string output = opts.get_opt("output", std::to_string(id) + ".wav");
