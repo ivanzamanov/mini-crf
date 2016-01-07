@@ -2,6 +2,7 @@
 #include<fstream>
 #include<cmath>
 
+#include"util.hpp"
 #include"wav.hpp"
 
 void printWav(Wave& wav, char* file) {
@@ -24,7 +25,9 @@ void printWav(Wave& wav, char* file) {
   PRINT(bitsPerSample);
   PRINT(subchunk2Id);
   PRINT(samplesBytes);
-  std::cout << "Samples: " << wav.h.samplesBytes / (wav.h.bitsPerSample / 8) << std::endl;
+  int samples = wav.h.samplesBytes / (wav.h.bitsPerSample / 8);
+  std::cout << "Samples: " << samples << std::endl <<
+    file << " Duration: " << (float) samples / wav.h.sampleRate << std::endl;
 }
 
 void printWavs(int argc, char** argv) {

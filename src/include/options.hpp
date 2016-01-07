@@ -68,6 +68,7 @@ struct Options {
   }
 
   std::string get_string(std::string opt, bool* found=0) const {
+    opt = std::string("--") + opt;
     if(found) *found = false;
     for(int i = 0; i < (int) args.size() - 1; i++) {
       std::string test(args[i]);
@@ -81,9 +82,15 @@ struct Options {
     return std::string("");
   }
 
+  std::string get_string(unsigned index) const {
+    if(index >= args.size())
+      return std::string("");
+    else
+      return std::string(args[index]);
+  }
+
   template<class T>
   T get_opt(std::string opt, T def) const {
-    opt = std::string("--") + opt;
     bool found;
     std::string val = get_string(opt, &found);
     return found ? util::parse<T>(val) : def;
@@ -100,7 +107,7 @@ struct Options {
   enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, BASELINE, INVALID };
 
   Mode get_mode() {
-    std::string str = get_string("--mode");
+    std::string str = get_string("mode");
     if(str == "synth") return Mode::SYNTH;
     else if(str == "query") return Mode::QUERY;
     else if(str == "resynth") return Mode::RESYNTH;

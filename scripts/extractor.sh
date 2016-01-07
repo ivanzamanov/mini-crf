@@ -26,6 +26,6 @@ MFCC_WINDOW=0.015
 #echo `pwd`
 EXE="$(which praat)"
 CMD="$EXE $PRAAT_SCRIPT $WAV_FILE $TEXT_GRID $OUTPUT_FILE $LARYNGOGRAPH"
-#echo "$CMD"
+echo "Exec: $CMD"
 #echo "Script: $PRAAT_SCRIPT, WAVE: $WAV_FILE, TextGrid: $TEXT_GRID, Output: $OUTPUT_FILE"
-$CMD > /dev/null
+$CMD
