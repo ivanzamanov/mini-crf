@@ -114,8 +114,9 @@ namespace gridsearch {
     int frameOffset = 0;
     std::vector<FrameFrequencies> result;
     FrameFrequencies values;
-    int sampleWidth = values.size();
+    int sampleWidth = values.size() * 2 + 1;
     double* td_values = new double[sampleWidth];
+
     while(frameOffset < length) {
       for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
 
@@ -127,7 +128,19 @@ namespace gridsearch {
       frameOffset += sampleWidth;
       for(unsigned i = 0; i < frame.size(); i++) td_values[i] = frame[i];
 
-      ft::FT(td_values, frame.size(), values, values.size());
+      int binCount = (frameLength - 1) / 2;
+      ft::FT(td_values, frame.size(), values, binCount);
+
+      // If the frame is shorter, need to adjust frequency bins
+      if((int) frame.size() < sampleWidth) {
+        // scale >= 1
+        double scale = (double) sampleWidth / frame.size();
+        for(int i = 0; i < binCount; i++) {
+          cdouble val = values[i];
+          values[i] = cdouble(0, 0);
+          values[i / scale] += val;
+        }
+      }
       result.push_back(values);
     }
     delete[] td_values;

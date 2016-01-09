@@ -13,6 +13,12 @@ struct cdouble {
     return real == o.real && img == o.img;
   }
 
+  cdouble& operator+=(const cdouble& o) {
+    real += o.real;
+    img += o.img;
+    return *this;
+  }
+
   cdouble operator+(const cdouble o) const {
     return cdouble(real + o.real, img + o.img);
   }
