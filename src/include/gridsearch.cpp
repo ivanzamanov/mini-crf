@@ -375,7 +375,7 @@ namespace gridsearch {
         }
 
         if(bestCoef != -1) {
-          INFO(range.feature << " best value = " << bestCoef);
+          INFO(range.feature << " best value = " << bestCoef << " with " << bestVals.LogSpectrum);
           range.current = bestCoef;
         } else {
           INFO("Skipped " << range.feature);
@@ -398,12 +398,12 @@ namespace gridsearch {
     }
 
     std::array<Range, FC> ranges = {{
-        Range("trans-ctx", 1, 150, 1),
-        Range("trans-pitch", 1, 150, 1),
-        Range("state-pitch", 1, 150, 1),
-        Range("trans-mfcc", 0, 1, 0.01),
-        Range("state-duration", 1, 150, 1),
-        Range("state-energy", 1, 150, 1)
+        Range("trans-ctx", 1, 200, 1),
+        Range("trans-pitch", 0, 200, 1),
+        Range("state-pitch", 0, 200, 1),
+        Range("trans-mfcc", 0, 2, 0.01),
+        Range("state-duration", 0, 200, 1),
+        Range("state-energy", 0, 200, 1)
       }};
     for(auto it : ranges)
       INFO("Range " << it.to_string());
