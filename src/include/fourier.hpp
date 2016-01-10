@@ -37,7 +37,7 @@ namespace ft {
   template<class Val, class Freqs=cdouble*>
   void FT(Val* values, int T, Freqs& frequencies, int F) {
     double period = T;
-    Val real, img;
+    double real, img;
     for(int f = 0; f < F; f++) {
       double freq = f;
       real = img = 0;
@@ -53,7 +53,7 @@ namespace ft {
   template<class Val>
   void rFT(cdouble* frequencies, int F, Val* values, int T, int period) {
     for(int t = 0; t < T; t++) {
-      Val val = 0;
+      double val = 0;
       for(int f = 0; f < F; f++) {
         double freq = f;
         double arg = 2 * M_PI * t * freq / period;

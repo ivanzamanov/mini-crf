@@ -115,7 +115,7 @@ namespace gridsearch {
     std::vector<FrameFrequencies> result;
     FrameFrequencies values;
     int sampleWidth = values.size() * 2 + 1;
-    double* td_values = new double[sampleWidth];
+    double td_values[sampleWidth];
 
     while(frameOffset < length) {
       for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
@@ -143,7 +143,6 @@ namespace gridsearch {
       }
       result.push_back(values);
     }
-    delete[] td_values;
     assert(result.size() > 0);
     return result;
   }
@@ -175,11 +174,11 @@ namespace gridsearch {
         m1 = m1 ? m1 : 1;
         double m2 = freqs2[i].magn();
         m2 = m2 ? m2 : 1;
-        diff += std::abs( std::log( m2 / m1) );
+        diff += std::pow( std::log10( m2 / m1), 2 );
       }
       value += diff;
     }
-    return value;
+    return value / minSize;
   }
 
   double compare_LogSpectrum(Wave& result, Wave& original) {
@@ -241,18 +240,24 @@ namespace gridsearch {
 
   void aggregate(std::vector<Comparisons> params,
                  Comparisons* sum=0,
-                 Comparisons* max=0) {
+                 Comparisons* max=0,
+                 Comparisons* avg=0) {
     Comparisons sumTemp;
+    Comparisons avgTemp;
     int maxIndex = -1;
     for(unsigned i = 0; i < params.size(); i++) {
       if(maxIndex == -1 || params[i] < params[maxIndex])
         maxIndex = i;
       sumTemp = sumTemp + params[i];
     }
+    avgTemp.LogSpectrum = sumTemp.LogSpectrum / params.size();
+    avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
     if(sum)
       *sum = sumTemp;
     if(max)
       *max = params[maxIndex];
+    if(avg)
+      *avg = avgTemp;
   }
 
   double randDouble() {
@@ -325,7 +330,7 @@ namespace gridsearch {
     for(unsigned i = 0; i < count; i++) comps.push_back(params[i].result);
 
     Comparisons result;
-    aggregate(comps, &result);
+    aggregate(comps, 0, 0, &result);
     return result;
   }
   
