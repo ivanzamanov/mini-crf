@@ -128,8 +128,7 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
   int i = 0;
   for(auto& p : w.source) {
     FileData fileData = w.origin.file_data_of(p);
-    std::ifstream str(fileData.file);
-    ptr -> read(str);
+    ptr -> read(fileData);
     PsolaConstants limits(dest->sampleRate());
 
     // extract wave data
@@ -154,16 +153,6 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
   }
 }
 
-template<class Arr>
-static unsigned from_chars(Arr arr) {
-  unsigned result = 0;
-  result = arr[3];
-  result = (result << 8) | arr[2];
-  result = (result << 8) | arr[1];
-  result = (result << 8) | arr[0];
-  return result;
-}
-
 Wave SpeechWaveSynthesis::get_resynthesis_td() {
   Options opts;
   opts.add_opt("td", "");
@@ -178,21 +167,10 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   readSourceData(*this, sourceData, waveData);
 
   // First off, prepare for output, build some default header...
-  WaveHeader h = {
-    .chunkId = from_chars("RIFF"),
-    .chunkSize = sizeof(WaveHeader) - 2 * sizeof(unsigned),
-    .format = from_chars("WAVE"),
-    .subchunkId = from_chars("fmt "),
-    .subchunk1Size = 16,
-    .audioFormat = 1,
-    .channels = 1,
-    .sampleRate = sourceData->sampleRate(),
-    .byteRate = sourceData->sampleRate() * 2,
-    .blockAlign = 2,
-    .bitsPerSample = 16,
-    .subchunk2Id = from_chars("data"),
-    .samplesBytes = 0
-  };
+  WaveHeader h = WaveHeader::default_header();
+  h.sampleRate = sourceData->sampleRate();
+  h.byteRate = sourceData->sampleRate() * 2;
+
   WaveBuilder wb(h);
 
   // Ok, so waveData contains all the pieces with pitch marks translated to piece-local time

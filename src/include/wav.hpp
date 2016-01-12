@@ -12,6 +12,16 @@
 
 const int DEFAULT_SAMPLE_RATE = 24000;
 
+template<class Arr>
+unsigned uint_from_chars(Arr arr) {
+  unsigned result = 0;
+  result = arr[3];
+  result = (result << 8) | arr[2];
+  result = (result << 8) | arr[1];
+  result = (result << 8) | arr[0];
+  return result;
+}
+
 // Does not own data
 struct WaveData {
   WaveData()
@@ -129,6 +139,24 @@ struct WaveHeader {
     bitsPerSample;
   unsigned subchunk2Id,
     samplesBytes;
+
+  static WaveHeader default_header() {
+    return {
+      .chunkId = uint_from_chars("RIFF"),
+        .chunkSize = sizeof(WaveHeader) - 2 * sizeof(unsigned),
+        .format = uint_from_chars("WAVE"),
+        .subchunkId = uint_from_chars("fmt "),
+        .subchunk1Size = 16,
+        .audioFormat = 1,
+        .channels = 1,
+        .sampleRate = DEFAULT_SAMPLE_RATE,
+        .byteRate = DEFAULT_SAMPLE_RATE * 2,
+        .blockAlign = 2,
+        .bitsPerSample = 16,
+        .subchunk2Id = uint_from_chars("data"),
+        .samplesBytes = 0
+        };
+  }
 };
 
 struct Wave {
@@ -142,11 +170,15 @@ struct Wave {
   WaveHeader h;
   char* data;
 
-  void read(std::string file) {
+  void read(const FileData& data) {
+    read(data.file);
+  }
+
+  void read(const std::string file) {
     std::ifstream str(file);
     read(str);
   }
-  
+
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
     if(data) free(data);

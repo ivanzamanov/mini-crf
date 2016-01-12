@@ -23,6 +23,10 @@ namespace tool {
     vector<unsigned> old_ids;
     vector<unsigned> new_ids;
 
+    const LabelAlphabet<PhonemeInstance>::LabelClass get_class(PhoneticLabel label) const {
+      return classes[label];
+    }
+
     const LabelAlphabet<PhonemeInstance>::LabelClass get_class(const PhonemeInstance& phon) const {
       if(!FORCE_SCALE)
         return classes[phon.label];
@@ -49,7 +53,7 @@ namespace tool {
         }
     }
 
-    FileData file_data_of(const PhonemeInstance& phon) {
+    FileData file_data_of(const PhonemeInstance& phon) const {
       return files[ file_indices[ phon.id ] ];
     }
 

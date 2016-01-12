@@ -1,6 +1,6 @@
 
 CC = clang++
-CFLAGS = -std=c++11 -Wall -I./include -g
+CFLAGS = -std=c++11 -Wall -I./include -g -fstandalone-debug
 OPTS = -O3 -Ofast -mtune=native
 #CLIB = -stdlib=libc++
 
@@ -21,8 +21,9 @@ main: $(MAIN_DEPS)
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp $(CPP_FILES) -o test $(LIBS)
 
+db-stats: OPTS=
 db-stats: $(MAIN_DEPS) db-stats.cpp
-	$(CMD) db-stats.cpp $(CPP_FILES) -o db-stats $(LIBS)
+	$(CMD) db-stats.cpp include/*.o -o db-stats $(LIBS)
 
 include/tool.o: include/tool.cpp
 	$(CMD) $< -c -o $@
@@ -38,6 +39,9 @@ text2bin: $(MAIN_DEPS) text2bin.cpp
 
 single: speech_mod_single.cpp $(OBJ_FILES)
 	$(CMD) $< $(OBJ_FILES) -o $@ $(LIBS)
+
+is-wav:
+	$(CMD) is-wav.cpp -g -o is-wav
 
 all: clean main test main-opt text2bin text2bin-opt
 

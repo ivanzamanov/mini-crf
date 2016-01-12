@@ -114,8 +114,9 @@ namespace gridsearch {
     int frameOffset = 0;
     std::vector<FrameFrequencies> result;
     FrameFrequencies values;
-    int sampleWidth = values.size();
-    double* td_values = new double[sampleWidth];
+    int sampleWidth = values.size() * 2 + 1;
+    double td_values[sampleWidth];
+
     while(frameOffset < length) {
       for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
 
@@ -127,10 +128,21 @@ namespace gridsearch {
       frameOffset += sampleWidth;
       for(unsigned i = 0; i < frame.size(); i++) td_values[i] = frame[i];
 
-      ft::FT(td_values, frame.size(), values, values.size());
+      int binCount = (frameLength - 1) / 2;
+      ft::FT(td_values, frame.size(), values, binCount);
+
+      // If the frame is shorter, need to adjust frequency bins
+      if((int) frame.size() < sampleWidth) {
+        // scale >= 1
+        double scale = (double) sampleWidth / frame.size();
+        for(int i = 0; i < binCount; i++) {
+          cdouble val = values[i];
+          values[i] = cdouble(0, 0);
+          values[i / scale] += val;
+        }
+      }
       result.push_back(values);
     }
-    delete[] td_values;
     assert(result.size() > 0);
     return result;
   }
@@ -162,11 +174,11 @@ namespace gridsearch {
         m1 = m1 ? m1 : 1;
         double m2 = freqs2[i].magn();
         m2 = m2 ? m2 : 1;
-        diff += std::abs( std::log( m2 / m1) );
+        diff += std::pow( std::log10( m2 / m1), 2 );
       }
       value += diff;
     }
-    return value;
+    return value / minSize;
   }
 
   double compare_LogSpectrum(Wave& result, Wave& original) {
@@ -228,18 +240,24 @@ namespace gridsearch {
 
   void aggregate(std::vector<Comparisons> params,
                  Comparisons* sum=0,
-                 Comparisons* max=0) {
+                 Comparisons* max=0,
+                 Comparisons* avg=0) {
     Comparisons sumTemp;
+    Comparisons avgTemp;
     int maxIndex = -1;
     for(unsigned i = 0; i < params.size(); i++) {
       if(maxIndex == -1 || params[i] < params[maxIndex])
         maxIndex = i;
       sumTemp = sumTemp + params[i];
     }
+    avgTemp.LogSpectrum = sumTemp.LogSpectrum / params.size();
+    avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
     if(sum)
       *sum = sumTemp;
     if(max)
       *max = params[maxIndex];
+    if(avg)
+      *avg = avgTemp;
   }
 
   double randDouble() {
@@ -312,7 +330,7 @@ namespace gridsearch {
     for(unsigned i = 0; i < count; i++) comps.push_back(params[i].result);
 
     Comparisons result;
-    aggregate(comps, &result);
+    aggregate(comps, 0, 0, &result);
     return result;
   }
   
@@ -362,7 +380,7 @@ namespace gridsearch {
         }
 
         if(bestCoef != -1) {
-          INFO(range.feature << " best value = " << bestCoef);
+          INFO(range.feature << " best value = " << bestCoef << " with " << bestVals.LogSpectrum);
           range.current = bestCoef;
         } else {
           INFO("Skipped " << range.feature);
@@ -385,12 +403,12 @@ namespace gridsearch {
     }
 
     std::array<Range, FC> ranges = {{
-        Range("trans-ctx", 1, 150, 1),
-        Range("trans-pitch", 1, 150, 1),
-        Range("state-pitch", 1, 150, 1),
-        Range("trans-mfcc", 0, 10, 0.1),
-        Range("state-duration", 50, 200, 1),
-        Range("state-energy", 1, 150, 1)
+        Range("trans-ctx", 1, 200, 1),
+        Range("trans-pitch", 0, 200, 1),
+        Range("state-pitch", 0, 200, 1),
+        Range("trans-mfcc", 0, 2, 0.01),
+        Range("state-duration", 0, 200, 1),
+        Range("state-energy", 0, 200, 1)
       }};
     for(auto it : ranges)
       INFO("Range " << it.to_string());

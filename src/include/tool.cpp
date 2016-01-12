@@ -2,14 +2,11 @@
 
 void consolidate_labels(PhonemeAlphabet& alphabet, StringLabelProvider& original,
                         StringLabelProvider& cons) {
-  auto it = alphabet.labels.begin();
-  while(it != alphabet.labels.end()) {
-    PhonemeInstance& p = *it;
+  for(auto& p : alphabet.labels) {
     std::string label = original.convert(p.label);
     p.label = cons.convert(label);
     p.ctx_left = (p.ctx_left == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_left));
     p.ctx_right = (p.ctx_right == INVALID_LABEL) ? INVALID_LABEL : cons.convert( original.convert(p.ctx_right));
-    ++it;
   }
 }
   

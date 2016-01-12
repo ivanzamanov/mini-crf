@@ -11,7 +11,16 @@ int main() {
 
   const int F = 100;
   cdouble frequencies[T];
-  ft::FT(values, T, frequencies, F);
+  ft::myFT(values, T, frequencies, F);
   double inversed[T];
-  ft::rFT(frequencies, F, inversed, T);
+  ft::rFT(frequencies, F, inversed, T, T);
+
+  double err = 0;
+  for(int i = 0; i < T; i++) {
+    err += std::abs(values[i] - inversed[i]);
+  }
+  std::cout << "Err: " << err << std::endl;
+
+  cdouble frequencies2[T];
+  ft::FT(values, T, frequencies2, F);  
 }
