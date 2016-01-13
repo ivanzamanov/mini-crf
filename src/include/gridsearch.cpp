@@ -7,6 +7,10 @@
 #include"tool.hpp"
 #include"parser.hpp"
 
+extern double hann(double i, int size);
+
+static bool APPLY_WINDOW_CMP = false;
+
 struct Range {
   Range(): Range("", 0, 0, 1) { }
   Range(std::string feature, double from, double to, double step)
@@ -133,6 +137,11 @@ namespace gridsearch {
       for(unsigned i = 0; i < frame.size(); i++) td_values[i] = frame[i];
 
       int binCount = (frameLength - 1) / 2;
+
+      if(APPLY_WINDOW_CMP) {
+        for(unsigned j = 0; j < frame.size(); j++)
+          td_values[j] *= hann(j, frame.size());
+      }
       ft::FT(td_values, frame.size(), values, binCount);
 
       // If the frame is shorter, need to adjust frequency bins
@@ -404,6 +413,7 @@ namespace gridsearch {
   int train(const Options& opts) {
     Progress::enabled = false;
     Comparisons::metric = opts.get_opt<std::string>("metric", "");
+    APPLY_WINDOW_CMP = opts.get_opt("apply-window-cmp", false);
 
     //#pragma omp parallel for
     int threads = opts.get_opt<int>("thread-count", 8);
