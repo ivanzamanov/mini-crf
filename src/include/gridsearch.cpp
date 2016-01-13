@@ -1,3 +1,6 @@
+#include <chrono>
+#include <thread>
+
 #include"gridsearch.hpp"
 #include"threadpool.h"
 #include"crf.hpp"
@@ -40,7 +43,7 @@ struct ValueCache {
     for(unsigned i = 0; i < args.size(); i++) {
       bool found = true;
       for(unsigned j = 0; j < args[i].size(); j++)
-        found = found && args[i][j] == ranges[j].current;
+        found = found && (args[i][j] == ranges[j].current);
       if(found) {
         result = values[i];
         return true;
@@ -58,6 +61,7 @@ struct ValueCache {
   }
 
   void persist() {
+    return;
     std::ofstream str(path);
     BinaryWriter w(&str);
     unsigned size = values.size();
@@ -115,7 +119,7 @@ namespace gridsearch {
     std::vector<FrameFrequencies> result;
     FrameFrequencies values;
     int sampleWidth = values.size() * 2 + 1;
-    double td_values[sampleWidth];
+    auto td_values = new double[sampleWidth];
 
     while(frameOffset < length) {
       for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
@@ -143,6 +147,7 @@ namespace gridsearch {
       }
       result.push_back(values);
     }
+    delete[] td_values;
     assert(result.size() > 0);
     return result;
   }
@@ -196,9 +201,8 @@ namespace gridsearch {
     return result;
   }
 
-  void resynth_index(ResynthParams* params) {
+  void do_resynth_index(ResynthParams* params) {
     int index = params->index;
-  
     std::vector<PhonemeInstance> input = corpus_test.input(index);
     std::vector<int> path;
 
@@ -217,14 +221,17 @@ namespace gridsearch {
 
     params->result.ItakuraSaito = compare_IS(resultSignal, sourceSignal);
     params->result.LogSpectrum = compare_LogSpectrum(resultSignal, frames[index]);
-    
+  }
+
+  void resynth_index(ResynthParams* params) {
+    do_resynth_index(params);
     *(params->flag) = 1;
   }
 
   void wait_done(bool* flags, unsigned count) {
-    bool done;
-    do {
-      sleep(1);
+    auto done = false;
+    while(!done) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       done = true;
       for(unsigned i = 0; i < count; i++)
         done &= flags[i];
@@ -235,7 +242,7 @@ namespace gridsearch {
                 cerr << i << " ";
             cerr << std::endl;
             );
-    } while(!done);
+    }
   }
 
   void aggregate(std::vector<Comparisons> params,
@@ -314,8 +321,10 @@ namespace gridsearch {
     //return Comparisons().dummy(randDouble());
     unsigned count = corpus_test.size();
     bool flags[count];
+    for(unsigned i = 0; i < count; i++)
+      flags[i] = 0;
 
-    ResynthParams params[count];
+    auto params = new ResynthParams[count];
     for(unsigned i = 0; i < count; i++) {
       params[i].init(i, &flags[i]);
 
@@ -331,6 +340,7 @@ namespace gridsearch {
 
     Comparisons result;
     aggregate(comps, 0, 0, &result);
+    delete[] params;
     return result;
   }
   
@@ -357,7 +367,9 @@ namespace gridsearch {
                   LOG(ranges[k].feature << "=" << ranges[k].current););
 
           Comparisons result;
-          bool inCache = vc.load(ranges, result);
+          result.LogSpectrum = 0;
+          bool inCache;
+          inCache = vc.load(ranges, result);
 
           if(!inCache)
             // And actual work...
@@ -432,8 +444,6 @@ namespace gridsearch {
     INFO("Best at: ");
     for(unsigned k = 0; k < ranges.size(); k++)
       LOG(ranges[k].feature << "=" << ranges[k].current);
-
-    tp.destroy_threadpool();
 
     return 0;
   }

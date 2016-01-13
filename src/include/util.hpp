@@ -34,7 +34,7 @@ struct Color {
 #define DEBUG(x) ;
 #define LOG(x) std::cerr << x << std::endl
 #define LOG_COLOR(h, x, color) std::cerr << Color(ColorCode::color) << h << Color(ColorCode::DEFAULT) << x << std::endl
-#define LOG_COLOR_OPT(h, x, color) if(COLOR_ENABLED) LOG_COLOR(h, x, color); else LOG(h << x)
+#define LOG_COLOR_OPT(h, x, color) if(COLOR_ENABLED) { LOG_COLOR(h, x, color); } else { LOG(h << x); }
 #define INFO(x) LOG_COLOR_OPT("INFO: ", x, GREEN)
 #define WARN(x) LOG_COLOR_OPT("WARN: ", x, YELLOW)
 #define ERROR(x) LOG_COLOR_OPT("ERROR: ", x, RED)

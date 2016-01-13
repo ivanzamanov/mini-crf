@@ -19,6 +19,15 @@ namespace gridsearch {
     static std::string metric;
     static std::string aggregate;
 
+    Comparisons()
+      :ItakuraSaito(0), LogSpectrum(0) { }
+
+    Comparisons(double is, double ls)
+      :ItakuraSaito(is), LogSpectrum(ls) { }
+
+    Comparisons(const Comparisons& o)
+      :ItakuraSaito(o.ItakuraSaito), LogSpectrum(o.LogSpectrum) { }
+
     static double aggregate_values(double v1, double v2) {
       if(Comparisons::aggregate == "sum")
         return v1 + v2;
@@ -59,10 +68,7 @@ namespace gridsearch {
     }
 
     const Comparisons operator+(const Comparisons o) const {
-      Comparisons result = {
-        .ItakuraSaito = ItakuraSaito + o.ItakuraSaito,
-        .LogSpectrum = LogSpectrum + o.LogSpectrum
-      };
+      Comparisons result(ItakuraSaito + o.ItakuraSaito, LogSpectrum + o.LogSpectrum);
       return result;
     }
 

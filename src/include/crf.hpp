@@ -47,6 +47,10 @@ const double TRAINING_RATIO = 0.3;
 template<class Input, class Label>
 class _Corpus {
 public:
+  void set_max_size(int max_size) {
+    this->max_size = max_size;
+  }
+  
   vector<Label>& label(int i) {
     return labels[i];
   };
@@ -56,6 +60,8 @@ public:
   };
 
   unsigned size() const {
+    if(max_size > 0)
+      return max_size;
     return inputs.size();
   };
 
@@ -81,6 +87,7 @@ public:
   };
 
 private:
+  int max_size = -1;
   vector<vector<Input> > inputs;
   vector<vector<Label> > labels;
 };
