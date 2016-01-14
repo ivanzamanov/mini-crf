@@ -10,6 +10,7 @@
 extern double hann(double i, int size);
 
 static bool APPLY_WINDOW_CMP = false;
+static float WINDOW_OVERLAP = 0.1;
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -125,12 +126,19 @@ namespace gridsearch {
     int sampleWidth = values.size() * 2 + 1;
     auto td_values = new double[sampleWidth];
 
+    int lastFrameSize = 0;
     while(frameOffset < length) {
       for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
+
+      // i.e. after the first frame...
+      if(frameOffset > 0)
+        frameOffset -= lastFrameSize * WINDOW_OVERLAP;
 
       int frameLength = std::min(sampleWidth, length - frameOffset);
       if(frameLength <= 0)
         break;
+
+      lastFrameSize = frameLength;
 
       WaveData frame = wave.extractBySample(frameOffset, frameOffset + frameLength);
       frameOffset += sampleWidth;
@@ -414,6 +422,7 @@ namespace gridsearch {
     Progress::enabled = false;
     Comparisons::metric = opts.get_opt<std::string>("metric", "");
     APPLY_WINDOW_CMP = opts.get_opt("apply-window-cmp", false);
+    WINDOW_OVERLAP = opts.get_opt("window-overlap", 0.1);
 
     //#pragma omp parallel for
     int threads = opts.get_opt<int>("thread-count", 8);
