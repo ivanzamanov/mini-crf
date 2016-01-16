@@ -157,6 +157,11 @@ struct WaveHeader {
         .samplesBytes = 0
         };
   }
+
+  void setSampleBytes(unsigned bytes) {
+    samplesBytes = bytes;
+    chunkSize = sizeof(*this) - sizeof(subchunk1Size) - sizeof(chunkId) + samplesBytes;
+  }
 };
 
 struct Wave {
@@ -255,8 +260,7 @@ struct WaveBuilder {
     this->data = (char*) realloc(this->data, h.samplesBytes + count);
     memcpy(this->data + h.samplesBytes, data, count);
 
-    h.samplesBytes += count;
-    h.chunkSize += count;
+    h.setSampleBytes(h.samplesBytes + count);
   }
 
   Wave build() {
