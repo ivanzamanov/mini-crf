@@ -44,6 +44,13 @@ struct Features {
     return prev.label != next.ctx_left;
   }
 
+  static cost EnergyTrans(const PhonemeInstance& prev,
+                          const PhonemeInstance& next,
+                          int,
+                          const vector<PhonemeInstance>&) {
+    return prev.energy - next.energy;
+  }
+
   static cost MFCCDist(const PhonemeInstance& prev,
                        const PhonemeInstance& next,
                        int, const vector<PhonemeInstance>&) {

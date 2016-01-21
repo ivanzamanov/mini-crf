@@ -415,7 +415,7 @@ namespace gridsearch {
 
           if(csvFile != std::string("")) {
             util::join_output(csvOutput, ranges, [](const Range& r) { return r.current; }, " ")
-              << result.value() << std::endl;
+              << " " << result.value() << std::endl;
           }
 
           // Advance

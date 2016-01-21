@@ -6,10 +6,13 @@
 #include"features.hpp"
 
 using namespace tool;
+using std::vector;
+using std::pair;
+using std::string;
 
 bool Progress::enabled = true;
-std::string gridsearch::Comparisons::metric = "";
-std::string gridsearch::Comparisons::aggregate = "";
+string gridsearch::Comparisons::metric = "";
+string gridsearch::Comparisons::aggregate = "";
 
 bool print_by_id_short(const PhonemeAlphabet& alphabet, id_t phon_id) {
   if(phon_id >= alphabet.size())
@@ -24,7 +27,7 @@ bool print_by_id_short(const PhonemeAlphabet& alphabet, id_t phon_id) {
   return true;
 }
 
-bool print_label(const std::string label) {
+bool print_label(const string label) {
   auto label_id = labels_all.convert(label);
   LOG("Label: " << label);
 
@@ -38,7 +41,7 @@ bool print_label(const std::string label) {
   return true;
 }
 
-bool extract_by_id(const PhonemeAlphabet& alphabet, id_t id, const std::string output) {
+bool extract_by_id(const PhonemeAlphabet& alphabet, id_t id, const string output) {
   if(id >= alphabet.size()) {
     ERROR("No such instance: " << id);
     return false;
@@ -54,19 +57,17 @@ bool extract_by_id(const PhonemeAlphabet& alphabet, id_t id, const std::string o
   return false;
 }
 
-bool extract_by_label(const PhonemeAlphabet& alphabet, std::string label_string) {
+bool extract_by_label(const PhonemeAlphabet& alphabet, string label_string) {
   auto label = labels_all.convert(label_string);
   for(auto& id : alphabet.get_class(label)) {
-    std::string output = std::to_string(id) + ".wav";
+    string output = std::to_string(id) + ".wav";
     extract_by_id(alphabet, id, output);
   }
   return true;
 }
 
-#define AS_STRING(x) #x
-
 template<class Func>
-bool print_stats_func(const PhonemeAlphabet& alphabet, Func f) {
+bool print_stats_func_edge(const PhonemeAlphabet& alphabet, Func f, const std::string displayName) {
   double mean = 0, max = 0;
   int n = 0;
   const vector<PhonemeInstance> dummy;
@@ -81,22 +82,35 @@ bool print_stats_func(const PhonemeAlphabet& alphabet, Func f) {
     }
   }
 
-  std::cout << "AS_STRING(Func) Max = " << max << std::endl
-            << "AS_STRING(Func) Avg = " << mean << std::endl;
+  std::cout << displayName + " Max = " << max << std::endl
+            << displayName + " Avg = " << mean << std::endl;
   return true;
 }
 
+template<class Field, class _FieldValueType=double>
+bool print_stats_field(const PhonemeAlphabet& alphabet, string label_string, Field f) {
+  auto label = labels_all.convert(label_string);
+  vector<_FieldValueType> values;
+  for(auto& id : alphabet.get_class(label)) {
+    auto& p = alphabet.fromInt(id);
+    std::cout << id << " " << f(p) << std::endl;
+  }
+  return true;
+}
+
+#define FUNC_AS_PARAM(x) x, #x
 bool print_stats(const PhonemeAlphabet& alphabet) {
   INFO("Stats over " << alphabet.size() << " labels");
-  print_stats_func(alphabet, &Features::MFCCDist);
-  print_stats_func(alphabet, &Features::Pitch);
+  print_stats_func_edge(alphabet, &FUNC_AS_PARAM(Features::EnergyTrans));
+  print_stats_func_edge(alphabet, &FUNC_AS_PARAM(Features::Pitch));
+  print_stats_func_edge(alphabet, &FUNC_AS_PARAM(Features::MFCCDist));
   return true;
 }
 
 bool handle(const Options& opts) {
-  std::string db_type = opts.get_string("db");
+  string db_type = opts.get_string("db");
   auto* db = &alphabet_synth;
-  if(db_type == std::string("test"))
+  if(db_type == string("test"))
     db = &alphabet_test;
 
   if(opts.has_opt("stats"))
@@ -105,13 +119,16 @@ bool handle(const Options& opts) {
   if(opts.has_opt("extract")) {
     if(opts.has_opt("id")) {
       auto id = opts.get_opt<id_t>("id", 0);
-      std::string output = opts.get_opt("output", std::to_string(id) + ".wav");
+      string output = opts.get_opt("output", std::to_string(id) + ".wav");
       return extract_by_id(*db, id, output);
     } else if(opts.has_opt("label")) {
         auto label = opts.get_string("label");
         return extract_by_label(*db, label);
     }
   }
+
+  if(opts.has_opt("label-stats"))
+    return print_stats_field(*db, opts.get_string("label"), [](const PhonemeInstance& p) { return p.energy; });
 
   if(opts.has_opt("label"))
     return print_label(opts.get_string("label"));
