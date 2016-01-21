@@ -173,7 +173,7 @@ namespace gridsearch {
   double compare_IS(Wave& result, Wave& original) {
     return 0;
     double value = 0;
-    each_frame(result, original, 0.05, [&](WaveData f1, WaveData f2) {
+    each_frame(result, original, 0.05, [&](WaveData, WaveData) {
         value++;
       });
     assert(false); // ItakuraSaito not yet implemented
@@ -361,7 +361,18 @@ namespace gridsearch {
     return result;
   }
   
-  void executeTraining(unsigned passes, std::array<Range, FC>& ranges, int maxIterations, std::vector< std::vector<FrameFrequencies> > &precompFrames, ThreadPool& tp, ValueCache<FC>& vc) {
+  void executeTraining(unsigned passes,
+                       std::array<Range, FC>& ranges,
+                       int maxIterations,
+                       std::vector< std::vector<FrameFrequencies> > &precompFrames,
+                       ThreadPool& tp,
+                       ValueCache<FC>& vc,
+                       std::string csvFile) {
+    std::ofstream csvOutput(csvFile);
+    if(csvFile != std::string("")) {
+      util::join_output(csvOutput, ranges, [](const Range& r) { return r.feature; }, " ")
+        << " value" << std::endl;
+    }
     int iteration = 0;
     for (unsigned passNumber = 1; passNumber <= passes && iteration < maxIterations; passNumber++) {
       INFO("Pass " << passNumber);
@@ -400,6 +411,11 @@ namespace gridsearch {
           if(!inCache) {
             vc.save(ranges, result);
             vc.persist();
+          }
+
+          if(csvFile != std::string("")) {
+            util::join_output(csvOutput, ranges, [](const Range& r) { return r.current; }, " ")
+              << result.value() << std::endl;
           }
 
           // Advance
@@ -457,8 +473,9 @@ namespace gridsearch {
     std::vector<TrainingOutput> outputs;
     unsigned passes = opts.get_opt<int>("training-passes", 3);
     int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
+    std::string csvFile = opts.get_string("csv-file");
 
-    executeTraining(passes, ranges, maxIterations, precompFrames, tp, vc);
+    executeTraining(passes, ranges, maxIterations, precompFrames, tp, vc, csvFile);
 
     INFO("Best at: ");
     for(unsigned k = 0; k < ranges.size(); k++)
