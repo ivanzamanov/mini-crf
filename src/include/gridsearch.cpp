@@ -7,6 +7,8 @@
 #include"tool.hpp"
 #include"parser.hpp"
 
+#define DEBUG_TRAINING
+
 extern double hann(double i, int size);
 
 static bool APPLY_WINDOW_CMP = false;
@@ -66,7 +68,6 @@ struct ValueCache {
   }
 
   void persist() {
-    return;
     std::ofstream str(path);
     BinaryWriter w(&str);
     unsigned size = values.size();
@@ -335,7 +336,9 @@ namespace gridsearch {
   
   Comparisons do_train(ThreadPool& tp,
                        std::vector< std::vector<FrameFrequencies> > *precompFrames) {
-    //return Comparisons().dummy(randDouble());
+#ifdef DEBUG_TRAINING
+    return Comparisons().dummy(randDouble());
+#endif
     unsigned count = corpus_test.size();
     bool flags[count];
     for(unsigned i = 0; i < count; i++)
@@ -379,12 +382,16 @@ namespace gridsearch {
 
       for(unsigned i = (passNumber == 1); i < ranges.size() && iteration < maxIterations; i++) {
         Range& range = ranges[i];
+        csvOutput << "#" << range.feature << std::endl;
         range.reset();
         std::vector<Comparisons> comps;
         double bestCoef = -1;
         Comparisons bestVals;
         while(range.has_next() && iteration < maxIterations) {
           iteration++;
+
+          // Advance
+          range.next();
 
           // Update coefficient
           crf.set(range.feature, range.current);
@@ -399,27 +406,19 @@ namespace gridsearch {
           bool inCache;
           inCache = vc.load(ranges, result);
 
-          if(!inCache)
-            // And actual work...
-            result = do_train(tp, &precompFrames);
+          // And actual work...
+          if(!inCache)  result = do_train(tp, &precompFrames);
 
           if(bestCoef == -1 || result < bestVals) {
             bestCoef = ranges[i].current;
             bestVals = result;
           }
 
-          if(!inCache) {
-            vc.save(ranges, result);
-            vc.persist();
-          }
+          if(!inCache) vc.save(ranges, result);
 
-          if(csvFile != std::string("")) {
+          if(csvFile != std::string(""))
             util::join_output(csvOutput, ranges, [](const Range& r) { return r.current; }, " ")
               << " " << result.value() << std::endl;
-          }
-
-          // Advance
-          range.next();
 
           INFO("Value: " << result.value());
         }
@@ -467,7 +466,10 @@ namespace gridsearch {
     INFO("Precomputing FFTs");
     std::vector< std::vector<FrameFrequencies> > precompFrames;
     precompFrames.resize(corpus_test.size());
+
+#ifndef DEBUG_TRAINING
     precomputeFrames(precompFrames, tp);
+#endif
     INFO("Done");
 
     std::vector<TrainingOutput> outputs;
