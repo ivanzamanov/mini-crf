@@ -107,6 +107,16 @@ bool print_stats(const PhonemeAlphabet& alphabet) {
   return true;
 }
 
+bool print_phon_stats(const PhonemeAlphabet& alphabet) {
+  std::cout << "Size: " << alphabet.size() << std::endl;
+  auto totalDuration = 0.0;
+  for(auto& x : alphabet.labels) {
+    totalDuration += (x.end - x.start);
+  }
+  std::cout << "Total Duration: " << totalDuration << std::endl;
+  return true;
+}
+
 bool handle(const Options& opts) {
   string db_type = opts.get_string("db");
   auto* db = &alphabet_synth;
@@ -115,6 +125,9 @@ bool handle(const Options& opts) {
 
   if(opts.has_opt("stats"))
     return print_stats(*db);
+
+  if(opts.has_opt("phon-stats"))
+    return print_phon_stats(*db);
 
   if(opts.has_opt("extract")) {
     if(opts.has_opt("id")) {

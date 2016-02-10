@@ -9,6 +9,7 @@
 #include"features.hpp"
 #include"speech_mod.hpp"
 #include"gridsearch.hpp"
+#include"csv.hpp"
 
 void print_usage() {
     std::cerr << "Usage: <cmd> <options>\n";
@@ -48,6 +49,7 @@ int resynthesize(Options& opts) {
 
   INFO("Original trans cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input));
   INFO("Original state cost: " << state_cost(input, crf, crf.lambda, crf.mu, input));
+
   std::vector<int> path;
   cost resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
 
@@ -58,8 +60,19 @@ int resynthesize(Options& opts) {
     sp.print_synth(path, input);
   sp.print_textgrid(path, input, labels_synth, opts.text_grid);
   INFO("Resynth. cost: " << resynth_cost);
-  INFO("Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input));
-  INFO("Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input));
+
+  PathFeatureStats stats;
+  INFO("Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input, &stats));
+  INFO("Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input, &stats));
+
+  CSVOutput<TOTAL_FEATURES> csv("path-stats.csv");
+  PhoneticFeatures f;
+  for(int i = 0; i < TOTAL_FEATURES; i++)
+    csv.header(i, (i < PhoneticFeatures::ESIZE) ?
+               f.enames[i] : f.vnames[i - PhoneticFeatures::ESIZE]);
+
+  for(auto& s : stats)
+    csv << s;
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);

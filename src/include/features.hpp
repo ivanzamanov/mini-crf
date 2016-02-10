@@ -7,25 +7,17 @@
 
 using namespace tool;
 
-#define FEATURES_COUNT 2
-
-enum FunctionId {
-  pitch = 0,
-  mfcc = 1
-};
-
-struct FeatureValues : public std::array<float, FEATURES_COUNT> {
-  int diff(const FeatureValues& o) const {
-    for(unsigned i = 0; i < size(); i++) {
-      if((*this)[i] != o[i])
-        return (int) i;
-    }
-    return -1;
+static constexpr int TOTAL_FEATURES = 6;
+struct FeatureStats : public std::array<cost, TOTAL_FEATURES> {
+  FeatureStats(): std::array<cost, TOTAL_FEATURES>() {
+    for(unsigned i = 0; i < size(); i++)
+      (*this)[i] = 0;
   }
-
-  void populate(float pitch, float mfcc) {
-    (*this)[FunctionId::pitch] = pitch;
-    (*this)[FunctionId::mfcc] = mfcc;
+};
+struct PathFeatureStats : public std::vector<FeatureStats> {
+  FeatureStats& get(int pos) {
+    resize(std::max(pos + 1, (int) size()));
+    return (*this)[pos];
   }
 };
 
@@ -58,7 +50,7 @@ struct Features {
     const MfccArray& mfcc2 = next.first().mfcc;
     cost result = 0;
     for (unsigned i = 0; i < mfcc1.size(); i++) {
-      auto diff = mfcc1[i] - mfcc2[i];
+      cost diff = mfcc1[i] - mfcc2[i];
       result += diff * diff;
     }
     return std::sqrt(result);
@@ -105,29 +97,14 @@ struct Features {
                                const vector<PhonemeInstance>&) {
     return (prev.id + 1 == next.id) ? 0 : 1;
   }
-
-  template<class Eval>
-  cost feature_value(const PhonemeInstance& p1, const PhonemeInstance& p2) {
-    Eval eval;
-    vector<PhonemeInstance> empty;
-    return eval(p1, p2, 0, empty);
-  }
-
-  FeatureValues get_feature_values(const PhonemeInstance& p1, const PhonemeInstance& p2) {
-    FeatureValues result;
-    vector<PhonemeInstance> dummy;
-    result.populate(
-                    Pitch(p1, p2, 0, dummy),
-                    MFCCDist(p1, p2, 0, dummy)
-                    );
-    return result;
-  }
 };
 
 struct PhoneticFeatures;
 typedef CRandomField<PhonemeAlphabet, PhonemeInstance, PhoneticFeatures> CRF;
 
 struct PhoneticFeatures {
+  typedef PathFeatureStats Stats;
+
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
@@ -147,6 +124,34 @@ struct PhoneticFeatures {
     "state-pitch",
     "state-energy"
   };
+
+#define INVOKE_TR_ST(idx, func) result += (stats[idx] = (lambda[idx] * func(src, dest, pos, x)))
+  cost invoke_transition_stats(const PhonemeInstance& src,
+                               const PhonemeInstance& dest,
+                               int pos, const vector<PhonemeInstance>& x,
+                               const vector<coefficient>& lambda,
+                               const vector<coefficient>&,
+                               FeatureStats& stats) const {
+    cost result = 0;
+    INVOKE_TR_ST(0, Features::Pitch);
+    INVOKE_TR_ST(1, Features::MFCCDist);
+    INVOKE_TR_ST(2, Features::LeftContext);
+    return result;
+  }
+
+#define INVOKE_STATE_ST(idx, func) result += (stats[idx + ESIZE] = (mu[idx] * func(dest, pos, x)))
+  cost invoke_state_stats(const PhonemeInstance&,
+                    const PhonemeInstance& dest,
+                    int pos, const vector<PhonemeInstance>& x,
+                    const vector<coefficient>&,
+                    const vector<coefficient>& mu,
+                    FeatureStats& stats) const {
+    cost result = 0;
+    INVOKE_STATE_ST(0, Features::Duration);
+    INVOKE_STATE_ST(1, Features::PitchState);
+    INVOKE_STATE_ST(2, Features::EnergyState);
+    return result;
+  }
 
 #define INVOKE_TR(idx, func) result += lambda[idx] * func(src, dest, pos, x)
   cost invoke_transition(const PhonemeInstance& src,
@@ -179,6 +184,8 @@ struct BaselineFeatures;
 typedef CRandomField<PhonemeAlphabet, PhonemeInstance, BaselineFeatures> BaselineCRF;
 
 struct BaselineFeatures {
+  typedef PathFeatureStats Stats;
+
   typedef cost (*_EdgeFeature)(const PhonemeInstance&, const PhonemeInstance&, int, const vector<PhonemeInstance>&);
   typedef cost (*_VertexFeature)(const PhonemeInstance&, int, const vector<PhonemeInstance>&);
 
@@ -191,6 +198,24 @@ struct BaselineFeatures {
 
   const std::string vnames[0] = {};
   const _VertexFeature g[0] = { };
+
+  cost invoke_transition_stats(const PhonemeInstance& src,
+                               const PhonemeInstance& dest,
+                               int pos, const vector<PhonemeInstance>& x,
+                               const vector<coefficient>& lambda,
+                               const vector<coefficient>& mu,
+                               FeatureStats&) const {
+    return invoke_transition(src, dest, pos, x, lambda, mu);
+  }
+
+  cost invoke_state_stats(const PhonemeInstance& src,
+                          const PhonemeInstance& dest,
+                          int pos, const vector<PhonemeInstance>& x,
+                          const vector<coefficient>& lambda,
+                          const vector<coefficient>& mu,
+                          FeatureStats&) const {
+    return invoke_state(src, dest, pos, x, lambda, mu);
+  }
 
   cost invoke_transition(const PhonemeInstance& src,
                          const PhonemeInstance& dest,

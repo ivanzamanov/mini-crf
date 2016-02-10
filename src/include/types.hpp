@@ -52,6 +52,7 @@ struct PhonemeInstance {
      duration(0),
      energy(0),
      id(0),
+     old_id(0),
      label(INVALID_LABEL),
      ctx_left(INVALID_LABEL),
      ctx_right(INVALID_LABEL)
@@ -67,6 +68,7 @@ struct PhonemeInstance {
   double energy;
   long energy_val;
   id_t id;
+  id_t old_id;
   PhoneticLabel label;
   PhoneticLabel ctx_left;
   PhoneticLabel ctx_right;

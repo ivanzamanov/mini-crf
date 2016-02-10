@@ -97,6 +97,7 @@ namespace tool {
           new_ids.resize(std::max((int) obj.id + 1, (int) new_ids.size()));
           new_ids[obj.id] = old_ids.size() - 1;
 
+          obj.old_id = obj.id;
           obj.id = index;
           new_labels.push_back(obj);
           index++;

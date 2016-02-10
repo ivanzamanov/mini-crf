@@ -7,7 +7,7 @@
 #include"tool.hpp"
 #include"parser.hpp"
 
-#define DEBUG_TRAINING
+//#define DEBUG_TRAINING
 
 extern double hann(double i, int size);
 
@@ -25,7 +25,7 @@ struct Range {
   void next() { current += step; }
 
   void reset() { current = from; }
-  
+
   double from, to, step, current;
   std::string feature;
 
@@ -151,7 +151,7 @@ namespace gridsearch {
         for(unsigned j = 0; j < frame.size(); j++)
           td_values[j] *= hann(j, frame.size());
       }
-      ft::FT(td_values, frame.size(), values, binCount);
+      //ft::FT(td_values, frame.size(), values, binCount);
 
       // If the frame is shorter, need to adjust frequency bins
       if((int) frame.size() < sampleWidth) {
@@ -208,7 +208,7 @@ namespace gridsearch {
     auto frames2 = toFFTdFrames(original);
     return compare_LogSpectrum(result, frames2);
   }
-  
+
   std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
     std::string result(1, ' ');
     for(auto it = vec.begin(); it != vec.end(); it++) {
@@ -323,7 +323,7 @@ namespace gridsearch {
     for(unsigned i = 0; i < count; i++) {
       flags[i] = 0;
       FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
-      
+
       params[i].init(i, &flags[i], fileData.file, &precompFrames);
 
       Task* t = new ParamTask<FFTPrecomputeParams>(&precomputeSingleFrames, &params[i]);
@@ -333,7 +333,7 @@ namespace gridsearch {
 
     delete[] params;
   }
-  
+
   Comparisons do_train(ThreadPool& tp,
                        std::vector< std::vector<FrameFrequencies> > *precompFrames) {
 #ifdef DEBUG_TRAINING
@@ -349,7 +349,7 @@ namespace gridsearch {
       params[i].init(i, &flags[i]);
 
       params[i].precompFrames = precompFrames;
-      
+
       Task* t = new ParamTask<ResynthParams>(&resynth_index, &params[i]);
       tp.add_task(t);
     }
@@ -363,7 +363,7 @@ namespace gridsearch {
     delete[] params;
     return result;
   }
-  
+
   void executeTraining(unsigned passes,
                        std::array<Range, FC>& ranges,
                        int maxIterations,
@@ -430,7 +430,7 @@ namespace gridsearch {
           INFO("Skipped " << range.feature);
         }
       }
-    }    
+    }
   }
 
   int train(const Options& opts) {

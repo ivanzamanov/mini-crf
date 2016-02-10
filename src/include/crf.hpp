@@ -50,7 +50,7 @@ public:
   void set_max_size(int max_size) {
     this->max_size = max_size;
   }
-  
+
   vector<Label>& label(int i) {
     return labels[i];
   };
@@ -99,6 +99,7 @@ public:
   typedef typename Alphabet::Label Label;
   typedef _Input Input;
   typedef _Corpus<Input, Label> TrainingCorpus;
+  typedef _Features Features;
 
   typedef cost (*EdgeFeature)(const Label&, const Label&, const int, const vector<Input>&);
   typedef cost (*VertexFeature)(const Label&, int, const vector<Input>&);
@@ -147,16 +148,24 @@ public:
                                   const Label& dest,
                                   int pos, const vector<Label>& x,
                                   const vector<coefficient>& lambda,
-                                  const vector<coefficient>& mu) const {
-    return features.invoke_transition(src, dest, pos, x, lambda, mu);
+                                  const vector<coefficient>& mu,
+                                  typename _Features::Stats* stats = 0) const {
+    if(stats)
+      return features.invoke_transition_stats(src, dest, pos, x, lambda, mu, stats->get(pos));
+    else
+       return features.invoke_transition(src, dest, pos, x, lambda, mu);
   }
 
   cost invoke_state_features(const Label& src,
                              const Label& dest,
                              int pos, const vector<Label>& x,
                              const vector<coefficient>& lambda,
-                             const vector<coefficient>& mu) const {
-    return features.invoke_state(src, dest, pos, x, lambda, mu);
+                             const vector<coefficient>& mu,
+                             typename _Features::Stats* stats = 0) const {
+    if(stats)
+      return features.invoke_state_stats(src, dest, pos, x, lambda, mu, stats->get(pos));
+    else
+      return features.invoke_state(src, dest, pos, x, lambda, mu);
   }
 
   _Features features;
@@ -228,26 +237,29 @@ struct FunctionalAutomaton {
     return 1 + pos * alphabet_length();
   }
 
-  cost concat_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
-    return calculate_value<false, true>(src, dest, pos);
+  cost concat_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos,
+                  typename CRF::Features::Stats* stats = 0) {
+    return calculate_value<false, true>(src, dest, pos, stats);
   }
 
   cost total_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
     return calculate_value<true, true>(src, dest, pos);
   }
 
-  cost state_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
-    return calculate_value<true, false>(src, dest, pos);
+  cost state_cost(const typename CRF::Label& src, const typename CRF::Label& dest, int pos,
+                  typename CRF::Features::Stats* stats = 0) {
+    return calculate_value<true, false>(src, dest, pos, stats);
   }
 
   template<bool includeState, bool includeTransition>
-  cost calculate_value(const typename CRF::Label& src, const typename CRF::Label& dest, int pos) {
+  cost calculate_value(const typename CRF::Label& src, const typename CRF::Label& dest, int pos,
+                       typename CRF::Features::Stats* stats = 0) {
     cost result = 0;
     if(includeTransition)
-      result = crf.invoke_transition_features(src, dest, pos, x, lambda, mu);
+      result = crf.invoke_transition_features(src, dest, pos, x, lambda, mu, stats);
 
     if(includeState)
-      result += crf.invoke_state_features(src, dest, pos, x, lambda, mu);
+      result += crf.invoke_state_features(src, dest, pos, x, lambda, mu, stats);
     return result;
   }
 
@@ -347,7 +359,7 @@ struct FunctionalAutomaton {
                                        next_children,
                                        children_length, pos,
                                        paths);
-#endif      
+#endif
       children_length = 0;
       std::swap(children, next_children);
       std::swap(children_length, next_children_length);
@@ -367,7 +379,7 @@ struct FunctionalAutomaton {
 
     if(max_path_ptr)
       *max_path_ptr = max_path;
-    
+
     delete[] children_a;
     delete[] next_children_a;
 
@@ -381,7 +393,10 @@ cost max_path(const vector<typename CRF::Input>& x, CRF& crf, const vector<coeff
 }
 
 template<class CRF>
-cost concat_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<coefficient>& lambda, const vector<coefficient>& mu, const vector<typename CRF::Input>& inputs) {
+cost concat_cost(const vector<typename CRF::Label>& y, CRF& crf,
+                 const vector<coefficient>& lambda, const vector<coefficient>& mu,
+                 const vector<typename CRF::Input>& inputs,
+                 typename CRF::Features::Stats* stats = 0) {
   FunctionalAutomaton<CRF> a(crf);
   a.lambda = lambda;
   a.mu = mu;
@@ -389,12 +404,15 @@ cost concat_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<co
 
   cost result = 0;
   for(unsigned i = 1; i < y.size(); i++)
-    result += a.concat_cost(y[i-1], y[i], i);
+    result += a.concat_cost(y[i-1], y[i], i, stats);
   return result;
 }
 
 template<class CRF>
-cost state_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<cost>& lambda, const vector<cost>& mu, const vector<typename CRF::Input>& inputs) {
+cost state_cost(const vector<typename CRF::Label>& y, CRF& crf,
+                const vector<cost>& lambda, const vector<cost>& mu,
+                const vector<typename CRF::Input>& inputs,
+                typename CRF::Features::Stats* stats = 0) {
   FunctionalAutomaton<CRF> a(crf);
   a.lambda = lambda;
   a.mu = mu;
@@ -402,7 +420,7 @@ cost state_cost(const vector<typename CRF::Label>& y, CRF& crf, const vector<cos
 
   cost result = 0;
   for(unsigned i = 0; i < y.size(); i++)
-    result += a.state_cost(y[i], y[i], i);
+    result += a.state_cost(y[i], y[i], i, stats);
 
   return result;
 }
@@ -516,7 +534,7 @@ void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
       assert(std::abs(verify - outputs[x * destCount + y]) < 0.01);
     }
   }
-  
+
   #endif*/
 
   work_groups[0] = srcCount; work_groups[1] = 1;
