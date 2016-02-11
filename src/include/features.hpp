@@ -80,7 +80,7 @@ struct Features {
   static cost EnergyState(const PhonemeInstance& p1,
                           int pos,
                           const vector<PhonemeInstance>& x) {
-    return p1.energy / x[pos].energy;
+    return std::abs(p1.energy - x[pos].energy);
   }
 
   static cost Duration(const PhonemeInstance& prev,
@@ -141,11 +141,11 @@ struct PhoneticFeatures {
 
 #define INVOKE_STATE_ST(idx, func) result += (stats[idx + ESIZE] = (mu[idx] * func(dest, pos, x)))
   cost invoke_state_stats(const PhonemeInstance&,
-                    const PhonemeInstance& dest,
-                    int pos, const vector<PhonemeInstance>& x,
-                    const vector<coefficient>&,
-                    const vector<coefficient>& mu,
-                    FeatureStats& stats) const {
+                          const PhonemeInstance& dest,
+                          int pos, const vector<PhonemeInstance>& x,
+                          const vector<coefficient>&,
+                          const vector<coefficient>& mu,
+                          FeatureStats& stats) const {
     cost result = 0;
     INVOKE_STATE_ST(0, Features::Duration);
     INVOKE_STATE_ST(1, Features::PitchState);

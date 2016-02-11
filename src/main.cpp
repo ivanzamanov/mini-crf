@@ -31,9 +31,33 @@ stime_t get_total_duration(std::vector<PhonemeInstance> input) {
   return result;
 }
 
+void outputStats(vector<coefficient>& lambda,
+                 vector<coefficient>& mu,
+                 PathFeatureStats& stats) {
+  CSVOutput<TOTAL_FEATURES> csv("path-stats.csv");
+  std::array<coefficient, TOTAL_FEATURES> coefs;
+  PhoneticFeatures f;
+  const int E_SIZE = PhoneticFeatures::ESIZE;
+  for(int i = 0; i < TOTAL_FEATURES; i++) {
+    if(i < E_SIZE) {
+      csv.header(i, f.enames[i]);
+      coefs[i] = lambda[i];
+    } else {
+      csv.header(i, f.vnames[i - E_SIZE]);
+      coefs[i] = mu[i - E_SIZE];
+    }
+  }
+
+  csv << coefs;
+  for(auto& s : stats)
+    csv << s;
+}
+
 int resynthesize(Options& opts) {
   crf.mu[0] = opts.get_opt<double>("state-pitch", 0);
   crf.mu[1] = opts.get_opt<double>("state-duration", 0);
+  crf.mu[2] = opts.get_opt<double>("state-energy", 0);
+
   crf.lambda[0] = opts.get_opt<double>("trans-pitch", 0);
   crf.lambda[1] = opts.get_opt<double>("trans-mfcc", 0);
   crf.lambda[2] = opts.get_opt<double>("trans-ctx", 0);
@@ -65,14 +89,7 @@ int resynthesize(Options& opts) {
   INFO("Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input, &stats));
   INFO("Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input, &stats));
 
-  CSVOutput<TOTAL_FEATURES> csv("path-stats.csv");
-  PhoneticFeatures f;
-  for(int i = 0; i < TOTAL_FEATURES; i++)
-    csv.header(i, (i < PhoneticFeatures::ESIZE) ?
-               f.enames[i] : f.vnames[i - PhoneticFeatures::ESIZE]);
-
-  for(auto& s : stats)
-    csv << s;
+  outputStats(crf.lambda, crf.mu, stats);
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
