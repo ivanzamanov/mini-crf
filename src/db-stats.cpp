@@ -117,6 +117,10 @@ bool print_phon_stats(const PhonemeAlphabet& alphabet) {
   return true;
 }
 
+bool correlate(const Options&) {
+  return true;
+}
+
 bool handle(const Options& opts) {
   string db_type = opts.get_string("db");
   auto* db = &alphabet_synth;
@@ -146,6 +150,9 @@ bool handle(const Options& opts) {
   if(opts.has_opt("label"))
     return print_label(opts.get_string("label"));
 
+  if(opts.has_opt("correlate"))
+    return correlate(opts);
+  
   return false;
 }
 

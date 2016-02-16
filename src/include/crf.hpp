@@ -266,27 +266,32 @@ struct FunctionalAutomaton {
   template<bool includeState, bool includeTransition>
   cost traverse_transitions(const Transition* children, unsigned children_length, const typename CRF::Label& src, int pos, unsigned& max_child) {
     unsigned m = 0;
+    Transition transition;
 
-    auto child = alphabet.fromInt(children[m].child);
-    cost transition = calculate_value<includeState, includeTransition>(src, child, pos);
-    cost child_value = funcs.concat(children[m].base_value, transition);
-    max_child = children[m].child;
+    transition = children[m];
+    auto child = alphabet.fromInt(transition.child);
+    cost transitionValue = calculate_value<includeState, includeTransition>(src, child, pos);
+    cost child_value = funcs.concat(transition.base_value, transitionValue);
+
+    unsigned max_child_tmp = transition.child;
     cost prev_value = child_value;
 
     cost agg;
     agg = child_value;
     for(++m; m < children_length; ++m) {
-      child = alphabet.fromInt(children[m].child);
-      transition = calculate_value<includeState, includeTransition>(src, child, pos);
-      child_value = funcs.concat(children[m].base_value, transition);
+      transition = children[m];
+      child = alphabet.fromInt(transition.child);
+      transitionValue = calculate_value<includeState, includeTransition>(src, child, pos);
+      child_value = funcs.concat(transition.base_value, transitionValue);
       if(funcs.is_better(child_value, prev_value)) {
-        max_child = children[m].child;
+        max_child_tmp = transition.child;
         prev_value = child_value;
       }
 
       agg = funcs.aggregate(child_value, agg);
     }
 
+    max_child = max_child_tmp;
     return agg;
   }
 
@@ -334,8 +339,7 @@ struct FunctionalAutomaton {
     const typename CRF::Alphabet::LabelClass& allowed = alphabet.get_class(x[pos]);
     options.push_back(allowed.size());
     for(auto it = allowed.begin(); it != allowed.end() ; it++) {
-      auto dest = *it;
-      children[children_length++].set(dest, funcs.empty());
+      children[children_length++].set( *it, funcs.empty());
     }
     prog.update();
 

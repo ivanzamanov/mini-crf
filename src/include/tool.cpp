@@ -57,6 +57,7 @@ namespace tool {
     EXTRA_TIME = opts->get_opt("extra-time", 0.0);
 
     crf.label_alphabet = &alphabet_synth;
+    baseline_crf.label_alphabet = &alphabet_synth;
     build_data(*opts);
 
     pre_process(alphabet_synth, corpus_synth);
