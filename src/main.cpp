@@ -31,21 +31,13 @@ stime_t get_total_duration(std::vector<PhonemeInstance> input) {
   return result;
 }
 
-void outputStats(vector<coefficient>& lambda,
-                 vector<coefficient>& mu,
-                 PathFeatureStats& stats) {
-  CSVOutput<TOTAL_FEATURES> csv("path-stats.csv");
-  std::array<coefficient, TOTAL_FEATURES> coefs;
-  PhoneticFeatures f;
-  const int E_SIZE = PhoneticFeatures::ESIZE;
-  for(int i = 0; i < TOTAL_FEATURES; i++) {
-    if(i < E_SIZE) {
-      csv.header(i, f.enames[i]);
-      coefs[i] = lambda[i];
-    } else {
-      csv.header(i, f.vnames[i - E_SIZE]);
-      coefs[i] = mu[i - E_SIZE];
-    }
+void outputStats(CRF::Values& lambda,
+                 CRF::Stats& stats) {
+  CSVOutput<CRF::features::size> csv("path-stats.csv");
+  CRF::Values coefs;
+  for(unsigned i = 0; i < PhoneticFeatures::size; i++) {
+    csv.header(i, PhoneticFeatures::Names[i]);
+    coefs[i] = lambda[i];
   }
 
   csv << coefs;
@@ -54,13 +46,13 @@ void outputStats(vector<coefficient>& lambda,
 }
 
 int resynthesize(Options& opts) {
-  crf.mu[0] = opts.get_opt<double>("state-pitch", 0);
-  crf.mu[1] = opts.get_opt<double>("state-duration", 0);
-  crf.mu[2] = opts.get_opt<double>("state-energy", 0);
+  crf.set("state-pitch", opts.get_opt<double>("state-pitch", 0));
+  crf.set("state-duration", opts.get_opt<double>("state-duration", 0));
+  crf.set("state-energy", opts.get_opt<double>("state-energy", 0));
 
-  crf.lambda[0] = opts.get_opt<double>("trans-pitch", 0);
-  crf.lambda[1] = opts.get_opt<double>("trans-mfcc", 0);
-  crf.lambda[2] = opts.get_opt<double>("trans-ctx", 0);
+  crf.set("trans-pitch", opts.get_opt<double>("trans-pitch", 0));
+  crf.set("trans-mfcc", opts.get_opt<double>("trans-mfcc", 0));
+  crf.set("trans-ctx", opts.get_opt<double>("trans-ctx", 0));
 
   unsigned index = util::parse<int>(opts.input);
   assert(index < corpus_test.size());
@@ -71,11 +63,10 @@ int resynthesize(Options& opts) {
   INFO("Total duration: " << get_total_duration(input));
   INFO("Input: " << sentence_string);
 
-  INFO("Original trans cost: " << concat_cost(input, crf, crf.lambda, crf.mu, input));
-  INFO("Original state cost: " << state_cost(input, crf, crf.lambda, crf.mu, input));
+  INFO("Original cost: " << concat_cost(input, crf, crf.lambda, input));
 
   std::vector<int> path;
-  cost resynth_cost = max_path(input, crf, crf.lambda, crf.mu, &path);
+  max_path(input, crf, crf.lambda, &path);
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
@@ -83,13 +74,11 @@ int resynthesize(Options& opts) {
   if(opts.has_opt("verbose"))
     sp.print_synth(path, input);
   sp.print_textgrid(path, input, labels_synth, opts.text_grid);
-  INFO("Resynth. cost: " << resynth_cost);
 
-  PathFeatureStats stats;
-  INFO("Resynth. trans cost: " << concat_cost(output, crf, crf.lambda, crf.mu, input, &stats));
-  INFO("Resynth. state cost: " << state_cost(output, crf, crf.lambda, crf.mu, input, &stats));
+  CRF::Stats stats;
+  INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
 
-  outputStats(crf.lambda, crf.mu, stats);
+  outputStats(crf.lambda, stats);
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
@@ -132,12 +121,16 @@ int baseline(const Options& opts) {
 
   std::vector<int> path;
   baseline_crf.lambda[0] = 1;
-  max_path(input, baseline_crf, baseline_crf.lambda, baseline_crf.mu, &path);
+  max_path(input, baseline_crf, baseline_crf.lambda, &path);
 
   std::vector<PhonemeInstance> output = baseline_crf.alphabet().to_phonemes(path);
 
-  SynthPrinter sp(baseline_crf.alphabet(), labels_test);
-  sp.print_synth(path, input);
+  Wave outputSignal = SpeechWaveSynthesis(output, input, baseline_crf.alphabet())
+    .get_resynthesis_td();
+  std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
+  std::ofstream wav_output(outputFile);
+  outputSignal.write(wav_output);
+
   return 0;
 }
 
@@ -153,11 +146,12 @@ int main(int argc, const char** argv) {
     return 1;
   }
 
-  crf.mu[0] = 1000;
-  crf.mu[1] = 1;
   crf.lambda[0] = 1000;
   crf.lambda[1] = 1;
   crf.lambda[2] = 1;
+  crf.lambda[3] = 1;
+  crf.lambda[4] = 1;
+  crf.lambda[5] = 1;
 
   switch(opts.get_mode()) {
   case Options::Mode::RESYNTH:

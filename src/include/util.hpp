@@ -7,6 +7,7 @@
 #include<cstring>
 #include<limits>
 #include<vector>
+#include<tuple>
 
 #define TEST(x) std::cerr << #x << ":\n" ; x(); std::cerr << "OK" << std::endl;
 
@@ -219,6 +220,27 @@ struct Progress {
     if(REPORT_PROGRESS)
       std::cerr << " Done " << std::endl;
   }
+
 };
+
+namespace tuples {
+  template<unsigned size,
+           class Tuple>
+  struct Invoke {
+    template<class Container, class Invoker>
+    void operator()(Container& c, const Invoker& inv) {
+      auto val = inv( std::get<size - 1>(Tuple{}) );
+      c[size - 1] = val;
+      Invoke<size - 1, Tuple>{}(c, inv);
+    }
+  };
+  template<class Tuple>
+  struct Invoke<1, Tuple> {
+    template<class Container, class Invoker>
+    void operator()(Container& c, const Invoker& inv) {
+      c[0] = inv(std::get<0>(Tuple{}));
+    }
+  };
+}
 
 #endif

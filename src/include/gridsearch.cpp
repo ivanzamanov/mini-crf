@@ -107,7 +107,7 @@ private:
   }
 };
 
-static const int FC = PhoneticFeatures::ESIZE + PhoneticFeatures::VSIZE;
+static constexpr auto FC = PhoneticFeatures::size;
 struct TrainingOutput {
   TrainingOutput(std::array<Range, FC> ranges, gridsearch::Comparisons result)
     :ranges(ranges), result(result)
@@ -224,7 +224,7 @@ namespace gridsearch {
     std::vector<PhonemeInstance> input = corpus_test.input(index);
     std::vector<int> path;
 
-    max_path(input, crf, crf.lambda, crf.mu, &path);
+    max_path(input, crf, crf.lambda, &path);
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
     Options opts;
