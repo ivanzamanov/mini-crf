@@ -1,6 +1,5 @@
-
 CC = clang++
-CFLAGS = -std=c++11 -Wall -I./include -g -fstandalone-debug
+CFLAGS = -std=c++14 -Wall -I./include -g -fstandalone-debug -fno-omit-frame-pointer
 OPTS = -O3 -Ofast -mtune=native
 #CLIB = -stdlib=libc++
 
