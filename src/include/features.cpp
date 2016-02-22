@@ -13,3 +13,4 @@ static std::array<std::string, PhoneticFeatures::size> initializeNames() {
 }
 
 const std::array<std::string, PhoneticFeatures::size> PhoneticFeatures::Names = initializeNames();
+

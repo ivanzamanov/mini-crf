@@ -221,17 +221,16 @@ namespace gridsearch {
 
   void do_resynth_index(ResynthParams* params) {
     int index = params->index;
-    std::vector<PhonemeInstance> input = corpus_test.input(index);
+    const std::vector<PhonemeInstance>& input = corpus_test.input(index);
     std::vector<int> path;
 
-    max_path(input, crf, crf.lambda, &path);
+    traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path);
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
-    Options opts;
     Wave resultSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-      .get_resynthesis(opts);
+      .get_resynthesis(Options{});
 
-    FileData fileData = alphabet_test.file_data_of(input[0]);
+    const FileData fileData = alphabet_test.file_data_of(input[0]);
     Wave sourceSignal;
     sourceSignal.read(fileData.file);
 

@@ -175,7 +175,7 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
 
   // Ok, so waveData contains all the pieces with pitch marks translated to piece-local time
   double completeDuration = 0;
-  each(target, [&](PhonemeInstance& p) { completeDuration += p.duration; });
+  each(target, [&](const PhonemeInstance& p) { completeDuration += p.duration; });
   // preallocate the complete wave result,
   // but only temporarily
   WaveDataTemp result = WaveData::allocate(completeDuration, sourceData->sampleRate());
@@ -274,7 +274,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
 
   for(unsigned i = 0; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
-    PhonemeInstance& tgt = target[i];
+    auto& tgt = target[i];
     PitchRange pitch = pt.ranges[i];
 
     double extraTime = (float) EXTRA_TIME * 1 / pitch.at(0);
@@ -308,7 +308,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
   if(SCALE_ENERGY) {
     prog = Progress(target.size(), "Scaling Energy: ");
     for(unsigned i = 0; i < target.size(); i++) {
-      PhonemeInstance& tgt = target[i];
+      auto& tgt = target[i];
       scaleEnergy(dest, tgt);
       prog.update();
     }
@@ -326,7 +326,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
 
       smooth(dest, offset, target[i], target[i+1], isCFTimeSet ? crossfadeTime : (1 / pt.at(offset)));
 
-      PhonemeInstance& tgt = target[i];
+      auto& tgt = target[i];
       double targetDuration = tgt.end - tgt.start;
       totalDuration += targetDuration;
       prog.update();

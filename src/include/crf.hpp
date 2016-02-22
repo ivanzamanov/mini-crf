@@ -4,14 +4,12 @@
 #include<algorithm>
 #include<cassert>
 #include<array>
+#include<utility>
 
 #include"alphabet.hpp"
+#include"automaton-functions.hpp"
 
-#ifdef USE_OPENCL
-#include"opencl-utils.hpp"
-#else
 #include"types.hpp"
-#endif
 
 #include"matrix.hpp"
 
@@ -24,21 +22,8 @@ class CRandomField;
 template<class Input, class Label>
 class _Corpus;
 
-template<class CRF>
+template<class CRF, class Functions>
 struct FunctionalAutomaton;
-
-#ifdef USE_OPENCL
-template<typename CRF,
-         bool includeState,
-         bool includeTransition>
-void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
-                                    const typename CRF::Alphabet::LabelClass& allowed,
-                                    Transition* children,
-                                    Transition* next_children,
-                                    int children_length,
-                                    int pos,
-                                    Matrix<unsigned> &paths);
-#endif
 
 const double TRAINING_RATIO = 0.3;
 
@@ -136,46 +121,25 @@ public:
   _LabelAlphabet *label_alphabet;
 };
 
-template<class CRF>
+template<class Functions, class CRF>
 cost traverse_automaton(const vector<typename CRF::Input>& x,
                         CRF& crf,
                         const typename CRF::Values& lambda,
                         vector<int>* max_path) {
-  FunctionalAutomaton<CRF> a(crf);
+  FunctionalAutomaton<CRF, Functions> a(crf);
   a.lambda = lambda;
   a.x = x;
 
   return a.traverse(max_path);
 }
 
-template<class CRF>
+template<class CRF, class Functions>
 struct FunctionalAutomaton {
-  FunctionalAutomaton(const CRF& crf): crf(crf), alphabet(crf.alphabet()), lambda(crf.lambda) { }
+  FunctionalAutomaton(const CRF& crf): crf(crf),
+                                       alphabet(crf.alphabet()),
+                                       lambda(crf.lambda) { }
 
-  struct MinPathFindFunctions {
-    // Usually sum, i.e. transition + child
-    cost concat(cost d1, cost d2) {
-      return d1 + d2;
-    }
-
-    // Usually the minimum of the two or if calculating
-    // normalization factor - log(exp(d1) + exp(d2))
-    cost aggregate(cost d1, cost d2) {
-      return std::min(d1, d2);
-    }
-
-    bool is_better(cost t1, cost t2) {
-      return t1 < t2;
-    }
-
-    // Value of a transition from a last state, corresponding to a position
-    // in the input, 1 by def.
-    cost empty() {
-      return 0;
-    }
-  };
-
-  MinPathFindFunctions funcs;
+  Functions funcs;
   const CRF& crf;
   const typename CRF::Alphabet &alphabet;
   typename CRF::Values lambda;
@@ -199,52 +163,52 @@ struct FunctionalAutomaton {
                        typename CRF::Stats* stats = 0) {
     typename CRF::Values vals;
     const auto f = [&](auto func) {
-      return func(this->x[pos], pos == 0 ? dest : src, dest);
+      return func(this->x[pos], pos ? src : dest, dest);
     };
     tuples::Invoke<CRF::features::size,
                    decltype(CRF::features::Functions)>{}(vals, f);
+
     cost result = 0;
-    for(unsigned i = 0; i < vals.size(); i++) {
+    for(unsigned i = 0; i < vals.size(); i++)
       result += vals[i] * lambda[i];
-      if(stats) {
+
+    if(stats) {
+      for(unsigned i = 0; i < vals.size(); i++)
         stats->get(pos)[i] = vals[i] * lambda[i];
-      }
     }
+
     return result;
   }
 
-  cost traverse_transitions(const Transition* children,
+  std::pair<cost, unsigned> traverse_transitions(const Transition* children,
                             unsigned children_length,
                             const typename CRF::Label& src,
-                            int pos, unsigned& max_child) {
+                            int pos) {
     unsigned m = 0;
-    Transition transition;
+    Transition transition = children[m];
 
-    transition = children[m];
     auto child = alphabet.fromInt(transition.child);
-    cost transitionValue = calculate_value(src, child, pos);
-    cost child_value = funcs.concat(transition.base_value, transitionValue);
+    auto transitionValue = calculate_value(src, child, pos, 0);
+    auto child_value = funcs.concat(transition.base_value, transitionValue);
 
-    unsigned max_child_tmp = transition.child;
-    cost prev_value = child_value;
+    auto max_child = transition.child;
+    auto prev_value = child_value;
 
-    cost agg;
-    agg = child_value;
+    auto agg = child_value;
     for(++m; m < children_length; ++m) {
       transition = children[m];
       child = alphabet.fromInt(transition.child);
-      transitionValue = calculate_value(src, child, pos);
+      transitionValue = calculate_value(src, child, pos, 0);
       child_value = funcs.concat(transition.base_value, transitionValue);
       if(funcs.is_better(child_value, prev_value)) {
-        max_child_tmp = transition.child;
+        max_child = transition.child;
         prev_value = child_value;
       }
 
       agg = funcs.aggregate(child_value, agg);
     }
 
-    max_child = max_child_tmp;
-    return agg;
+    return std::make_pair(agg, max_child);
   }
 
   void traverse_at_position(const typename CRF::Alphabet::LabelClass& allowed,
@@ -253,28 +217,27 @@ struct FunctionalAutomaton {
                             int children_length,
                             int pos,
                             Matrix<unsigned> &paths) {
-    for(unsigned m = 0; m < allowed.size(); m++) {
+    for(auto m = 0; m < allowed.size(); m++) {
       auto srcId = allowed[m];
+      const auto& src = alphabet.fromInt(srcId);
 
-      const typename CRF::Label& src = alphabet.fromInt(srcId);
-      unsigned max_child;
-      cost value = traverse_transitions(children,
+      auto pair = traverse_transitions(children,
                                         children_length,
                                         src,
-                                        pos + 1, max_child);
-      next_children[m].set(srcId, value);
+                                        pos + 1);
+      next_children[m].set(srcId, pair.first);
 
-      paths(srcId, pos) = max_child;
+      paths(srcId, pos) = pair.second;
     }
   }
 
-  cost traverse(vector<int>* max_path_ptr) {
+  cost traverse(vector<int>* max_path_ptr,
+                vector<int>* max_2_path_ptr=0) {
     Progress prog(x.size());
 
-    vector<int> max_path;
     // Will need for intermediate computations
-    Transition* children_a = new Transition[alphabet_length()],
-      *next_children_a = new Transition[alphabet_length()];
+    Transition children_a[alphabet_length()];
+    Transition next_children_a[alphabet_length()];
 
     Transition* children = children_a,
       *next_children = next_children_a;
@@ -285,74 +248,56 @@ struct FunctionalAutomaton {
     int pos = x.size() - 1;
 
     Matrix<unsigned> paths(alphabet_length(), x.size());
-    vector<unsigned> options;
+    Matrix<unsigned> paths_2(alphabet_length(), x.size());
 
     // transitions to final state
     // value of the last "column" of states
-    const typename CRF::Alphabet::LabelClass& allowed = alphabet.get_class(x[pos]);
-    options.push_back(allowed.size());
-    for(auto it = allowed.begin(); it != allowed.end() ; it++) {
-      children[children_length++].set( *it, funcs.empty());
-    }
+    for(auto id : alphabet.get_class(x[pos]))
+      children[children_length++].set(id, funcs.empty());
     prog.update();
 
     // backwards, for every zero-based position in
     // the input sequence except the last one...
     for(pos--; pos >= 0; pos--) {
       // for every possible label...
-      const typename CRF::Alphabet::LabelClass& allowed = alphabet.get_class(x[pos]);
-      options.push_back(allowed.size());
+      const auto& allowed = alphabet.get_class(x[pos]);
 
       next_children_length = allowed.size();
       assert(children_length > 0);
 
-#ifdef USE_OPENCL
-      traverse_at_position_automaton<CRF, true, true>(*this, allowed, children,
-                                                      next_children,
-                                                      children_length, pos,
-                                                      paths);
-#else
       traverse_at_position(allowed, children,
                            next_children,
                            children_length, pos,
-                           paths);
-#endif
+                           paths,
+                           paths_2,
+                           max_2_path_ptr);
+
       children_length = 0;
       std::swap(children, next_children);
       std::swap(children_length, next_children_length);
       prog.update();
     }
 
-    unsigned max_child;
-    cost value = traverse_transitions(children,
-                                      children_length,
-                                      alphabet.fromInt(0),
-                                      0, max_child);
+    auto p = traverse_transitions(children,
+                                  children_length,
+                                  alphabet.fromInt(0),
+                                  0,
+                                  max_2_path_ptr);
     prog.finish();
 
-    max_path.push_back(max_child);
-    for(int i = 0; i <= (int) x.size() - 2; i++) {
-      max_child = paths(max_child, i);
-      max_path.push_back(max_child);
+    if(max_path_ptr) {
+      vector<int>& best_path = *max_path_ptr;
+      unsigned best_child = p.second;
+      best_path.push_back(best_child);
+      for(int i = 0; i <= (int) x.size() - 2; i++) {
+        best_child = paths(best_child, i);
+        best_path.push_back(best_child);
+      }
     }
 
-    if(max_path_ptr)
-      *max_path_ptr = max_path;
-
-    delete[] children_a;
-    delete[] next_children_a;
-
-    return value;
+    return p.first;
   }
 };
-
-template<class CRF>
-cost max_path(const vector<typename CRF::Input>& x,
-              CRF& crf,
-              const typename CRF::Values& lambda,
-              vector<int>* max_path) {
-  return traverse_automaton(x, crf, lambda, max_path);
-}
 
 template<class CRF>
 cost concat_cost(const vector<typename CRF::Label>& y,
@@ -360,7 +305,7 @@ cost concat_cost(const vector<typename CRF::Label>& y,
                  const typename CRF::Values& lambda,
                  const vector<typename CRF::Input>& inputs,
                  typename CRF::Stats* stats = 0) {
-  FunctionalAutomaton<CRF> a(crf);
+  FunctionalAutomaton<CRF, MinPathFindFunctions> a(crf);
   a.lambda = lambda;
   a.x = inputs;
 
@@ -369,126 +314,5 @@ cost concat_cost(const vector<typename CRF::Label>& y,
     result += a.calculate_value((i == 0) ? y[i] : y[i-1], y[i], i, stats);
   return result;
 }
-
-struct NormFactorFunctions {
-  // Usually sum, i.e. transition + child
-  cost concat(cost d1, cost d2) {
-    return d1 + d2;
-  }
-
-  // Usually the minimum of the two or if calculating
-  // normalization factor - log(exp(d1) + exp(d2))
-  cost aggregate(cost d1, cost d2) {
-    return util::log_sum(d1, d2);
-  }
-
-  // Value of a transition from a last state, corresponding to a position
-  // in the input, 1 by def.
-  cost empty() {
-    return 1;
-  }
-};
-
-template<class CRF>
-cost norm_factor(const vector<typename CRF::Input>& x, CRF& crf, const vector<cost>& lambda, const vector<cost>& mu) {
-  return traverse_automaton<CRF, NormFactorFunctions>(x, crf, lambda, mu, 0);
-}
-
-#ifdef USE_OPENCL
-template<typename CRF,
-         bool includeState,
-         bool includeTransition>
-void traverse_at_position_automaton(FunctionalAutomaton<CRF> &a,
-                                    const typename CRF::Alphabet::LabelClass& allowed,
-                                    Transition* children,
-                                    Transition* next_children,
-                                    int children_length,
-                                    int pos,
-                                    Matrix<unsigned> &paths) {
-  initCL();
-  clPhonemeInstance *sources, *dests;
-  const int srcCount = allowed.size();
-  const int destCount = children_length;
-
-  sources = new clPhonemeInstance[srcCount];
-  dests = new clPhonemeInstance[destCount];
-  cl_double* outputs = new cl_double[srcCount * destCount];
-  memset(outputs, 0, sizeof(cl_double) * srcCount * destCount);
-  cl_int coefCount = a.crf.features.VSIZE + a.crf.features.ESIZE;
-  cl_double* coefficients = new double[coefCount];
-  clVertexResult* bests = new clVertexResult[srcCount];
-  clPhonemeInstance stateLabel = toCL( a.x[pos] );
-
-  int coefIndex = 0;
-  for(auto& c : a.lambda)
-    coefficients[coefIndex++] = c * includeTransition;
-
-  for(unsigned m = 0; m < srcCount; m++) {
-    auto srcId = allowed[m];
-    sources[m] = toCL( a.alphabet.fromInt(srcId) );
-  }
-
-  for(int m = 0; m < destCount; m++) {
-    auto destId = children[m].child;
-    dests[m] = toCL( a.alphabet.fromInt(destId) );
-  }
-
-  size_t work_groups[2] = {(size_t) srcCount, (size_t) destCount};
-  size_t work_items[2] = {1, 1};
-
-  size_t inputSizeSrc = sizeof(clPhonemeInstance) * srcCount;
-  size_t inputSizeDest = sizeof(clPhonemeInstance) * destCount;
-  cl_int destCountCL = destCount;
-
-  sclManageArgsLaunchKernel(util::hardware, util::SOFT_FEATURES, work_groups, work_items,
-                            " %r %r %w %r %r %r",
-                            inputSizeSrc, sources,
-                            inputSizeDest, dests,
-                            sizeof(cl_double) * srcCount * destCount, outputs,
-                            sizeof(cl_int), &destCountCL,
-                            sizeof(clPhonemeInstance), &stateLabel,
-                            sizeof(cl_double) * coefCount, coefficients);
-
-  /*#ifdef DEBUG
-
-    for(int x = 0; x < srcCount; x++) {
-    for(int y = 0; y < destCount; y++) {
-    cost verify;
-    auto p1 = a.alphabet.fromInt(allowed[x]);
-    auto p2 = a.alphabet.fromInt(children[y].child);
-    verify = a.total_cost(p1, p2, pos);
-    INFO(verify << " vs " << outputs[x * destCount + y]);
-    assert(std::abs(verify - outputs[x * destCount + y]) < 0.01);
-    }
-    }
-
-    #endif*/
-
-  work_groups[0] = srcCount; work_groups[1] = 1;
-  sclManageArgsLaunchKernel(util::hardware, util::SOFT_BEST, work_groups, work_items,
-    " %r %r %w",
-    sizeof(cl_double) * srcCount * destCount, outputs,
-    sizeof(cl_int), &destCountCL,
-    sizeof(clVertexResult) * srcCount, bests);
-
-  // And just copy back
-  for(unsigned m = 0; m < allowed.size(); m++) {
-  auto srcId = allowed[m];
-
-  double value = bests[m].agg;
-  next_children[m].set(srcId, value);
-
-  paths(srcId, pos) = bests[m].index;
-}
-
-  // ... And clean up
-  delete[] bests;
-  delete[] outputs;
-  delete[] coefficients;
-  delete[] dests;
-  delete[] sources;
-}
-
-#endif
 
 #endif

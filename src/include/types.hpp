@@ -127,16 +127,14 @@ struct StringLabelProvider {
 };
 
 struct Transition {
-  Transition() { }
-  Transition(int child, cost value):
-    base_value(value), child(child) { }
-
-  void set(int child, cost value) {
+  void set(int child, cost value, cost value2) {
     this->child = child;
     this->base_value = value;
+    this->base_value_2 = value2;
   }
 
   cost base_value;
+  cost base_value_2;
   int child;
 };
 
