@@ -223,6 +223,30 @@ struct Progress {
 
 };
 
+template<class T, unsigned size>
+struct pqueue : std::array<T, size> {
+  explicit pqueue(): std::array<T, size>() { }
+
+  template<class Comparator>
+  pqueue& push(const T& v, const Comparator& cmp) {
+    auto& t = *this;
+
+    int i = 0;
+    while(i < size && cmp(t[i], v))
+      i++;
+    if(i >= size) return *this;
+
+    int j = size - 2;
+    while(j >= i) {
+      t[j + 1] = t[j];
+      j--;
+    }
+
+    t[i] = v;
+    return *this;
+  }
+};
+
 namespace tuples {
   template<unsigned size,
            class Tuple>

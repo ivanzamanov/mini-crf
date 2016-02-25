@@ -127,15 +127,23 @@ struct StringLabelProvider {
 };
 
 struct Transition {
-  void set(int child, cost value, cost value2) {
+  void set(int child, cost value) {
     this->child = child;
     this->base_value = value;
-    this->base_value_2 = value2;
   }
 
   cost base_value;
-  cost base_value_2;
   int child;
+
+  bool operator>=(const Transition& tr) const {
+    return this->base_value > tr.base_value;
+  }
+
+  static Transition make(int child, cost value) {
+    Transition r;
+    r.set(child, value);
+    return r;
+  }
 };
 
 #endif

@@ -158,8 +158,15 @@ struct FunctionalAutomaton {
   }
 
   cost calculate_value(const typename CRF::Label& src,
+                       const int destId,
+                       const int pos,
+                       typename CRF::Stats* stats = 0) {
+    return calculate_value(src, alphabet.fromInt(destId), pos, stats);
+  }
+
+  cost calculate_value(const typename CRF::Label& src,
                        const typename CRF::Label& dest,
-                       int pos,
+                       const int pos,
                        typename CRF::Stats* stats = 0) {
     typename CRF::Values vals;
     const auto f = [&](auto func) {
@@ -180,35 +187,29 @@ struct FunctionalAutomaton {
     return result;
   }
 
-  std::pair<cost, unsigned> traverse_transitions(const Transition* children,
+  std::pair<cost, unsigned> traverse_transitions(const Transition* const children,
                             unsigned children_length,
                             const typename CRF::Label& src,
-                            int pos) {
-    unsigned m = 0;
-    Transition transition = children[m];
+                            const int pos) {
+    auto cmp = [&](const Transition& tr1, const Transition& tr2) {
+      return funcs.is_better(tr1.base_value, tr2.base_value);
+    };
+    // Holds 2 best paths
+    pqueue<Transition, 2> pq;
 
-    auto child = alphabet.fromInt(transition.child);
-    auto transitionValue = calculate_value(src, child, pos, 0);
-    auto child_value = funcs.concat(transition.base_value, transitionValue);
-
-    auto max_child = transition.child;
-    auto prev_value = child_value;
-
-    auto agg = child_value;
-    for(++m; m < children_length; ++m) {
-      transition = children[m];
-      child = alphabet.fromInt(transition.child);
-      transitionValue = calculate_value(src, child, pos, 0);
-      child_value = funcs.concat(transition.base_value, transitionValue);
-      if(funcs.is_better(child_value, prev_value)) {
-        max_child = transition.child;
-        prev_value = child_value;
-      }
+    auto agg = funcs.empty();
+    for(unsigned m = 0; m < children_length; m++) {
+      auto& currentTr = children[m];
+      // value of transition to that label
+      auto transitionValue = calculate_value(src, currentTr.child, pos);
+      // concatenation of the cost of the target label
+      // and the transition value
+      auto child_value = funcs.concat(currentTr.base_value, transitionValue);
+      pq.push(Transition::make(currentTr.child, child_value), cmp);
 
       agg = funcs.aggregate(child_value, agg);
     }
-
-    return std::make_pair(agg, max_child);
+    return std::make_pair(agg, pq[0].child);
   }
 
   void traverse_at_position(const typename CRF::Alphabet::LabelClass& allowed,
@@ -222,9 +223,9 @@ struct FunctionalAutomaton {
       const auto& src = alphabet.fromInt(srcId);
 
       auto pair = traverse_transitions(children,
-                                        children_length,
-                                        src,
-                                        pos + 1);
+                                       children_length,
+                                       src,
+                                       pos + 1);
       next_children[m].set(srcId, pair.first);
 
       paths(srcId, pos) = pair.second;
@@ -268,9 +269,7 @@ struct FunctionalAutomaton {
       traverse_at_position(allowed, children,
                            next_children,
                            children_length, pos,
-                           paths,
-                           paths_2,
-                           max_2_path_ptr);
+                           paths);
 
       children_length = 0;
       std::swap(children, next_children);
@@ -281,8 +280,7 @@ struct FunctionalAutomaton {
     auto p = traverse_transitions(children,
                                   children_length,
                                   alphabet.fromInt(0),
-                                  0,
-                                  max_2_path_ptr);
+                                  0);
     prog.finish();
 
     if(max_path_ptr) {

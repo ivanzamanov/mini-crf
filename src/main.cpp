@@ -25,7 +25,7 @@ void print_usage() {
     std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
 }
 
-stime_t get_total_duration(std::vector<PhonemeInstance> input) {
+stime_t get_total_duration(const std::vector<PhonemeInstance>& input) {
   stime_t result = 0;
   for(auto p : input) result += p.duration;
   return result;
@@ -66,7 +66,7 @@ int resynthesize(Options& opts) {
   INFO("Original cost: " << concat_cost(input, crf, crf.lambda, input));
 
   std::vector<int> path;
-  max_path(input, crf, crf.lambda, &path);
+  traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path);
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
@@ -121,7 +121,8 @@ int baseline(const Options& opts) {
 
   std::vector<int> path;
   baseline_crf.lambda[0] = 1;
-  max_path(input, baseline_crf, baseline_crf.lambda, &path);
+  traverse_automaton<MinPathFindFunctions>(input, baseline_crf,
+                                           baseline_crf.lambda, &path);
 
   std::vector<PhonemeInstance> output = baseline_crf.alphabet().to_phonemes(path);
 

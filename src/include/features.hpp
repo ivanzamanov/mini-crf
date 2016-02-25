@@ -9,16 +9,7 @@
 
 using namespace tool;
 
-template<class Input,
-         class Label,
-         class Value=cost>
-struct FeatureFunction {
-  Value operator()(const Input&, const Label&, const Label&, int);
-};
-
-typedef FeatureFunction<PhonemeInstance, PhonemeInstance> PhoneticFeature;
-
-struct Pitch : PhoneticFeature {
+struct Pitch {
   cost operator()(const PhonemeInstance&,
                   const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
@@ -26,7 +17,7 @@ struct Pitch : PhoneticFeature {
   }
 };
 
-struct LeftContext : PhoneticFeature {
+struct LeftContext {
   cost operator()(const PhonemeInstance&,
                   const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
@@ -34,7 +25,7 @@ struct LeftContext : PhoneticFeature {
   }
 };
 
-struct EnergyTrans : PhoneticFeature {
+struct EnergyTrans {
   cost operator()(const PhonemeInstance&,
                   const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
@@ -42,7 +33,7 @@ struct EnergyTrans : PhoneticFeature {
   }
 };
 
-struct MFCCDist : PhoneticFeature {
+struct MFCCDist {
   cost operator()(const PhonemeInstance&,
                   const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
@@ -59,7 +50,7 @@ struct MFCCDist : PhoneticFeature {
   }
 };
 
-struct MFCCDistL1 : PhoneticFeature {
+struct MFCCDistL1 {
   cost operator()(const PhonemeInstance&,
                   const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
@@ -76,7 +67,7 @@ struct MFCCDistL1 : PhoneticFeature {
   }
 };
 
-struct PitchState : PhoneticFeature {
+struct PitchState {
   cost operator()(const PhonemeInstance& x,
                   const PhonemeInstance&,
                   const PhonemeInstance& next) {
@@ -84,7 +75,7 @@ struct PitchState : PhoneticFeature {
   }
 };
 
-struct EnergyState : PhoneticFeature {
+struct EnergyState {
   cost operator()(const PhonemeInstance& x,
                   const PhonemeInstance&,
                   const PhonemeInstance& next) {
@@ -92,7 +83,7 @@ struct EnergyState : PhoneticFeature {
   }
 };
 
-struct Duration : PhoneticFeature {
+struct Duration {
   cost operator()(const PhonemeInstance& x,
                   const PhonemeInstance&,
                   const PhonemeInstance& next) {
@@ -100,7 +91,7 @@ struct Duration : PhoneticFeature {
   }
 };
 
-struct Baseline : PhoneticFeature {
+struct Baseline {
   cost operator()(const PhonemeInstance&,
                   const PhonemeInstance& prev,
                   const PhonemeInstance& next) {

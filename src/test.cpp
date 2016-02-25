@@ -2,13 +2,14 @@
 #include<sstream>
 #include<cstdlib>
 
+#include"gridsearch.hpp"
 #include"parser.hpp"
 #include"speech_synthesis.hpp"
 #include"crf.hpp"
 
 struct TestObject {
   TestObject() { };
-  TestObject(int l): label(l) { }
+  explicit TestObject(int l): label(l) { }
   int label = 0;
   int id = 0;
 };
@@ -38,30 +39,25 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
   }
 };
 
-cost TestTransFunc(const TestObject& l1, const TestObject& l2, int pos, const vector<int>& input) {
-  if(input[pos - 1] == l1.id && input[pos] == l2.id)
-    return -1;
-  else
-    return rand();
-}
-
-cost TestStateFunc(const TestObject& label, int pos, const vector<int>& input) {
-  if(input[pos] == label.id)
-    return -1;
-  else
-    return rand();
-}
-
-struct TestFeatures;
-typedef CRandomField<TestAlphabet, int, TestFeatures> TestCRF;
+struct TestTransFunc {
+  cost operator()(int x,
+                  const TestObject&,
+                  const TestObject& next) {
+    return (x == next.id) ? -1 : 1;
+  }
+};
 
 struct TestFeatures {
-  typedef cost (*EdgeFeature)(const TestObject&, const TestObject&, int, const vector<int>&);
-  typedef cost (*VertexFeature)(const TestObject&, int, const vector<int>&);
+  static constexpr auto Functions =
+    std::make_tuple(TestTransFunc{});
 
-  const EdgeFeature f[1] = { TestTransFunc };
-  const VertexFeature g[1] = { TestStateFunc } ;
+  static constexpr auto Names =
+    std::make_tuple("size");
+
+  static constexpr auto size = std::tuple_size<decltype(Functions)>::value;
 };
+typedef CRandomField<TestAlphabet, int, TestFeatures> TestCRF;
+
 
 template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
@@ -84,7 +80,7 @@ void testUtils() {
   std::cerr << "Sum same sign: " << util::sum(0.01d, 0.02d) << std::endl; // 0.03
   std::cerr << "Sum same sign neg: " << util::sum(-0.02d, -0.01d) << std::endl; // -0.03
   std::cerr << "Sum same sign neg: " << util::sum(-0.01d, -0.02d) << std::endl; // -0.03
-  
+
   std::cerr << "Sum diff sign: " << util::sum(-0.02d, 0.01d) << std::endl; // -0.01
   std::cerr << "Sum diff sign: " << util::sum(-0.01d, 0.02d) << std::endl; // 0.01
   std::cerr << "Sum diff sign: " << util::sum(0.02d, -0.01d) << std::endl; // 0.01
@@ -93,39 +89,30 @@ void testUtils() {
   */
 }
 
-vector<int> to_ints(const vector<TestCRF::Label>& labels) {
-  vector<int> result;
-  for(auto it = labels.begin(); it != labels.end(); it++)
-    result.push_back( (*it).id);
-  return result;
-}
-
 void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
-  FunctionalAutomaton<TestCRF> a(*crf);
-  a.lambda = crf->lambda;
-  a.mu = crf->mu;
-  a.x = to_ints(labels);
+  vector<int> x;
+  for(auto& label : labels)
+    x.push_back(label.id);
 
   vector<int> best_path;
-
   std::cerr << "Input path: ";
   for(unsigned i = 0; i < labels.size(); i++)
-    std::cerr << a.x[i] << " ";
+    std::cerr << x[i] << ' ';
   std::cerr << std::endl;
 
-  cost expected_cost = total_cost(labels, *crf, crf->lambda, crf->mu, a.x);
-  cost cost = a.traverse(&best_path);
+  cost expected_cost = concat_cost(labels, *crf, crf->lambda, x);
+  cost cost = traverse_automaton<MinPathFindFunctions>(x, *crf, crf->lambda, &best_path);
 
   std::cerr << "Cost = " << cost << ", path = ";
-  // for(unsigned i = 0; i < best_path.size(); i++)
-  //   std::cerr << best_path[i] << " ";
+  for(auto i : best_path)
+    std::cerr << i << ' ';
   std::cerr  << std::endl;
 
   assertEquals(expected_cost, cost);
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {
-    assertEquals(best_path[i], labels[i].id);
-    assertEquals(best_path[i] % CLASSES, labels[i].label % CLASSES);
+    assertEquals(labels[i].id, best_path[i]);
+    assertEquals(labels[i].label % CLASSES, best_path[i] % CLASSES);
   }
 }
 
@@ -142,17 +129,14 @@ void testCRF() {
 
   TestCRF crf;
   crf.label_alphabet = new TestAlphabet();
-  std::vector<coefficient> lambda;
-  lambda.push_back(1.0);
-  std::vector<coefficient> mu;
-  mu.push_back(1.0);
+  TestCRF::Values lambda;
+  lambda[0] = 1.0;
 
   crf.lambda = lambda;
-  crf.mu = mu;
 
   vector<TestObject> x;
   for(int i = 0; i < crf.alphabet().size(); i++)
-    x.push_back(i);
+    x.push_back(TestObject(i));
 
   TestFilter filter;
   filter.crf = &crf;
@@ -172,6 +156,10 @@ void testSynthInputCSV() {
   print_synth_input_csv(csv_str, phons);
   assertEquals(csv, csv_str.str());
 }
+
+bool Progress::enabled = true;
+std::string gridsearch::Comparisons::metric = "";
+std::string gridsearch::Comparisons::aggregate = "";
 
 int main() {
   try {

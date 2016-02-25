@@ -1,6 +1,6 @@
 CC = clang++
 CFLAGS = -std=c++14 -Wall -I./include -g -fstandalone-debug -fno-omit-frame-pointer
-OPTS = -O3 -Ofast -mtune=native
+OPTS = -Ofast -mtune=native
 #CLIB = -stdlib=libc++
 
 #OPENCL_LIB = -lOpenCL
@@ -17,8 +17,9 @@ main: OPTS=
 main: $(MAIN_DEPS)
 	$(CMD) main.cpp include/*.o -o main $(LIBS)
 
+test: OPTS=
 test: $(MAIN_DEPS) test.cpp
-	$(CMD) test.cpp $(CPP_FILES) -o test $(LIBS)
+	$(CMD) test.cpp include/*.o -o test $(LIBS)
 
 db-stats: OPTS=
 db-stats: $(MAIN_DEPS) db-stats.cpp
