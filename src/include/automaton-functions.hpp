@@ -1,6 +1,8 @@
 #ifndef __AUTOMATON_FUNCTIONS__
 #define __AUTOMATON_FUNCTIONS__
 
+#include<limits>
+
 #include "types.hpp"
 #include "util.hpp"
 
@@ -16,10 +18,21 @@ struct NormFactorFunctions {
     return util::log_sum(d1, d2);
   }
 
+  // Which value to choose as "better", doesn't matter in this case
+  bool is_better(cost, cost) {
+    return false;
+  }
+
   // Value of a transition from a last state, corresponding to a position
   // in the input, 1 by def.
   cost empty() {
     return 1;
+  }
+
+  // A "worst-case" value, i.e. everything will be
+  // preferred over it
+  cost worst() {
+    return std::numeric_limits<cost>::max();
   }
 };
 
@@ -39,6 +52,10 @@ struct MinPathFindFunctions {
   cost empty() {
     return 0;
   }
+
+  cost worst() {
+    return std::numeric_limits<cost>::max();
+  }
 };
 
 struct MaxPathFindFunctions {
@@ -56,6 +73,10 @@ struct MaxPathFindFunctions {
 
   cost empty() {
     return 0;
+  }
+
+  cost worst() {
+    return std::numeric_limits<cost>::min();
   }
 };
 

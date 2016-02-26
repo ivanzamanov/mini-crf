@@ -10,35 +10,33 @@
 using namespace tool;
 
 struct Pitch {
-  cost operator()(const PhonemeInstance&,
-                  const PhonemeInstance& prev,
+  static const bool is_state = false;
+  cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
-    return (prev.id != next.id) * std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
+    return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
   }
 };
 
 struct LeftContext {
-  cost operator()(const PhonemeInstance&,
-                  const PhonemeInstance& prev,
+  static const bool is_state = false;
+  cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
-    return (prev.id != next.id) * (prev.label != next.ctx_left);
+    return prev.label != next.ctx_left;
   }
 };
 
 struct EnergyTrans {
-  cost operator()(const PhonemeInstance&,
-                  const PhonemeInstance& prev,
+  static const bool is_state = false;
+  cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
     return prev.energy - next.energy;
   }
 };
 
 struct MFCCDist {
-  cost operator()(const PhonemeInstance&,
-                  const PhonemeInstance& prev,
+  static const bool is_state = false;
+  cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
-    if(prev.id == next.id)
-      return 0;
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     cost result = 0;
@@ -51,11 +49,9 @@ struct MFCCDist {
 };
 
 struct MFCCDistL1 {
-  cost operator()(const PhonemeInstance&,
-                  const PhonemeInstance& prev,
+  static const bool is_state = false;
+  cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
-    if(prev.id == next.id)
-      return 0;
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     mfcc_t result = 0;
@@ -68,32 +64,32 @@ struct MFCCDistL1 {
 };
 
 struct PitchState {
+  static const bool is_state = true;
   cost operator()(const PhonemeInstance& x,
-                  const PhonemeInstance&,
-                  const PhonemeInstance& next) {
-    return x.pitch_contour.diff(next.pitch_contour);
+                  const PhonemeInstance& y) {
+    return x.pitch_contour.diff(y.pitch_contour);
   }
 };
 
 struct EnergyState {
+  static const bool is_state = true;
   cost operator()(const PhonemeInstance& x,
-                  const PhonemeInstance&,
-                  const PhonemeInstance& next) {
-    return std::abs(next.energy - x.energy);
+                  const PhonemeInstance& y) {
+    return std::abs(y.energy - x.energy);
   }
 };
 
 struct Duration {
+  static const bool is_state = false;
   cost operator()(const PhonemeInstance& x,
-                  const PhonemeInstance&,
-                  const PhonemeInstance& next) {
-    return std::abs(x.log_duration - next.log_duration);
+                  const PhonemeInstance& y) {
+    return std::abs(x.log_duration - y.log_duration);
   }
 };
 
 struct Baseline {
-  cost operator()(const PhonemeInstance&,
-                  const PhonemeInstance& prev,
+  static const bool is_state = false;
+  cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) {
     return (prev.id + 1 == next.id) ? 0 : 1;
   }

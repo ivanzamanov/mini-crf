@@ -40,10 +40,10 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
 };
 
 struct TestTransFunc {
+  static const bool is_state = true;
   cost operator()(int x,
-                  const TestObject&,
-                  const TestObject& next) {
-    return (x == next.id) ? -1 : 1;
+                  const TestObject& y) {
+    return (x == y.id) ? -1 : 1;
   }
 };
 
@@ -94,20 +94,28 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
   for(auto& label : labels)
     x.push_back(label.id);
 
-  vector<int> best_path;
+  vector<int> best_path, second_best_path;
   std::cerr << "Input path: ";
   for(unsigned i = 0; i < labels.size(); i++)
     std::cerr << x[i] << ' ';
   std::cerr << std::endl;
 
   cost expected_cost = concat_cost(labels, *crf, crf->lambda, x);
-  cost cost = traverse_automaton<MinPathFindFunctions>(x, *crf, crf->lambda, &best_path);
+  cost cost = traverse_automaton<MinPathFindFunctions>(x, *crf, crf->lambda,
+                                                       &best_path,
+                                                       &second_best_path);
 
   std::cerr << "Cost = " << cost << ", path = ";
   for(auto i : best_path)
     std::cerr << i << ' ';
   std::cerr  << std::endl;
 
+  std::cerr << "Second best path = ";
+  for(auto i : second_best_path)
+    std::cerr << i << ' ';
+  std::cerr  << std::endl;
+
+  assertEquals(0.0f - x.size(), expected_cost);
   assertEquals(expected_cost, cost);
   assertEquals(labels.size(), best_path.size());
   for(unsigned i = 0; i < labels.size(); i++) {
@@ -143,6 +151,39 @@ void testCRF() {
   crf.alphabet().iterate_sequences(x, filter);
 }
 
+void testCrfSecondBestPath() {
+  TestCRF crf;
+  crf.label_alphabet = new TestAlphabet();
+  crf.lambda = {{1.0f}};
+
+  vector<int> x{0, 1, 2};
+
+  vector<int> best_path, second_best_path;
+  cost cost = traverse_automaton<MinPathFindFunctions>(x, crf, crf.lambda,
+                                                       &best_path,
+                                                       &second_best_path);
+  assertEquals(0.0f - x.size(), cost);
+  assertEquals(0.0f - x.size(), cost);
+  std::cerr << "Second best path = ";
+  for(auto i : second_best_path)
+    std::cerr << i << ' ';
+  std::cerr  << std::endl;
+}
+
+void testCrfPathLength1() {
+  TestCRF crf;
+  crf.label_alphabet = new TestAlphabet();
+  crf.lambda = {{1.0f}};
+  vector<int> x{0};
+
+  vector<int> best_path, second_best_path;
+  cost cost = traverse_automaton<MinPathFindFunctions>(x, crf, crf.lambda,
+                                                       &best_path, &second_best_path);
+  assertEquals(-1.0f, cost);
+  assertEquals(x[0], best_path[0]);
+  std::cerr << second_best_path[0] << std::endl;
+}
+
 void testSynthInputCSV() {
   const std::string csv("id,duration,pitch\np,0.5,251.12");
   std::stringstream csv_str(csv);
@@ -164,7 +205,9 @@ std::string gridsearch::Comparisons::aggregate = "";
 int main() {
   try {
     testUtils();
-    testCRF();
+    testCrfPathLength1();
+    //testCRF();
+    testCrfSecondBestPath();
     testSynthInputCSV();
 
     std::cout << "All tests passed\n";

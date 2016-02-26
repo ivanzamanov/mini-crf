@@ -223,6 +223,24 @@ struct Progress {
 
 };
 
+template<bool flag>
+struct ConditionalInvoke {
+  template<class Func, class V1, class V2, class V3>
+  auto operator()(Func f, bool flag2, const V1&, const V2& p2, const V3& p3) {
+    if(flag2)
+      return f(p2, p3);
+    return 0.0f;
+  }
+};
+
+template<>
+struct ConditionalInvoke<true> {
+  template<class Func, class V1, class V2, class V3>
+  auto operator()(Func f, bool, const V1& p1, const V2& p2, const V3&) {
+    return f(p1, p2);
+  }
+};
+
 template<class T, unsigned size>
 struct pqueue : std::array<T, size> {
   explicit pqueue(): std::array<T, size>() { }
