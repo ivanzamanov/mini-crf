@@ -9,20 +9,30 @@
 template<class Value>
 class Matrix {
 public:
+  Matrix(): r(0), c(0), data(0) { }
   Matrix(unsigned rows, unsigned cols): r(rows), c(cols) {
-    unsigned long total = r * c;
-    data = new Value[total];
+    init(rows, cols);
+  }
+
+  void init(unsigned rows, unsigned cols) {
+    r = rows; c = cols;
+    data = new Value[r * c];
+    get(0, 0);
   }
 
   ~Matrix() {
-    delete[] data;
+    if(data)
+      delete[] data;
   }
 
-  Value& operator()(unsigned row, unsigned col) {
+  Value& get(unsigned row, unsigned col) {
     if(row >= rows() ||  col >= cols()) {
       assert("Invalid element requested");
     }
+    return (*this)(row, col);
+  }
 
+  Value& operator()(unsigned row, unsigned col) {
     unsigned long index = row * c + col;
     return data[index];
   }

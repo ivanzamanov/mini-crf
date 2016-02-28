@@ -121,25 +121,43 @@ public:
   _LabelAlphabet *label_alphabet;
 };
 
-template<class Functions, class CRF>
-cost traverse_automaton(const vector<typename CRF::Input>& x,
-                        CRF& crf,
-                        const typename CRF::Values& lambda,
-                        vector<int>* best_path=0,
-                        vector<int>* s_best_path=0) {
+template<class Functions,
+         class CRF,
+         unsigned kBest = 1>
+std::array<cost, kBest> traverse_automaton(const vector<typename CRF::Input>& x,
+                                           CRF& crf,
+                                           const typename CRF::Values& lambda,
+                                           vector<int>* best_path) {
   FunctionalAutomaton<CRF, Functions> a(crf);
   a.lambda = lambda;
   a.x = x;
 
-  return a.traverse(best_path, s_best_path).first;
+  return a.template traverse<kBest>(best_path);
 }
+
+template<bool flag>
+struct ConditionalInvoke {
+  template<class Func, class V1, class V2, class V3>
+  auto operator()(Func f, bool flag2, const V1&, const V2& p2, const V3& p3) {
+    if(flag2)
+      return f(p2, p3);
+    return 0.0f;
+  }
+};
+
+template<>
+struct ConditionalInvoke<true> {
+  template<class Func, class V1, class V2, class V3>
+  auto operator()(Func f, bool flag2, const V1& state, const V2& prev, const V3& next) {
+    if(flag2)
+      return f(state, prev);
+    else
+      return f(state, next);
+  }
+};
 
 template<class CRF, class Functions>
 struct FunctionalAutomaton {
-  struct TransitionPair {
-    Transition first, second;
-  };
-
   FunctionalAutomaton(const CRF& crf): crf(crf),
                                        alphabet(crf.alphabet()),
                                        lambda(crf.lambda) { }
@@ -157,24 +175,21 @@ struct FunctionalAutomaton {
   cost calculate_value(const int srcOrState,
                        const int destId,
                        const int pos,
+                       bool isTransition,
                        typename CRF::Stats* stats = 0) {
-    return calculate_value(alphabet.fromInt(srcOrState), alphabet.fromInt(destId), pos, stats);
-  }
-
-  cost calculate_value(const typename CRF::Label& srcOrState,
-                       const int destId,
-                       const int pos,
-                       typename CRF::Stats* stats = 0) {
-    return calculate_value(srcOrState, alphabet.fromInt(destId), pos, stats);
+    return calculate_value(alphabet.fromInt(srcOrState),
+                           alphabet.fromInt(destId),
+                           pos, isTransition,
+                           stats);
   }
 
   cost calculate_value(const typename CRF::Label& srcOrState,
                        const typename CRF::Label& dest,
                        const int pos,
+                       bool isTransition,
                        typename CRF::Stats* stats = 0) {
     typename CRF::Values vals;
     // TODO: Could move up
-    const bool isTransition = (x.size() > 1) && (pos != x.size() - 1);
     const auto f = [&](auto func) {
       // either we're not calculating the last position
       // or this is a state function
@@ -196,8 +211,9 @@ struct FunctionalAutomaton {
     return result;
   }
 
-  std::tuple<cost, unsigned, cost, unsigned>
-  traverse_transitions(const TransitionPair* const children,
+  template<class TrArray, unsigned kBest>
+  std::array<Transition, kBest>
+  traverse_transitions(const TrArray* const children,
                        unsigned children_length,
                        int src,
                        const int pos) {
@@ -205,77 +221,78 @@ struct FunctionalAutomaton {
       return funcs.is_better(tr1.base_value, tr2.base_value);
     };
     // Holds 2 best paths
-    pqueue<Transition, 2> pq;
+    pqueue<Transition, kBest> pq;
     for(auto& tr : pq)
       tr.set(0, funcs.worst());
 
-    auto agg = funcs.empty();
-    auto s_agg = funcs.empty();
-    for(unsigned m = 0; m < children_length; m++) {
-      auto& currentTr = children[m];
-      // value of transition to that label
-      auto transitionValue = calculate_value(src, currentTr.first.child, pos);
+    const bool isTransition = (x.size() > 1) && (pos != x.size() - 1);
+    if(isTransition) {
+      for(unsigned m = 0; m < children_length; m++) {
+        auto& currentTr = children[m];
+        for(auto& tr : currentTr) {
+          // value of transition to that label
+          auto transitionValue = calculate_value(src, tr.child, pos, true);
+          // concatenation of the cost of the target label
+          // and the transition value
+          auto child_value = funcs.concat(tr.base_value, transitionValue);
+          pq.push(Transition::make(tr.child, child_value), cmp);
+        }
+      }
+    } else {
+      auto transitionValue = calculate_value(src, src, pos, false);
       // concatenation of the cost of the target label
       // and the transition value
-      auto child_value = funcs.concat(currentTr.first.base_value, transitionValue);
-      pq.push(Transition::make(currentTr.first.child, child_value), cmp);
-      agg = funcs.aggregate(child_value, agg);
-
-      // for the second best path...
-      transitionValue = calculate_value(src, currentTr.second.child, pos);
-      child_value = funcs.concat(currentTr.second.base_value, transitionValue);
-      pq.push(Transition::make(currentTr.second.child, child_value), cmp);
-
-      s_agg = funcs.aggregate(child_value, s_agg);
+      auto child_value = funcs.concat(transitionValue, funcs.empty());
+      pq.push(Transition::make(src, child_value), cmp);
     }
-    return std::make_tuple(agg, pq[0].child, s_agg, pq[1].child);
+    return pq;
   }
 
-  std::tuple<cost, unsigned, cost, unsigned>
+  template<class TrArray, unsigned kBestValues>
+  TrArray
   traverse_at_position(const typename CRF::Alphabet::LabelClass& allowed,
-                       TransitionPair* children,
-                       TransitionPair* next_children,
+                       TrArray* children,
+                       TrArray* next_children,
                        int children_length,
                        int pos,
-                       Matrix<unsigned> &paths,
-                       Matrix<unsigned> &paths_2) {
+                       Matrix<unsigned> &paths) {
     auto cmp = [&](const Transition& tr1, const Transition& tr2) {
       return funcs.is_better(tr1.base_value, tr2.base_value);
     };
-    pqueue<Transition, 2> pq;
+    pqueue<Transition, kBestValues> pq;
     for(auto& tr : pq)
       tr.set(0, funcs.worst());
     for(auto m = 0; m < allowed.size(); m++) {
       auto srcId = allowed[m];
 
-      auto t = traverse_transitions(children,
-                                    children_length,
-                                    srcId,
-                                    pos);
-      auto agg = std::get<0>(t);
-      auto s_agg = std::get<2>(t);
-      auto c = std::get<1>(t);
-      auto s_c = std::get<3>(t);
-      next_children[m].first.set(srcId, agg);
-      next_children[m].second.set(srcId, s_agg);
-      paths(srcId, pos) = c;
-      paths_2(srcId, pos) = s_c;
-
-      pq.push(Transition::make(srcId, agg), cmp);
-      pq.push(Transition::make(srcId, s_agg), cmp);
+      auto t = traverse_transitions<TrArray, kBestValues>(children,
+                                                          children_length,
+                                                          srcId,
+                                                          pos);
+      unsigned i = 0;
+      paths(srcId, pos) = t[0].child;
+      for(auto& tr : t) {
+        // The ith best path from srcId
+        // passes through tr.child
+        next_children[m][i].set(srcId, tr.base_value);
+        pq.push(Transition::make(srcId, tr.base_value), cmp);
+        i++;
+      }
     }
-    return std::make_tuple(pq[0].base_value, pq[0].child, pq[1].base_value, pq[1].child);
+    return pq;
   }
 
-  std::pair<cost, cost> traverse(vector<int>* best_path_ptr=0,
-                                 vector<int>* s_best_path_ptr=0) {
+  template<unsigned kBestValues = 1>
+  std::array<cost, kBestValues> traverse(vector<int>* best_path) {
+    static_assert(kBestValues > 0, "At least 1 best val");
     Progress prog(x.size());
 
+    typedef std::array<Transition, kBestValues> TrArray;
     // Will need for intermediate computations
-    TransitionPair children_a[alphabet_length()];
-    TransitionPair next_children_a[alphabet_length()];
+    TrArray children_a[alphabet_length()];
+    TrArray next_children_a[alphabet_length()];
 
-    TransitionPair* children = children_a,
+    TrArray* children = children_a,
       *next_children = next_children_a;
 
     unsigned children_length = 0;
@@ -283,23 +300,23 @@ struct FunctionalAutomaton {
 
     int pos = x.size() - 1;
 
+    //Matrix<std::array<unsigned, kBestPaths>> paths(alphabet_length(), x.size());
     Matrix<unsigned> paths(alphabet_length(), x.size());
-    Matrix<unsigned> paths_2(alphabet_length(), x.size());
-
+    
     // transitions to final state
     // value of the last "column" of states
     // meaning, if length == 1, then
     // the value will be the state cost
     for(auto id : alphabet.get_class(x[pos])) {
-      children[children_length].first.set(id, funcs.empty());
-      children[children_length].second.set(id, funcs.worst());
+      for(auto& tr : children[children_length])
+        tr.set(id, funcs.empty());
       children_length++;
     }
     prog.update();
 
     // backwards, for every zero-based position in
     // the input sequence except the last one...
-    std::tuple<cost, unsigned, cost, unsigned> t;
+    TrArray t;
     for(; pos >= 0; pos--) {
       // for every possible label...
       const auto& allowed = alphabet.get_class(x[pos]);
@@ -307,11 +324,11 @@ struct FunctionalAutomaton {
       next_children_length = allowed.size();
       assert(children_length > 0);
 
-      t = traverse_at_position(allowed, children,
-                               next_children,
-                               children_length, pos,
-                               paths,
-                               paths_2);
+      t = traverse_at_position<TrArray,
+                               kBestValues>(allowed, children,
+                                            next_children,
+                                            children_length, pos,
+                                            paths);
 
       children_length = 0;
       std::swap(children, next_children);
@@ -320,27 +337,23 @@ struct FunctionalAutomaton {
     }
     prog.finish();
 
-    if(best_path_ptr) {
-      vector<int>& best_path = *best_path_ptr;
-      unsigned best_child = std::get<1>(t);
-      best_path.push_back(best_child);
-      for(int i = 0; i <= (int) x.size() - 2; i++) {
-        best_child = paths(best_child, i);
-        best_path.push_back(best_child);
+    if(best_path) {
+      auto& path = *best_path;
+      auto child = t[0].child;
+      path.push_back(child);
+      for(unsigned i = 0; i < x.size() - 1; i++) {
+        child = paths(child, i);
+        path.push_back(child);
       }
     }
 
-    if(s_best_path_ptr) {
-      vector<int>& s_best_path = *s_best_path_ptr;
-      unsigned s_best_child = std::get<3>(t);
-      s_best_path.push_back(s_best_child);
-      for(int i = 0; i <= (int) x.size() - 2; i++) {
-        s_best_child = paths_2(s_best_child, i);
-        s_best_path.push_back(s_best_child);
-      }
+    std::array<cost, kBestValues> result;
+    unsigned i = 0;
+    for(auto& t : t) {
+      result[i] = t.base_value;
+      i++;
     }
-
-    return std::make_pair(std::get<0>(t), std::get<2>(t));
+    return result;
   }
 };
 
@@ -350,15 +363,15 @@ cost concat_cost(const vector<typename CRF::Label>& y,
                  const typename CRF::Values& lambda,
                  const vector<typename CRF::Input>& x,
                  typename CRF::Stats* stats = 0) {
-  assert(y.size() > 0);
+  assert(x.size() > 0 && x.size() == y.size());
   FunctionalAutomaton<CRF, MinPathFindFunctions> a(crf);
   a.lambda = lambda;
   a.x = x;
 
   int i = x.size() - 1;
-  cost result = a.calculate_value(y[i], y[i], i, stats);
+  cost result = a.calculate_value(y[i], y[i], i, false, stats);
   for(i--; i >= 0; i--)
-    result += a.calculate_value(y[i], y[i + 1], i, stats);
+    result += a.calculate_value(y[i], y[i + 1], i, true, stats);
   return result;
 }
 

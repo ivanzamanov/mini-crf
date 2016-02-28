@@ -9,7 +9,7 @@
 
 struct TestObject {
   TestObject() { };
-  explicit TestObject(int l): label(l) { }
+  explicit TestObject(int l): label(l), id(l) { }
   int label = 0;
   int id = 0;
 };
@@ -63,7 +63,7 @@ template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
   if(expected != actual) {
     std::cerr << "Expected " << expected << ", actual " << actual << std::endl;
-    throw std::string("Assert failed ") + msg;
+    throw "Assert failed: " + msg;
   }
 }
 
@@ -89,6 +89,21 @@ void testUtils() {
   */
 }
 
+void verifyPath(const vector<TestObject>& labels, const vector<int>& path) {
+  assertEquals("Path size", labels.size(), path.size());
+  for(unsigned i = 0; i < labels.size(); i++) {
+    assertEquals("Path member", labels[i].id, path[i]);
+    assertEquals("Path member", labels[i].label % CLASSES, path[i] % CLASSES);
+  }
+}
+
+void verifyPath(const vector<int>& x, const vector<int>& path) {
+  vector<TestObject> labels;
+  for(auto l : x)
+    labels.push_back(TestObject(l));
+  verifyPath(labels, path);
+}
+
 void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
   vector<int> x;
   for(auto& label : labels)
@@ -100,28 +115,12 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
     std::cerr << x[i] << ' ';
   std::cerr << std::endl;
 
-  cost expected_cost = concat_cost(labels, *crf, crf->lambda, x);
+  cost conc_cost = concat_cost(labels, *crf, crf->lambda, x);
   cost cost = traverse_automaton<MinPathFindFunctions>(x, *crf, crf->lambda,
-                                                       &best_path,
-                                                       &second_best_path);
-
-  std::cerr << "Cost = " << cost << ", path = ";
-  for(auto i : best_path)
-    std::cerr << i << ' ';
-  std::cerr  << std::endl;
-
-  std::cerr << "Second best path = ";
-  for(auto i : second_best_path)
-    std::cerr << i << ' ';
-  std::cerr  << std::endl;
-
-  assertEquals(0.0f - x.size(), expected_cost);
-  assertEquals(expected_cost, cost);
-  assertEquals(labels.size(), best_path.size());
-  for(unsigned i = 0; i < labels.size(); i++) {
-    assertEquals(labels[i].id, best_path[i]);
-    assertEquals(labels[i].label % CLASSES, best_path[i] % CLASSES);
-  }
+                                                       &best_path)[0];
+  assertEquals("Traverse cost", 0.0f - x.size(), conc_cost);
+  assertEquals("Concat cost", conc_cost, cost);
+  verifyPath(labels, best_path);
 }
 
 struct TestFilter {
@@ -156,17 +155,15 @@ void testCrfSecondBestPath() {
   crf.label_alphabet = new TestAlphabet();
   crf.lambda = {{1.0f}};
 
-  vector<int> x{0, 1, 2};
+  vector<int> x{0, 1};
 
-  vector<int> best_path, second_best_path;
-  cost cost = traverse_automaton<MinPathFindFunctions>(x, crf, crf.lambda,
-                                                       &best_path,
-                                                       &second_best_path);
-  assertEquals(0.0f - x.size(), cost);
-  assertEquals(0.0f - x.size(), cost);
-  std::cerr << "Second best path = ";
-  for(auto i : second_best_path)
-    std::cerr << i << ' ';
+  vector<int> best_path;
+  auto costs = traverse_automaton<MinPathFindFunctions, TestCRF, 2>(x, crf,
+                                                                    crf.lambda,
+                                                                    &best_path);
+  assertEquals("Cost", 0.0f - x.size(), costs[0]);
+  verifyPath(x, best_path);
+  assertEquals("Cost 2", 0.0f - x.size() + 2, costs[1]);
   std::cerr  << std::endl;
 }
 
@@ -176,12 +173,11 @@ void testCrfPathLength1() {
   crf.lambda = {{1.0f}};
   vector<int> x{0};
 
-  vector<int> best_path, second_best_path;
-  cost cost = traverse_automaton<MinPathFindFunctions>(x, crf, crf.lambda,
-                                                       &best_path, &second_best_path);
-  assertEquals(-1.0f, cost);
-  assertEquals(x[0], best_path[0]);
-  std::cerr << second_best_path[0] << std::endl;
+  vector<int> best_path;
+  auto costs = traverse_automaton<MinPathFindFunctions>(x, crf, crf.lambda,
+                                                        &best_path);
+  assertEquals("Cost", -1.0f, costs[0]);
+  assertEquals("Element", x[0], best_path[0]);
 }
 
 void testSynthInputCSV() {
@@ -206,9 +202,9 @@ int main() {
   try {
     testUtils();
     testCrfPathLength1();
-    //testCRF();
     testCrfSecondBestPath();
     testSynthInputCSV();
+    testCRF();
 
     std::cout << "All tests passed\n";
   } catch (std::string s) {

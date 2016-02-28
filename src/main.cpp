@@ -66,7 +66,7 @@ int resynthesize(Options& opts) {
   INFO("Original cost: " << concat_cost(input, crf, crf.lambda, input));
 
   std::vector<int> path;
-  traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path);
+  auto costs = traverse_automaton<MinPathFindFunctions, CRF, 2>(input, crf, crf.lambda, &path);
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
@@ -77,6 +77,7 @@ int resynthesize(Options& opts) {
 
   CRF::Stats stats;
   INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
+  INFO("Second best cost: " << costs[1]);
 
   outputStats(crf.lambda, stats);
 
