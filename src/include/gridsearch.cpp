@@ -120,52 +120,37 @@ struct TrainingOutput {
 namespace gridsearch {
 
   std::vector<FrameFrequencies> toFFTdFrames(Wave& wave) {
-    int length = wave.length();
-    int frameOffset = 0;
+    auto frameOffset = 0u;
     std::vector<FrameFrequencies> result;
+
+    std::valarray<cdouble> buffer(gridsearch::FFT_SIZE);
     FrameFrequencies values;
-    int sampleWidth = values.size() * 2 + 1;
-    auto td_values = new double[sampleWidth];
 
-    int lastFrameSize = 0;
-    while(frameOffset < length) {
-      for(int i = 0; i < sampleWidth; i++) td_values[i] = 0;
-
+    auto overlap = 0u;
+    while((frameOffset + buffer.size()
+           - ((frameOffset != 0) * overlap) < wave.length())) {
       // i.e. after the first frame...
+      overlap = buffer.size() * WINDOW_OVERLAP;
       if(frameOffset > 0)
-        frameOffset -= lastFrameSize * WINDOW_OVERLAP;
+        frameOffset -= overlap;
 
-      int frameLength = std::min(sampleWidth, length - frameOffset);
-      if(frameLength <= 0)
-        break;
-
-      lastFrameSize = frameLength;
-
-      WaveData frame = wave.extractBySample(frameOffset, frameOffset + frameLength);
-      frameOffset += sampleWidth;
-      for(unsigned i = 0; i < frame.size(); i++) td_values[i] = frame[i];
-
-      int binCount = (frameLength - 1) / 2;
+      WaveData frame = wave.extractBySample(frameOffset, frameOffset + buffer.size());
+      frameOffset += frame.size();
+      auto i = 0u;
+      for(; i < frame.size(); i++) buffer[i] = frame[i];
+      for(; i < buffer.size(); i++) buffer[i] = 0;
 
       if(APPLY_WINDOW_CMP) {
-        for(unsigned j = 0; j < frame.size(); j++)
-          td_values[j] *= hann(j, frame.size());
+        for(auto j = 0u; j < frame.size(); j++)
+          buffer[j] *= hann(j, frame.size());
       }
-      //ft::FT(td_values, frame.size(), values, binCount);
 
-      // If the frame is shorter, need to adjust frequency bins
-      if((int) frame.size() < sampleWidth) {
-        // scale >= 1
-        double scale = (double) sampleWidth / frame.size();
-        for(int i = 0; i < binCount; i++) {
-          cdouble val = values[i];
-          values[i] = cdouble(0, 0);
-          values[i / scale] += val;
-        }
-      }
+      ft::fft(buffer);
+      for(auto j = 0u; j < buffer.size(); j++)
+        values[j] = buffer[j];
+
       result.push_back(values);
     }
-    delete[] td_values;
     assert(result.size() > 0);
     return result;
   }
@@ -184,7 +169,7 @@ namespace gridsearch {
   //__attribute__ ((optnone))
   double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>& frames2) {
     auto frames1 = toFFTdFrames(result);
-    assert(std::abs((int) frames1.size() - (int) frames2.size()) <= 1);
+    assert(std::abs((int) frames1.size() - (int) frames2.size()) <= 2);
 
     int minSize = std::min(frames1.size(), frames2.size());
     double value = 0;
@@ -193,9 +178,9 @@ namespace gridsearch {
       auto& freqs1 = frames1[j];
       auto& freqs2 = frames2[j];
       for(auto i = 0; i < minSize; i++) {
-        double m1 = freqs1[i].magn();
+        auto m1 = std::norm(freqs1[i]);
         m1 = m1 ? m1 : 1;
-        double m2 = freqs2[i].magn();
+        auto m2 = std::norm(freqs2[i]);
         m2 = m2 ? m2 : 1;
         diff += std::pow( std::log10( m2 / m1), 2 );
       }

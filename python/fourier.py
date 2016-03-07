@@ -79,7 +79,7 @@ def main():
     for x, y in zip(fVals[1:], fVals[1:][::-1]):
         print(str(x) + ' == ' + str(y) + ' = ' + str(x[0] == y[0] and x[1] == -y[1]))'''
 
-    '''for i, _ in enumerate(modded):
+    for i, _ in enumerate(modded):
         ni = i / scale
         nf = ni
         ni = int(ni)

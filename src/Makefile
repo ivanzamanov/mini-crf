@@ -1,5 +1,6 @@
 CC = clang++
-CFLAGS = -std=c++14 -Wall -I./include -g -fstandalone-debug -fno-omit-frame-pointer
+CFLAGS = -std=c++14 -Wall -I./include
+DEBUG_FLAGS = -g -fstandalone-debug -fno-omit-frame-pointer
 OPTS = -Ofast -mtune=native
 #CLIB = -stdlib=libc++
 
@@ -11,7 +12,7 @@ CPP_FILES = $(wildcard */*.cpp)
 OBJ_FILES = $(patsubst %.cpp,%.o,$(CPP_FILES))
 MAIN_DEPS = $(wildcard */*.hpp *.hpp) main.cpp $(OBJ_FILES)
 
-CMD = $(CC) $(OPENCL_DEF) $(CLIB) $(CFLAGS) $(OPTS)
+CMD = $(CC) $(OPENCL_DEF) $(CLIB) $(CFLAGS) $(OPTS) $(DEBUG_FLAGS)
 
 main: OPTS= 
 main: $(MAIN_DEPS)
@@ -31,6 +32,7 @@ include/tool.o: include/tool.cpp
 %.o: %.cpp
 	$(CMD) $< -c -o $@
 
+main-opt: DEBUG_FLAGS= 
 main-opt: $(MAIN_DEPS)
 	$(CMD) main.cpp include/*.o -o main-opt $(LIBS)
 

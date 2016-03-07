@@ -1,37 +1,11 @@
 #ifndef __FOURIER_HPP__
 #define __FOURIER_HPP__
 
+#include<complex>
 #include<cmath>
+#include<valarray>
 
-struct cdouble {
-  cdouble(): real(0), img(0) { }
-  cdouble(double r, double i): real(r), img(i) { }
-  double real;
-  double img;
-
-  bool operator==(const cdouble& o) const {
-    return real == o.real && img == o.img;
-  }
-
-  cdouble& operator+=(const cdouble& o) {
-    real += o.real;
-    img += o.img;
-    return *this;
-  }
-
-  cdouble operator+(const cdouble o) const {
-    return cdouble(real + o.real, img + o.img);
-  }
-
-  double magn() const {
-    return real * real + img * img;
-  }
-};
-
-template<class S>
-cdouble operator*(S scalar, cdouble c) {
-  return cdouble(scalar * c.real, scalar * c.img);
-}
+typedef std::complex<double> cdouble;
 
 namespace ft {
   template<class Val, class Freqs=cdouble*>
@@ -57,10 +31,47 @@ namespace ft {
       for(int f = 0; f < F; f++) {
         double freq = f;
         double arg = 2 * M_PI * t * freq / period;
-        val += frequencies[f].real * cos(arg) - frequencies[f].img * sin(arg);
+        val += frequencies[f].real() * cos(arg) - frequencies[f].imag() * sin(arg);
       }
       values[t] = val;
     }
+  }
+ 
+  template<class Complex>
+  void fft(std::valarray<Complex>& x) {
+    const size_t N = x.size();
+    if (N <= 1) return;
+ 
+    // divide
+    std::valarray<Complex> even = x[std::slice(0, N/2, 2)];
+    std::valarray<Complex>  odd = x[std::slice(1, N/2, 2)];
+ 
+    // conquer
+    fft(even);
+    fft(odd);
+ 
+    // combine
+    for (size_t k = 0; k < N/2; ++k) {
+        auto t = std::polar(1.0, -2 * M_PI * k / N) * odd[k];
+        x[k    ] = even[k] + t;
+        x[k+N/2] = even[k] - t;
+      }
+  }
+
+  // inverse fft (in-place)
+  template<class Complex>
+  void ifft(std::valarray<Complex>& x) {
+    // conjugate the complex numbers
+    x = x.apply(std::conj);
+ 
+    // forward fft
+    fft(x);
+ 
+    // conjugate the complex numbers again
+    x = x.apply(std::conj);
+ 
+    // scale the numbers
+    x /= x.size();
   }
 };
 

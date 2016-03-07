@@ -9,7 +9,8 @@
 #include"fourier.hpp"
 
 namespace gridsearch {
-  typedef std::array<cdouble, (int) (0.025 * 24000)> FrameFrequencies;
+  constexpr size_t FFT_SIZE = 512;
+  typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
 
   double compare_LogSpectrum(Wave& result, Wave& original);
   double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>&);

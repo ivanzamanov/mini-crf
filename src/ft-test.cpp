@@ -2,25 +2,21 @@
 #include"util.hpp"
 
 int main() {
-  const int T = 100;
-  double values[T];
+  const int T = 512;
+  std::complex<double> values[T];
   for(int i = 0; i < T; i++) {
     double t = -M_PI / 2 + i / (double) T * 2 * M_PI;
     values[i] = cos(2.0 * t);
   }
+  std::valarray<std::complex<double>> valArr(values, T);
+  std::valarray<std::complex<double>> copy = valArr;
 
-  const int F = 100;
-  cdouble frequencies[T];
-  ft::myFT(values, T, frequencies, F);
-  double inversed[T];
-  ft::rFT(frequencies, F, inversed, T, T);
+  ft::fft(valArr);
+  ft::ifft(valArr);
 
   double err = 0;
   for(int i = 0; i < T; i++) {
-    err += std::abs(values[i] - inversed[i]);
+    err += std::abs(valArr[i] - copy[i]);
   }
   std::cout << "Err: " << err << std::endl;
-
-  cdouble frequencies2[T];
-  ft::FT(values, T, frequencies2, F);  
 }
