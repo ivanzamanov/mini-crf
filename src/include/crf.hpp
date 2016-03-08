@@ -135,27 +135,6 @@ std::array<cost, kBest> traverse_automaton(const vector<typename CRF::Input>& x,
   return a.template traverse<kBest>(best_path);
 }
 
-template<bool flag>
-struct ConditionalInvoke {
-  template<class Func, class V1, class V2, class V3>
-  auto operator()(Func f, bool flag2, const V1&, const V2& p2, const V3& p3) {
-    if(flag2)
-      return f(p2, p3);
-    return 0.0f;
-  }
-};
-
-template<>
-struct ConditionalInvoke<true> {
-  template<class Func, class V1, class V2, class V3>
-  auto operator()(Func f, bool flag2, const V1& state, const V2& prev, const V3& next) {
-    if(flag2)
-      return f(state, prev);
-    else
-      return f(state, next);
-  }
-};
-
 template<class CRF, class Functions>
 struct FunctionalAutomaton {
   FunctionalAutomaton(const CRF& crf): crf(crf),
@@ -189,12 +168,12 @@ struct FunctionalAutomaton {
                        bool isTransition,
                        typename CRF::Stats* stats = 0) {
     typename CRF::Values vals;
-    // TODO: Could move up
-    const auto f = [&](auto func) {
-      // either we're not calculating the last position
-      // or this is a state function
-      return ConditionalInvoke<decltype(func)::is_state>{}(func, isTransition,
-                                                           x[pos], srcOrState, dest);
+    const tuples::Applicator<decltype(dest), decltype(x)> f = {
+      .pos = pos,
+      .isTransition = isTransition,
+      .srcOrState = srcOrState,
+      .dest = dest,
+      .x = x
     };
     tuples::Invoke<CRF::features::size,
                    decltype(CRF::features::Functions)>{}(vals, f);

@@ -270,6 +270,44 @@ namespace tuples {
       c[0] = inv(std::get<0>(Tuple{}));
     }
   };
+
+  template<bool flag>
+  struct ConditionalInvoke {
+    template<class Func, class V1, class V2, class V3>
+    double operator()(Func f, bool flag2, const V1&, const V2& p2, const V3& p3) {
+      if(flag2)
+        return f(p2, p3);
+      return 0.0;
+    }
+  };
+
+  template<>
+  struct ConditionalInvoke<true> {
+    template<class Func, class V1, class V2, class V3>
+    double operator()(Func f, bool flag2, const V1& state, const V2& prev, const V3& next) {
+      if(flag2)
+        return f(state, prev);
+      else
+        return f(state, next);
+    }
+  };
+
+  template<class Label, class X>
+  struct Applicator {
+    const int pos;
+    const bool isTransition;
+    const Label& srcOrState;
+    const Label& dest;
+    const X& x;
+
+    template<class F>
+    double operator()(F func) const {
+      // either we're not calculating the last position
+      // or this is a state function
+      return ConditionalInvoke<F::is_state>{}(func, isTransition,
+                                              x[pos], srcOrState, dest);
+    }
+  };
 }
 
 #endif

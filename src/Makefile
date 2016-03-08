@@ -1,5 +1,5 @@
 CC = clang++
-CFLAGS = -std=c++14 -Wall -I./include
+CFLAGS = -std=c++11 -Wall -I./include
 DEBUG_FLAGS = -g -fstandalone-debug -fno-omit-frame-pointer
 OPTS = -Ofast -mtune=native
 #CLIB = -stdlib=libc++
