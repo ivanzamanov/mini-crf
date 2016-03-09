@@ -96,13 +96,13 @@ struct Baseline {
 };
 
 struct PhoneticFeatures {
-  static constexpr auto Functions =
-    std::make_tuple(Pitch{},
-                    LeftContext{},
-                    MFCCDist{},
-                    PitchState{},
-                    EnergyState{},
-                    Duration{});
+  typedef decltype(std::make_tuple(Pitch{},
+                                   LeftContext{},
+                                   MFCCDist{},
+                                   PitchState{},
+                                   EnergyState{},
+                                   Duration{})) FunctionsType;
+  static const FunctionsType Functions;
 
   static constexpr auto size = std::tuple_size<decltype(Functions)>::value;
   static const std::array<std::string, size> Names;
@@ -113,13 +113,11 @@ struct PhoneticFeatures {
 };
 
 struct BaselineFeatures {
-  static constexpr auto Functions =
-    std::make_tuple(Baseline{});
-
-  static constexpr auto Names =
-    std::make_tuple("baseline");
+  typedef decltype(std::make_tuple(Baseline{})) FunctionsType;
+  static const FunctionsType Functions;
 
   static constexpr auto size = std::tuple_size<decltype(Functions)>::value;
+  static const std::array<std::string, size> Names;
 };
 
 typedef CRandomField<PhonemeAlphabet, PhonemeInstance, PhoneticFeatures> CRF;
