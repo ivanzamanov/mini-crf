@@ -5,6 +5,7 @@
 #include<cassert>
 #include<array>
 #include<utility>
+#include<memory>
 
 #include"alphabet.hpp"
 #include"automaton-functions.hpp"
@@ -179,11 +180,11 @@ struct FunctionalAutomaton {
                    decltype(CRF::features::Functions)>{}(vals, f);
 
     cost result = 0;
-    for(unsigned i = 0; i < vals.size(); i++)
+    for(auto i = 0u; i < vals.size(); i++)
       result += vals[i] * lambda[i];
 
     if(stats) {
-      for(unsigned i = 0; i < vals.size(); i++)
+      for(auto i = 0u; i < vals.size(); i++)
         stats->get(pos)[i] = vals[i] * lambda[i];
     }
 
@@ -268,8 +269,9 @@ struct FunctionalAutomaton {
 
     typedef std::array<Transition, kBestValues> TrArray;
     // Will need for intermediate computations
-    TrArray children_a[alphabet_length()];
-    TrArray next_children_a[alphabet_length()];
+    // std::array not considered POD on the mac...
+    TrArray* children_a = new TrArray[alphabet_length()];
+    TrArray* next_children_a = new TrArray[alphabet_length()];
 
     TrArray* children = children_a,
       *next_children = next_children_a;
@@ -332,6 +334,9 @@ struct FunctionalAutomaton {
       result[i] = t.base_value;
       i++;
     }
+    delete[] children;
+    delete[] next_children;
+
     return result;
   }
 };

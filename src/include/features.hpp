@@ -12,7 +12,7 @@ using namespace tool;
 struct Pitch {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
-                  const PhonemeInstance& next) {
+                  const PhonemeInstance& next) const {
     return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
   }
 };
@@ -20,7 +20,7 @@ struct Pitch {
 struct LeftContext {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
-                  const PhonemeInstance& next) {
+                  const PhonemeInstance& next) const {
     return prev.label != next.ctx_left;
   }
 };
@@ -28,7 +28,7 @@ struct LeftContext {
 struct EnergyTrans {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
-                  const PhonemeInstance& next) {
+                  const PhonemeInstance& next) const {
     return prev.energy - next.energy;
   }
 };
@@ -36,7 +36,7 @@ struct EnergyTrans {
 struct MFCCDist {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
-                  const PhonemeInstance& next) {
+                  const PhonemeInstance& next) const {
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     cost result = 0;
@@ -51,7 +51,7 @@ struct MFCCDist {
 struct MFCCDistL1 {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
-                  const PhonemeInstance& next) {
+                  const PhonemeInstance& next) const {
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     mfcc_t result = 0;
@@ -66,7 +66,7 @@ struct MFCCDistL1 {
 struct PitchState {
   static const bool is_state = true;
   cost operator()(const PhonemeInstance& x,
-                  const PhonemeInstance& y) {
+                  const PhonemeInstance& y) const {
     return x.pitch_contour.diff(y.pitch_contour);
   }
 };
@@ -74,7 +74,7 @@ struct PitchState {
 struct EnergyState {
   static const bool is_state = true;
   cost operator()(const PhonemeInstance& x,
-                  const PhonemeInstance& y) {
+                  const PhonemeInstance& y) const {
     return std::abs(y.energy - x.energy);
   }
 };
@@ -82,7 +82,7 @@ struct EnergyState {
 struct Duration {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& x,
-                  const PhonemeInstance& y) {
+                  const PhonemeInstance& y) const {
     return std::abs(x.log_duration - y.log_duration);
   }
 };
@@ -90,7 +90,7 @@ struct Duration {
 struct Baseline {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
-                  const PhonemeInstance& next) {
+                  const PhonemeInstance& next) const {
     return (prev.id + 1 == next.id) ? 0 : 1;
   }
 };

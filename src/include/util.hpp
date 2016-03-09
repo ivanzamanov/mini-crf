@@ -257,7 +257,7 @@ namespace tuples {
            class Tuple>
   struct Invoke {
     template<class Container, class Invoker>
-    void operator()(Container& c, const Invoker& inv) {
+    void operator()(Container& c, const Invoker& inv) const {
       auto val = inv( std::get<size - 1>(Tuple{}) );
       c[size - 1] = val;
       Invoke<size - 1, Tuple>{}(c, inv);
@@ -266,7 +266,7 @@ namespace tuples {
   template<class Tuple>
   struct Invoke<1, Tuple> {
     template<class Container, class Invoker>
-    void operator()(Container& c, const Invoker& inv) {
+    void operator()(Container& c, const Invoker& inv) const {
       c[0] = inv(std::get<0>(Tuple{}));
     }
   };
@@ -274,7 +274,7 @@ namespace tuples {
   template<bool flag>
   struct ConditionalInvoke {
     template<class Func, class V1, class V2, class V3>
-    double operator()(Func f, bool flag2, const V1&, const V2& p2, const V3& p3) {
+    double operator()(const Func f, const bool flag2, const V1&, const V2& p2, const V3& p3) const {
       if(flag2)
         return f(p2, p3);
       return 0.0;
@@ -284,7 +284,7 @@ namespace tuples {
   template<>
   struct ConditionalInvoke<true> {
     template<class Func, class V1, class V2, class V3>
-    double operator()(Func f, bool flag2, const V1& state, const V2& prev, const V3& next) {
+    double operator()(const Func f, const bool flag2, const V1& state, const V2& prev, const V3& next) const {
       if(flag2)
         return f(state, prev);
       else
