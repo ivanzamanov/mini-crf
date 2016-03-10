@@ -5,9 +5,9 @@
 #include<cmath>
 #include<valarray>
 
-typedef std::complex<double> cdouble;
-
 namespace ft {
+  typedef std::complex<float> cdouble;
+
   template<class Val, class Freqs=cdouble*>
   void FT(Val* values, int T, Freqs& frequencies, int F) {
     double period = T;
@@ -36,26 +36,27 @@ namespace ft {
       values[t] = val;
     }
   }
- 
+
   template<class Complex>
   void fft(std::valarray<Complex>& x) {
     const size_t N = x.size();
     if (N <= 1) return;
- 
+
     // divide
     std::valarray<Complex> even = x[std::slice(0, N/2, 2)];
     std::valarray<Complex>  odd = x[std::slice(1, N/2, 2)];
- 
+
     // conquer
     fft(even);
     fft(odd);
- 
+
     // combine
     for (size_t k = 0; k < N/2; ++k) {
-        auto t = std::polar(1.0, -2 * M_PI * k / N) * odd[k];
-        x[k    ] = even[k] + t;
-        x[k+N/2] = even[k] - t;
-      }
+      auto t = std::polar( (typename Complex::value_type) 1.0,
+                           (typename Complex::value_type) (-2 * M_PI * k / N)) * odd[k];
+      x[k    ] = even[k] + t;
+      x[k+N/2] = even[k] - t;
+    }
   }
 
   // inverse fft (in-place)
@@ -63,13 +64,13 @@ namespace ft {
   void ifft(std::valarray<Complex>& x) {
     // conjugate the complex numbers
     x = x.apply(std::conj);
- 
+
     // forward fft
     fft(x);
- 
+
     // conjugate the complex numbers again
     x = x.apply(std::conj);
- 
+
     // scale the numbers
     x /= x.size();
   }

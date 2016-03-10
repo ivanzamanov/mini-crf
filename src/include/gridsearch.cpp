@@ -1,5 +1,6 @@
-#include <chrono>
-#include <thread>
+#include<chrono>
+#include<thread>
+#include<valarray>
 
 #include"gridsearch.hpp"
 #include"threadpool.h"
@@ -13,6 +14,11 @@ extern double hann(double i, int size);
 
 static bool APPLY_WINDOW_CMP = false;
 static float WINDOW_OVERLAP = 0.1;
+
+static constexpr auto FC = PhoneticFeatures::size;
+struct Params : std::valarray<coefficient> {
+  Params(): std::valarray<coefficient>(FC) { }
+};
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -35,10 +41,11 @@ struct Range {
     return str.str();
   }
 };
+typedef std::array<Range, FC> Ranges;
 
 template<int FeatureCount>
-struct ValueCache {
-  ValueCache(std::string path): path(path) {
+struct _ValueCache {
+  _ValueCache(std::string path): path(path) {
     init();
   }
 
@@ -106,14 +113,14 @@ private:
     }
   }
 };
+typedef _ValueCache<FC> ValueCache;
 
-static constexpr auto FC = PhoneticFeatures::size;
 struct TrainingOutput {
-  TrainingOutput(std::array<Range, FC> ranges, gridsearch::Comparisons result)
+  TrainingOutput(Ranges ranges, gridsearch::Comparisons result)
     :ranges(ranges), result(result)
   { }
 
-  std::array<Range, FC> ranges;
+  Ranges ranges;
   gridsearch::Comparisons result;
 };
 
@@ -348,72 +355,108 @@ namespace gridsearch {
     return result;
   }
 
-  void executeTraining(unsigned passes,
-                       std::array<Range, FC>& ranges,
-                       int maxIterations,
-                       std::vector< std::vector<FrameFrequencies> > &precompFrames,
-                       ThreadPool& tp,
-                       ValueCache<FC>& vc,
-                       std::string csvFile) {
-    std::ofstream csvOutput(csvFile);
+  void csvPrintHeaders(std::ofstream& csvOutput, std::string& csvFile,
+                       Ranges& ranges) {
     if(csvFile != std::string("")) {
       util::join_output(csvOutput, ranges, [](const Range& r) { return r.feature; }, " ")
         << " value" << std::endl;
     }
-    int iteration = 0;
-    for (unsigned passNumber = 1; passNumber <= passes && iteration < maxIterations; passNumber++) {
-      INFO("Pass " << passNumber);
+  }
 
-      for(unsigned i = (passNumber == 1); i < ranges.size() && iteration < maxIterations; i++) {
-        Range& range = ranges[i];
-        csvOutput << "#" << range.feature << std::endl;
-        range.reset();
-        std::vector<Comparisons> comps;
-        double bestCoef = -1;
-        Comparisons bestVals;
-        while(range.has_next() && iteration < maxIterations) {
-          iteration++;
+  void csvPrint(std::ofstream& csvOutput, std::string& csvFile,
+                Ranges& ranges, Comparisons& result) {
+    if(csvFile != std::string("")) {
+      util::join_output(csvOutput, ranges, [](const Range& r) { return r.current; }, " ")
+        << " " << result.value() << std::endl;
+    }
+  }
 
-          // Advance
-          range.next();
-
-          // Update coefficient
-          crf.set(range.feature, range.current);
-
-          INFO("Pass: " << passNumber << ", iteration: " << iteration);
-          INFO("Trying " << range.feature << " = " << range.current);
-          DEBUG(for(unsigned k = 0; k < ranges.size(); k++)
-                  LOG(ranges[k].feature << "=" << ranges[k].current););
-
-          Comparisons result;
-          result.LogSpectrum = 0;
-          bool inCache;
-          inCache = vc.load(ranges, result);
-
-          // And actual work...
-          if(!inCache)  result = do_train(tp, &precompFrames);
-
-          if(bestCoef == -1 || result < bestVals) {
-            bestCoef = ranges[i].current;
-            bestVals = result;
-          }
-
-          if(!inCache) vc.save(ranges, result);
-
-          if(csvFile != std::string(""))
-            util::join_output(csvOutput, ranges, [](const Range& r) { return r.current; }, " ")
-              << " " << result.value() << std::endl;
-
-          INFO("Value: " << result.value());
-        }
-
-        if(bestCoef != -1) {
-          INFO(range.feature << " best value = " << bestCoef << " with " << bestVals.LogSpectrum);
-          range.current = bestCoef;
-        } else {
-          INFO("Skipped " << range.feature);
-        }
+  struct BruteSearch {
+    BruteSearch(int maxPasses): maxPasses(maxPasses) {}
+    int maxPasses, pass = 0;
+    void bootstrap(Ranges& ranges, Params& current,
+                   Params& delta, Params& p_delta) {
+      for(auto i = 0u; i < ranges.size(); i++) {
+        current[i] = ranges[i].from;
+        delta[i] = p_delta[i] = 0;
       }
+      current[1] = 1;
+      delta[1] = 1;
+    }
+
+    bool nextStep(Ranges& ranges, Params& current,
+                  Params& delta, Params& p_delta) {
+      // last non-0 index
+      auto i = 0u;
+      while(i < delta.size() && delta[i] == 0)
+        i++;
+
+      if(current[i] < ranges[i].to) {
+        // Do nothing, step and axis don't change
+        INFO(ranges[i].feature << ": " << current[i] << " -> " << (current[i] + delta[i]));
+      } else {
+        // Stop moving along this axis
+        delta[i] = 0;
+        // Pick next axis
+        auto nextIndex = (i + 1) % delta.size();
+        // Pick density of new axis
+        delta[nextIndex] = ranges[nextIndex].step;
+        // Reset value along new axis
+        current[nextIndex] = ranges[nextIndex].from;
+
+        INFO(ranges[i].feature << " -> " << ranges[nextIndex].feature);
+
+        if(nextIndex == 0)
+          pass++;
+      }
+
+      current += delta;
+      return pass == maxPasses && i == delta.size();
+    }
+  };
+
+  template<class State>
+  void descentSearch(State state,
+                     Ranges& ranges,
+                     int maxIterations,
+                     std::vector< std::vector<FrameFrequencies> > &precompFrames,
+                     ThreadPool& tp,
+                     ValueCache&,
+                     std::string csvFile) {
+    std::ofstream csvOutput(csvFile);
+    csvPrintHeaders(csvOutput, csvFile, ranges);
+
+    Params current, bestParams,
+      delta, p_delta;
+
+    state.bootstrap(ranges, current, delta, p_delta);
+    for(auto i = 0u; i < ranges.size(); i++)
+      crf.set(ranges[i].feature, current[i]);
+
+    delta[0] = 1;
+    auto iteration = 1;
+    INFO("Iteration " << iteration++);
+    auto result = do_train(tp, &precompFrames),
+      bestResult = result;
+    INFO("Value: " << result.value());
+
+    bool stop = state.nextStep(ranges, current, delta, p_delta);
+    while(iteration <= maxIterations && !stop) {
+      INFO("Iteration " << iteration++);
+      csvPrint(csvOutput, csvFile, ranges, result);
+
+      for(auto i = 0u; i < ranges.size(); i++)
+        crf.set(ranges[i].feature, current[i]);
+
+      result = do_train(tp, &precompFrames);
+      INFO("Value: " << result.value());
+
+      if(result.LogSpectrum < bestResult.LogSpectrum) {
+        bestResult = result;
+        bestParams = current;
+      }
+
+      stop = state.nextStep(ranges, current, delta, p_delta);
     }
   }
 
@@ -432,19 +475,19 @@ namespace gridsearch {
       return ret;
     }
 
-    std::array<Range, FC> ranges = {{
-        Range("trans-ctx", 1, 300, 1),
+    Ranges ranges = {{
+        Range("trans-ctx", 0, 300, 1),
         Range("trans-pitch", 0, 300, 1),
         Range("state-pitch", 0, 300, 1),
         Range("trans-mfcc", 0, 2, 0.01),
         Range("state-duration", 0, 300, 1),
         Range("state-energy", 0, 300, 1)
       }};
-    for(auto it : ranges)
+    for(auto& it : ranges)
       INFO("Range " << it.to_string());
 
     std::string valueCachePath = opts.get_opt<std::string>("value-cache", "value-cache.bin");
-    ValueCache<FC> vc(valueCachePath);
+    ValueCache vc(valueCachePath);
 
     // Pre-compute FFTd frames of source signals
     INFO("Precomputing FFTs");
@@ -461,7 +504,7 @@ namespace gridsearch {
     int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
     std::string csvFile = opts.get_string("csv-file");
 
-    executeTraining(passes, ranges, maxIterations, precompFrames, tp, vc, csvFile);
+    descentSearch(BruteSearch(passes), ranges, maxIterations, precompFrames, tp, vc, csvFile);
 
     INFO("Best at: ");
     for(unsigned k = 0; k < ranges.size(); k++)

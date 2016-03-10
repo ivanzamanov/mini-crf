@@ -2,6 +2,7 @@
 #define __TYPES_H__
 
 #include<cmath>
+#include<complex>
 #include<vector>
 #include<string>
 #include<array>
@@ -16,6 +17,8 @@ typedef float stime_t;
 typedef float mfcc_t;
 typedef std::array<mfcc_t, MFCC_N> MfccArray;
 typedef unsigned id_t;
+
+typedef std::complex<cost> cdouble;
 
 typedef int PhoneticLabel;
 const PhoneticLabel INVALID_LABEL = -1;
