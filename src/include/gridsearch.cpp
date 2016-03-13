@@ -16,9 +16,11 @@ static bool APPLY_WINDOW_CMP = false;
 static float WINDOW_OVERLAP = 0.1;
 
 static constexpr auto FC = PhoneticFeatures::size;
-struct Params : std::valarray<coefficient> {
-  Params(): std::valarray<coefficient>(FC) { }
-};
+typedef std::valarray<coefficient> Params;
+
+Params make_params() {
+  return Params(FC);
+}
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -115,15 +117,6 @@ private:
 };
 typedef _ValueCache<FC> ValueCache;
 
-struct TrainingOutput {
-  TrainingOutput(Ranges ranges, gridsearch::Comparisons result)
-    :ranges(ranges), result(result)
-  { }
-
-  Ranges ranges;
-  gridsearch::Comparisons result;
-};
-
 namespace gridsearch {
 
   std::vector<FrameFrequencies> toFFTdFrames(Wave& wave) {
@@ -198,7 +191,12 @@ namespace gridsearch {
 
   double compare_LogSpectrum(Wave& result, Wave& original) {
     auto frames2 = toFFTdFrames(original);
-    return compare_LogSpectrum(result, frames2);
+
+    auto value = compare_LogSpectrum(result, frames2);
+    //auto value2 = compare_LogSpectrum(result, frames2);
+    //assert(value == value2);
+
+    return value;
   }
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
@@ -211,25 +209,57 @@ namespace gridsearch {
     return result;
   }
 
-  void do_resynth_index(ResynthParams* params) {
-    int index = params->index;
-    const std::vector<PhonemeInstance>& input = corpus_test.input(index);
-    std::vector<int> path;
-
-    traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path);
-    std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
-
-    Wave resultSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-      .get_resynthesis(Options{});
+  Comparisons do_compare(ResynthParams* params,
+                         const std::vector<PhonemeInstance>& input,
+                         std::vector<int>& outputPath) {
+    auto index = params->index;
+    std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(outputPath);
+    auto SWS = SpeechWaveSynthesis(output, input, crf.alphabet());
+    Wave resultSignal = SWS.get_resynthesis_td();
+    /*Wave rs2 = SWS.get_resynthesis_td();
+    for(auto i = 0u; i < resultSignal.length(); i++)
+      assert(resultSignal[i] == rs2[i]);
+    */
 
     const FileData fileData = alphabet_test.file_data_of(input[0]);
     Wave sourceSignal;
     sourceSignal.read(fileData.file);
+    /*Wave ss2; ss2.read(fileData.file);
+    for(auto i = 0u; i < sourceSignal.length(); i++)
+      assert(sourceSignal[i] == ss2[i]);
+    */
 
     auto& frames = *(params->precompFrames);
 
-    params->result.ItakuraSaito = compare_IS(resultSignal, sourceSignal);
-    params->result.LogSpectrum = compare_LogSpectrum(resultSignal, frames[index]);
+    Comparisons result;
+    result.ItakuraSaito = compare_IS(resultSignal, sourceSignal);
+    result.LogSpectrum = compare_LogSpectrum(resultSignal, frames[index]);
+    /*auto LS2 = compare_LogSpectrum(resultSignal, frames[index]);
+    assert(LS2 == result.value());
+    */
+    return result;
+  }
+
+  void do_resynth_index(ResynthParams* params) {
+    auto index = params->index;
+    const auto& input = corpus_test.input(index);
+    std::vector<int> path;
+
+    traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path);
+    auto result = do_compare(params, input, path);
+
+    /*std::vector<int> path2;
+    traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path2);
+    for(auto i = 0u; i < path.size(); i++)
+      assert(path[i] == path2[i]);
+    */
+
+    /*
+    auto result2 = do_compare(params, input, path);
+    assert(result.value() == result2.value());
+    */
+
+    params->result = result;
   }
 
   void resynth_index(ResynthParams* params) {
@@ -254,15 +284,15 @@ namespace gridsearch {
     }
   }
 
-  void aggregate(std::vector<Comparisons> params,
+  void aggregate(const std::vector<Comparisons>& params,
                  Comparisons* sum=0,
                  Comparisons* max=0,
                  Comparisons* avg=0) {
     Comparisons sumTemp;
     Comparisons avgTemp;
-    int maxIndex = -1;
-    for(unsigned i = 0; i < params.size(); i++) {
-      if(maxIndex == -1 || params[i] < params[maxIndex])
+    auto maxIndex = 0;
+    for(auto i = 0u; i < params.size(); i++) {
+      if(params[i] < params[maxIndex])
         maxIndex = i;
       sumTemp = sumTemp + params[i];
     }
@@ -330,12 +360,11 @@ namespace gridsearch {
 #ifdef DEBUG_TRAINING
     return Comparisons().dummy(randDouble());
 #endif
-    unsigned count = corpus_test.size();
+    auto count = corpus_test.size();
     bool flags[count];
-    for(unsigned i = 0; i < count; i++)
-      flags[i] = 0;
+    std::fill(flags, flags + count, 0);
 
-    auto params = new ResynthParams[count];
+    auto params = std::vector<ResynthParams>(count);
     for(unsigned i = 0; i < count; i++) {
       params[i].init(i, &flags[i]);
 
@@ -346,12 +375,20 @@ namespace gridsearch {
     }
     wait_done(flags, count);
 
-    std::vector<Comparisons> comps;
-    for(unsigned i = 0; i < count; i++) comps.push_back(params[i].result);
+    std::vector<Comparisons> comps(count);
+    for(unsigned i = 0; i < count; i++)
+      comps[i] = params[i].result;
+    /*std::cout << std::endl;
+    std::cout << "--- ";
+    for(unsigned i = 0; i < count; i++) {
+      comps[i] = params[i].result;
+      std::cout << comps[i].value() << " ";
+    }
+    std::cout << "--- ";
+    std::cout << std::endl;*/
 
     Comparisons result;
     aggregate(comps, 0, 0, &result);
-    delete[] params;
     return result;
   }
 
@@ -372,21 +409,25 @@ namespace gridsearch {
   }
 
   struct BruteSearch {
-    BruteSearch(int maxPasses): maxPasses(maxPasses) {}
+    BruteSearch(int maxPasses): maxPasses(maxPasses), stop(false) { }
+
     int maxPasses, pass = 0;
+    bool stop;
+
     void bootstrap(Ranges& ranges, Params& current,
                    Params& delta, Params& p_delta) {
       for(auto i = 0u; i < ranges.size(); i++) {
         current[i] = ranges[i].from;
         delta[i] = p_delta[i] = 0;
       }
-      current[1] = 1;
+      current[0] = 1;
       delta[1] = 1;
     }
 
-    bool nextStep(Ranges& ranges, Params& current,
-                  Params& delta, Params& p_delta) {
-      // last non-0 index
+    template<class Function>
+    Comparisons nextStep(Function f, Ranges& ranges, Params& current,
+                         Params& delta, Params&) {
+      // first non-0 index
       auto i = 0u;
       while(i < delta.size() && delta[i] == 0)
         i++;
@@ -399,65 +440,127 @@ namespace gridsearch {
         delta[i] = 0;
         // Pick next axis
         auto nextIndex = (i + 1) % delta.size();
+        if(nextIndex == 0) {// If a new round has begun...
+          pass++;
+          if(pass > maxPasses) {
+            stop = true;
+            return Comparisons();
+          }
+        }
+
         // Pick density of new axis
         delta[nextIndex] = ranges[nextIndex].step;
         // Reset value along new axis
         current[nextIndex] = ranges[nextIndex].from;
 
         INFO(ranges[i].feature << " -> " << ranges[nextIndex].feature);
-
-        if(nextIndex == 0)
-          pass++;
       }
 
       current += delta;
-      return pass == maxPasses && i == delta.size();
+      return f(current);
     }
   };
 
-  template<class State>
+  struct DescentSearch {
+    DescentSearch(): stop(false) { }
+
+    bool stop;
+
+    template<class Function>
+    coefficient stepSize(Function, Params&, Params&) {
+      return 1;
+    }
+
+    void bootstrap(Ranges& ranges, Params& current,
+                   Params& delta, Params& p_delta) {
+      for(auto i = 0u; i < ranges.size(); i++) {
+        current[i] = (ranges[i].from + ranges[i].to) / 2;
+        delta[i] = p_delta[i] = 0;
+      }
+
+      delta[0] = 1;
+    }
+
+    template<class Function>
+    Comparisons nextStep(Function f, Ranges& ranges,
+                         Params& current, Params& delta, Params&) {
+      // first non-0 index
+      auto i = 0u;
+      while(i < delta.size() && delta[i] == 0)
+        i++;
+
+      coefficient k = stepSize(f, current, delta);
+
+      auto tries = 0u;
+      while(tries < current.size()) {
+        auto axisIndex = (i + tries++) % delta.size();
+
+        std::fill(std::begin(delta), std::end(delta), 0);
+        delta[axisIndex] = 1;
+
+        auto feature = ranges[axisIndex].feature;
+        auto prevValue = current[axisIndex];
+
+        INFO("Trying along " << feature);
+        auto r1 = f(current + (k * delta)),
+          r2 = f(current - (k * delta));
+
+        INFO(r1.value() << " vs " << r2.value());
+        if(r1 < r2) {
+          INFO(feature << ": " <<
+               prevValue << " -> " << prevValue + k);
+          current += k * delta;
+          return r1;
+        } else if (r2 < r1) {
+          INFO(feature << ": " <<
+               prevValue << " -> " << prevValue - k);
+          current -= k * delta;
+          return r2;
+        }
+      }
+      stop = true;
+      return Comparisons();
+    }
+  };
+
+  template<class State, class Function>
   void descentSearch(State state,
+                     Function f,
                      Ranges& ranges,
                      int maxIterations,
-                     std::vector< std::vector<FrameFrequencies> > &precompFrames,
-                     ThreadPool& tp,
                      ValueCache&,
                      std::string csvFile) {
     std::ofstream csvOutput(csvFile);
     csvPrintHeaders(csvOutput, csvFile, ranges);
 
-    Params current, bestParams,
-      delta, p_delta;
+    Params current = make_params(),
+      bestParams = make_params(),
+      delta = make_params(),
+      p_delta = make_params();
 
     state.bootstrap(ranges, current, delta, p_delta);
-    for(auto i = 0u; i < ranges.size(); i++)
-      crf.set(ranges[i].feature, current[i]);
-
-    delta[0] = 1;
     auto iteration = 1;
     INFO("Iteration " << iteration++);
-    auto result = do_train(tp, &precompFrames),
+    auto result = f(current),
       bestResult = result;
+
     INFO("Value: " << result.value());
 
-    bool stop = state.nextStep(ranges, current, delta, p_delta);
-    while(iteration <= maxIterations && !stop) {
+    while(iteration <= maxIterations && !state.stop) {
       INFO("Iteration " << iteration++);
       csvPrint(csvOutput, csvFile, ranges, result);
 
-      for(auto i = 0u; i < ranges.size(); i++)
-        crf.set(ranges[i].feature, current[i]);
-
-      result = do_train(tp, &precompFrames);
+      result = state.nextStep(f, ranges, current, delta, p_delta);
       INFO("Value: " << result.value());
 
-      if(result.LogSpectrum < bestResult.LogSpectrum) {
+      if(!state.stop && result < bestResult) {
         bestResult = result;
         bestParams = current;
       }
-
-      stop = state.nextStep(ranges, current, delta, p_delta);
     }
+
+    for(auto i = 0u; i < ranges.size(); i++)
+      ranges[i].current = bestParams[i];
   }
 
   int train(const Options& opts) {
@@ -499,16 +602,22 @@ namespace gridsearch {
 #endif
     INFO("Done");
 
-    std::vector<TrainingOutput> outputs;
-    unsigned passes = opts.get_opt<int>("training-passes", 3);
-    int maxIterations = opts.get_opt<int>("max-iterations", 9999999);
-    std::string csvFile = opts.get_string("csv-file");
+    auto Function = [&](const Params& params) {
+      for(auto i = 0u; i < ranges.size(); i++)
+        crf.set(i, params[i]);
+      return do_train(tp, &precompFrames);
+    };
 
-    descentSearch(BruteSearch(passes), ranges, maxIterations, precompFrames, tp, vc, csvFile);
+    auto searchAlgo = BruteSearch(opts.get_opt<unsigned>("training-passes", 3));
+    //auto searchAlgo = DescentSearch();
+    descentSearch(searchAlgo, Function, ranges,
+                  opts.get_opt<int>("max-iterations", 9999999),
+                               vc,
+                               opts.get_string("csv-file"));
 
     INFO("Best at: ");
-    for(unsigned k = 0; k < ranges.size(); k++)
-      LOG(ranges[k].feature << "=" << ranges[k].current);
+    for(auto& r : ranges)
+      LOG(r.feature << "=" << r.current);
 
     return 0;
   }

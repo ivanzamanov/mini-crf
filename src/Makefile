@@ -1,5 +1,5 @@
 CC = clang++
-CFLAGS = -std=c++11 -Wall -I./include
+CFLAGS = -std=c++11 -Wall -Wextra -I./include
 DEBUG_FLAGS = -g -fstandalone-debug -fno-omit-frame-pointer
 OPTS = -Ofast -mtune=native
 #CLIB = -stdlib=libc++
@@ -35,6 +35,9 @@ include/tool.o: include/tool.cpp
 main-opt: DEBUG_FLAGS= 
 main-opt: $(MAIN_DEPS)
 	$(CMD) main.cpp include/*.o -o main-opt $(LIBS)
+
+main-opt-static:
+	$(CMD) main.cpp include/*.cpp -o main-opt-static $(LIBS)
 
 text2bin: $(MAIN_DEPS) text2bin.cpp
 	$(CMD) text2bin.cpp -g include/*.o -o text2bin $(LIBS)

@@ -139,6 +139,7 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
         if(mark > p.start && mark < p.end)
           destPtr -> marks.push_back(ptr -> at_time(mark) - ptr -> at_time(p.start));
       });
+
     if(destPtr -> marks.size() > 1 && destPtr -> marks[0] < limits.maxVoicelessSamples) {
       int diff = destPtr -> marks[1] - destPtr -> marks[0];
       int count = (destPtr -> marks[0] - diff) / diff;
@@ -155,17 +156,38 @@ static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* d
 
 Wave SpeechWaveSynthesis::get_resynthesis_td() {
   Options opts;
+  opts.log = false;
   opts.add_opt("td", "");
-  return get_resynthesis(opts);
+  auto result = get_resynthesis(opts);
+  /*auto result2 = get_resynthesis(opts);
+
+  assert(result.length() == result2.length());
+  for(auto i = 0u; i < result2.length(); i++)
+  assert(result[i] == result2[i]);*/
+
+  return result;
 }
 
 Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // First off, collect the WAV data for each source unit
-  const int N = source.size();
+  const auto N = source.size();
   Wave* sourceData = new Wave[N];
   SpeechWaveData* waveData = new SpeechWaveData[N];
   readSourceData(*this, sourceData, waveData);
 
+  /*Wave* sourceData2 = new Wave[N];
+  SpeechWaveData* waveData2 = new SpeechWaveData[N];
+  readSourceData(*this, sourceData2, waveData2);
+  for(auto i = 0u; i < N; i++) {
+    for(auto j = 0u; j < sourceData[i].length(); j++)
+      assert(sourceData[i][j] == sourceData2[i][j]);
+    for(auto j = 0u; j < waveData[i].size(); j++)
+      assert(waveData[i][j] == waveData2[i][j]);
+    for(auto j = 0u; j < waveData2[i].marks.size(); j++)
+      assert(waveData2[i].marks[j] == waveData2[i].marks[j]);
+  }
+  */
+  
   // First off, prepare for output, build some default header...
   WaveHeader h = WaveHeader::default_header();
   h.sampleRate = sourceData->sampleRate();
@@ -179,8 +201,13 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // preallocate the complete wave result,
   // but only temporarily
   WaveDataTemp result = WaveData::allocate(completeDuration, sourceData->sampleRate());
-
   do_resynthesis(result, waveData, opts);
+
+  /*WaveDataTemp result2 = WaveData::allocate(completeDuration, sourceData->sampleRate());
+  do_resynthesis(result2, waveData, opts);
+  for(auto i = 0u; i<result.size(); i++)
+    assert(result[i] == result2[i]);
+  */
 
   wb.append(result);
 
@@ -190,7 +217,7 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   return wb.build();
 }
 
-int overlapAddAroundMark(const SpeechWaveData& source, const int currentMark,
+int overlapAddAroundMark(const WaveData& source, const int currentMark,
                          WaveData& dest, const int destOffset,
                          const double periodLeft, const double periodRight, bool win=true) {
   DEBUG(LOG("Mark " << destOffset));
@@ -230,11 +257,12 @@ int overlapAddAroundMark(const SpeechWaveData& source, const int currentMark,
 }
 
 float nextRandFloat() {
-  static int cycleMax = 4;
+  return 1;
+  /*static int cycleMax = 4;
   static int cycle = 0;
   cycle = cycle % cycleMax + 1;
 
-  return 0.8 + (float) cycle * 0.1;
+  return 0.8 + (float) cycle * 0.1;*/
 }
 
 void copyVoicelessPart(const SpeechWaveData& source,
@@ -244,20 +272,36 @@ void copyVoicelessPart(const SpeechWaveData& source,
                        int sMark,
                        int sourceBound,
                        WaveData& dest) {
-  int dLen = destOffsetBound - destOffset;
-  float scale = (float) dLen / (sourceBound - sMark);
+  auto dLen = destOffsetBound - destOffset;
+  auto scale = (float) dLen / (sourceBound - sMark);
   PsolaConstants limits(dest.sampleRate);
 
+  //WaveDataTemp tmp(WaveData::copy(dest));
+
   while(destOffset < destOffsetBound) {
-    int periodSamples = limits.maxVoicelessSamplesCopy * nextRandFloat();
-    const double period = dest.toDuration(periodSamples);
-    int copied = overlapAddAroundMark(source, sMark, dest, destOffset, period, period);
+    auto periodSamples = limits.maxVoicelessSamplesCopy * nextRandFloat();
+    const auto period = dest.toDuration(periodSamples);
+    auto copied = overlapAddAroundMark(source, sMark, dest, destOffset, period, period);
+    //overlapAddAroundMark(source, sMark, tmp, destOffset, period, period);
     if(copied == 0)
       break;
 
     sMark += copied / scale;
     destOffset += copied;
   }
+
+  //for(auto i = 0u; i < tmp.size(); i++)
+  //  assert(tmp[i] == dest[i]);
+}
+
+void scalePiece(WaveData dest, WaveData tmp, int startOffset, SpeechWaveData& p, PitchRange pitch, double targetDuration, int i, bool FD) {
+  if(dest.toDuration(p.length) <= 1 / pitch.at_mid())
+    if(FD)
+      scaleToPitchAndDurationSimpleFD(tmp, startOffset, p, pitch, targetDuration, i);
+    else
+      scaleToPitchAndDurationSimpleTD(tmp, startOffset, p, pitch, targetDuration, i);
+  else
+    scaleToPitchAndDuration(tmp, startOffset, p, pitch, targetDuration, i, FD);
 }
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
@@ -272,34 +316,29 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
   Progress prog(target.size(), "PSOLA: ");
   int destOffset = 0;
 
-  for(unsigned i = 0; i < target.size(); i++) {
+  for(auto i = 0u; i < target.size(); i++) {
     SpeechWaveData& p = pieces[i];
     auto& tgt = target[i];
     PitchRange pitch = pt.ranges[i];
 
-    double extraTime = (float) EXTRA_TIME * 1 / pitch.at(0);
-    double targetDuration = tgt.end - tgt.start + extraTime;
-    int extra = dest.toSamples(extraTime);
+    auto targetDuration = tgt.end - tgt.start;
 
     WaveDataTemp tmp(WaveData::allocate(targetDuration, dest.sampleRate));
 
     double durationScale = targetDuration / dest.toDuration(p.length);
     PRINT_SCALE(i << ": duration scale " << durationScale << " at " << i);
 
-    //int startOffsetGuide = WaveData::toSamples(totalDuration);
-    int startOffset = 0;
-    if(dest.toDuration(p.length) <= 1 / pitch.at_mid())
-      if(FD)
-        scaleToPitchAndDurationSimpleFD(tmp, startOffset, p, pitch, targetDuration, i);
-      else
-        scaleToPitchAndDurationSimpleTD(tmp, startOffset, p, pitch, targetDuration, i);
-    else
-      scaleToPitchAndDuration(tmp, startOffset, p, pitch, targetDuration, i, FD);
+    scalePiece(dest, tmp, 0, p, pitch, targetDuration, i, FD);
 
-    for(int i = 0; i < tmp.length - extra && destOffset < dest.length; i++, destOffset++)
+    /*WaveDataTemp tmp2(WaveData::allocate(targetDuration, dest.sampleRate));
+    scalePiece(dest, tmp2, 0, p, pitch, targetDuration, i, FD);
+    for(auto i = 0u; i < tmp.size(); i++)
+    assert(tmp[i] == tmp2[i]);*/
+
+    for(auto i = 0; i < tmp.length && destOffset < dest.length; i++, destOffset++)
       dest[destOffset] = tmp[i];
 
-    totalDuration += targetDuration - extraTime;
+    totalDuration += targetDuration;
 
     prog.update();
   }
@@ -307,28 +346,26 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest, SpeechWaveData* pieces,
 
   if(SCALE_ENERGY) {
     prog = Progress(target.size(), "Scaling Energy: ");
-    for(unsigned i = 0; i < target.size(); i++) {
-      auto& tgt = target[i];
-      scaleEnergy(dest, tgt);
+    for(auto i = 0u; i < target.size(); i++) {
+      scaleEnergy(dest, target[i]);
       prog.update();
     }
     prog.finish();
   }
-  
+
   if(SMOOTH) {
     prog = Progress(target.size(), "Smoothing: ");
     totalDuration = target[0].duration;
 
-    double crossfadeTime = opts.get_opt<double>("crossfade", -1);
-    bool isCFTimeSet = crossfadeTime != -1;
-    for(unsigned i = 1; i < target.size() - 1; i++) {
+    auto crossfadeTime = opts.get_opt<double>("crossfade", -1);
+    auto isCFTimeSet = crossfadeTime != -1;
+    for(auto i = 1u; i < target.size() - 1; i++) {
       int offset = dest.toSamples(totalDuration);
 
       smooth(dest, offset, target[i], target[i+1], isCFTimeSet ? crossfadeTime : (1 / pt.at(offset)));
 
       auto& tgt = target[i];
-      double targetDuration = tgt.end - tgt.start;
-      totalDuration += targetDuration;
+      totalDuration += tgt.end - tgt.start;
       prog.update();
     }
     prog.finish();
@@ -411,13 +448,12 @@ void scaleToPitchAndDuration(WaveData& dest,
   vector<int> scaledMarks;
   each(sourceMarks, [&](int v) { scaledMarks.push_back(v * scale); });
 
-  int startOffset = 0;
-  int destOffsetBound;
-  
-  int i = 0;
-  int mark = 0;
-  int nMark = sourceMarks[i];
-  destOffsetBound = startOffset + nMark * scale;
+  auto startOffset = 0,
+    i = 0,
+    mark = 0,
+    nMark = sourceMarks[i],
+    destOffsetBound = startOffset + (int) (nMark * scale);
+
   if(nMark - mark >= limits.maxVoicelessSamples || sourceMarks.size() == 1)
     copyVoicelessPart(source, destOffset, destOffsetBound, 0, mark, nMark, dest);
   else
@@ -428,7 +464,7 @@ void scaleToPitchAndDuration(WaveData& dest,
       copyVoicedPartTD(source, destOffset, destOffsetBound,
                        nMark, nMark + (nMark - mark), pitch, dest, debugIndex);
 
-  for(unsigned i = 0; i < sourceMarks.size() - 1; i++) {
+  for(auto i = 0u; i < sourceMarks.size() - 1; i++) {
     mark = sourceMarks[i];
     nMark = sourceMarks[i + 1];
 
@@ -510,12 +546,17 @@ void copyVoicedPartTD(const SpeechWaveData& source,
   int sourcePeriodSamplesRight = nMark - mark;
   int sourcePeriodSamplesLeft = nMark - mark;
 
-  while(destOffset <= destOffsetBound) {
-    int periodSamples = dest.toSamples(1 / pitch.at(destOffset));
+  //WaveDataTemp tmp(WaveData::copy(dest));
 
-    double copyPeriodRight = dest.toDuration(sourcePeriodSamplesRight);
-    double copyPeriodLeft = dest.toDuration(sourcePeriodSamplesLeft);
+  while(destOffset <= destOffsetBound) {
+    auto periodSamples = dest.toSamples(1 / pitch.at(destOffset));
+
+    auto copyPeriodRight = dest.toDuration(sourcePeriodSamplesRight);
+    auto copyPeriodLeft = dest.toDuration(sourcePeriodSamplesLeft);
     overlapAddAroundMark(source, mark, dest, destOffset, copyPeriodLeft, copyPeriodRight);
+    /*overlapAddAroundMark(source, mark, tmp, destOffset, copyPeriodLeft, copyPeriodRight);
+    for(auto i = 0u; i < tmp.size(); i++)
+    assert(tmp[i] == dest[i]);*/
 
     destOffset += periodSamples;
   }

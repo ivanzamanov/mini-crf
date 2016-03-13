@@ -84,7 +84,7 @@ struct WaveData {
       dest[i] = data[offset + sourceOffset + i];
   }
 
-  static WaveData copy(WaveData& origin) {
+  static WaveData copy(const WaveData& origin) {
     short* newData = new short[origin.length];
     memcpy(newData, origin.data, origin.length * sizeof(data[0]));
     return WaveData(newData, 0, origin.length, origin.sampleRate);
@@ -92,8 +92,7 @@ struct WaveData {
 
   static WaveData allocate(float duration, unsigned sampleRate) {
     int samples = duration * sampleRate;
-    short* data = new short[samples];
-    memset(data, 0, samples * sizeof(data[0]));
+    short* data = (short*) calloc(samples, sizeof(short));
     return WaveData(data, 0, samples, sampleRate);
   }
 };
@@ -103,11 +102,11 @@ struct WaveDataTemp : public WaveData {
     : WaveData(data.data, data.offset, data.length, data.sampleRate)
   { }
   ~WaveDataTemp() {
-    delete[] data;
+    free(data);
   }
 };
 
-struct SpeechWaveData : WaveData {
+struct SpeechWaveData : public WaveData {
   SpeechWaveData(): WaveData::WaveData() { }
   SpeechWaveData(WaveData data): WaveData::WaveData(data) { }
   // Sample indexes that are pitch marks
@@ -187,7 +186,7 @@ struct Wave {
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
     if(data) free(data);
-    data = (char*) malloc(h.samplesBytes);
+    data = (char*) calloc(h.samplesBytes, 1);
     istr.read((char*) data, h.samplesBytes);
   }
 

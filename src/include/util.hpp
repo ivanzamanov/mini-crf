@@ -231,13 +231,13 @@ struct pqueue : std::array<T, size> {
   pqueue& push(const T& v, const Comparator& cmp) {
     auto& t = *this;
 
-    int i = 0;
+    auto i = 0u;
     while(i < size && cmp(t[i], v))
       i++;
     if(i >= size) return *this;
 
-    int j = size - 2;
-    while(j >= i) {
+    int j = ((int) size) - 2;
+    while(j >= (int) i) {
       t[j + 1] = t[j];
       j--;
     }

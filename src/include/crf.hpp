@@ -26,7 +26,7 @@ class _Corpus;
 template<class CRF, class Functions>
 struct FunctionalAutomaton;
 
-const double TRAINING_RATIO = 0.3;
+constexpr double TRAINING_RATIO = 0.3;
 
 template<class Input, class Label>
 class _Corpus {
@@ -106,6 +106,10 @@ public:
   typedef std::array<coefficient, features::size> Values;
 
   typedef PathFeatureStats<features::size> Stats;
+
+  void set(int index, coefficient coef) {
+    lambda[index] = coef;
+  }
 
   void set(const std::string& feature, coefficient coef) {
     int index = -1;
@@ -196,7 +200,7 @@ struct FunctionalAutomaton {
   traverse_transitions(const TrArray* const children,
                        unsigned children_length,
                        int src,
-                       const int pos) {
+                       const unsigned pos) {
     auto cmp = [&](const Transition& tr1, const Transition& tr2) {
       return funcs.is_better(tr1.base_value, tr2.base_value);
     };
@@ -234,7 +238,7 @@ struct FunctionalAutomaton {
                        TrArray* children,
                        TrArray* next_children,
                        int children_length,
-                       int pos,
+                       unsigned pos,
                        Matrix<unsigned> &paths) {
     auto cmp = [&](const Transition& tr1, const Transition& tr2) {
       return funcs.is_better(tr1.base_value, tr2.base_value);
@@ -242,7 +246,7 @@ struct FunctionalAutomaton {
     pqueue<Transition, kBestValues> pq;
     for(auto& tr : pq)
       tr.set(0, funcs.worst());
-    for(auto m = 0; m < allowed.size(); m++) {
+    for(auto m = 0u; m < allowed.size(); m++) {
       auto srcId = allowed[m];
 
       auto t = traverse_transitions<TrArray, kBestValues>(children,
@@ -265,6 +269,7 @@ struct FunctionalAutomaton {
   template<unsigned kBestValues = 1>
   std::array<cost, kBestValues> traverse(vector<int>* best_path) {
     static_assert(kBestValues > 0, "At least 1 best val");
+    assert(x.size() > 0);
     Progress prog(x.size());
 
     typedef std::array<Transition, kBestValues> TrArray;
@@ -308,7 +313,7 @@ struct FunctionalAutomaton {
       t = traverse_at_position<TrArray,
                                kBestValues>(allowed, children,
                                             next_children,
-                                            children_length, pos,
+                                            children_length, (unsigned) pos,
                                             paths);
 
       children_length = 0;

@@ -11,9 +11,9 @@
 #include"util.hpp"
 
 struct Options {
-  Options() { }
+  Options(): log(true) { }
 
-  Options(unsigned l, const char** argv) {
+  Options(unsigned l, const char** argv): Options() {
     for(unsigned i = 0; i < l; i++)
       args.push_back(argv[i]);
 
@@ -49,18 +49,19 @@ struct Options {
   bool text_input;
 
   std::vector<std::string> args;
+  bool log;
 
   void add_opt(std::string opt, std::string val) {
     args.push_back(std::string("--") + opt);
     args.push_back(val);
   }
-  
+
   bool has_opt(std::string opt) const {
     opt = std::string("--") + opt;
     for(unsigned i = 0; i < args.size(); i++) {
       std::string test(args[i]);
       if(opt == test) {
-        INFO(opt);
+        if(log) { INFO(opt); }
         return true;
       }
     }
@@ -75,7 +76,7 @@ struct Options {
       if(opt == test) {
         std::string result(args[i + 1]);
         if(found) *found = true;
-        INFO(opt << " = " << result);
+        if(log) { INFO(opt << " = " << result); }
         return result;
       }
     }
