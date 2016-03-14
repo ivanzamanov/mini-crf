@@ -107,7 +107,9 @@ int resynthesize(Options& opts) {
   Wave sourceSignal;
   sourceSignal.read(fileData.file);
   if(opts.has_opt("verbose")) {
-    gridsearch::Comparisons cmp; cmp.fill(outputSignal, sourceSignal); cmp.print();
+    gridsearch::Comparisons cmp;
+    cmp.fill(outputSignal, sourceSignal);
+    INFO("LogSpectrum = " << cmp.value());
   }
   return 0;
 }

@@ -13,7 +13,7 @@ namespace gridsearch {
   typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
 
   double compare_LogSpectrum(Wave& result, Wave& original);
-  double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>&);
+  double compare_LogSpectrum(Wave& result, const std::vector<FrameFrequencies>&);
   double compare_IS(Wave& result, Wave& original);
 
   struct Comparisons {
@@ -21,13 +21,13 @@ namespace gridsearch {
     static std::string aggregate;
 
     Comparisons()
-      :ItakuraSaito(0), LogSpectrum(0) { }
+      :LogSpectrum(0) { }
 
-    Comparisons(double is, double ls)
-      :ItakuraSaito(is), LogSpectrum(ls) { }
+    Comparisons(double, double ls)
+      :LogSpectrum(ls) { }
 
     Comparisons(const Comparisons& o)
-      :ItakuraSaito(o.ItakuraSaito), LogSpectrum(o.LogSpectrum) { }
+      :LogSpectrum(o.LogSpectrum) { }
 
     static double aggregate_values(double v1, double v2) {
       if(Comparisons::aggregate == "sum")
@@ -37,51 +37,43 @@ namespace gridsearch {
       assert(false); // metric-aggregate must be one of [sum, max]
     }
 
-    double ItakuraSaito;
+    //double ItakuraSaito;
     double LogSpectrum;
 
-    const Comparisons& dummy(double v) {
-      ItakuraSaito = LogSpectrum = v; return *this;
-    }
-    
     const Comparisons& fill(Wave& dist, Wave& original) {
-      ItakuraSaito = compare_IS(dist, original);
       LogSpectrum = compare_LogSpectrum(dist, original);
       return *this;
     }
-    
-    void fill(Wave& dist, std::vector<FrameFrequencies>& sourceFreqs) {
-      //ItakuraSaito = compare_IS(dist, original);
-      LogSpectrum = compare_LogSpectrum(dist, sourceFreqs);
+
+    const Comparisons& dummy(double v) {
+      //ItakuraSaito =
+      LogSpectrum = v; return *this;
     }
 
-    void print() const {
-      LOG("IS = " << ItakuraSaito);
-      LOG("LogSpectrum = " << LogSpectrum);
-    }
-    
     bool operator<(const Comparisons o) const {
       return LogSpectrum < o.LogSpectrum;
     }
-    
-    bool operator<=(const Comparisons o) const {
-      return *this < o || (ItakuraSaito == o.ItakuraSaito && LogSpectrum == o.LogSpectrum);
+
+    bool operator<=(const Comparisons& o) const {
+      return LogSpectrum <= o.LogSpectrum;
     }
 
     const Comparisons operator+(const Comparisons o) const {
-      Comparisons result(ItakuraSaito + o.ItakuraSaito, LogSpectrum + o.LogSpectrum);
+      Comparisons result(0, LogSpectrum + o.LogSpectrum);
       return result;
     }
 
     double value() const {
-      if(Comparisons::metric == "ItSt")
+      return LogSpectrum;
+      /*      if(Comparisons::metric == "ItSt")
         return ItakuraSaito;
       if(Comparisons::metric == "LogS")
         return LogSpectrum;
       assert(false); // Metric must be one of [ItSt, LogS]
+      */
     }
   };
-  
+
   struct ResynthParams {
     void init(int index, bool* flag) {
       this->index = index;

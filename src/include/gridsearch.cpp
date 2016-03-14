@@ -84,7 +84,7 @@ struct _ValueCache {
     for(unsigned i = 0; i < size; i++) {
       for(unsigned j = 0; j < FeatureCount; j++)
         w << args[i][j];
-      w << values[i].ItakuraSaito;
+      //w << values[i].ItakuraSaito;
       w << values[i].LogSpectrum;
     }
     INFO("Persisted " << size << " values in " << path);
@@ -108,7 +108,6 @@ private:
         reader >> arg;
         args[j] = arg;
       }
-      reader >> values.ItakuraSaito;
       reader >> values.LogSpectrum;
       this->args.push_back(args);
       this->values.push_back(values);
@@ -231,9 +230,8 @@ namespace gridsearch {
 
     auto& frames = *(params->precompFrames);
 
-    Comparisons result;
-    result.ItakuraSaito = compare_IS(resultSignal, sourceSignal);
-    result.LogSpectrum = compare_LogSpectrum(resultSignal, frames[index]);
+    Comparisons result(compare_IS(resultSignal, sourceSignal),
+                       compare_LogSpectrum(resultSignal, frames[index]));
     /*auto LS2 = compare_LogSpectrum(resultSignal, frames[index]);
     assert(LS2 == result.value());
     */
@@ -297,7 +295,7 @@ namespace gridsearch {
       sumTemp = sumTemp + params[i];
     }
     avgTemp.LogSpectrum = sumTemp.LogSpectrum / params.size();
-    avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
+    //avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
     if(sum)
       *sum = sumTemp;
     if(max)
@@ -551,9 +549,9 @@ namespace gridsearch {
       csvPrint(csvOutput, csvFile, ranges, result);
 
       result = state.nextStep(f, ranges, current, delta, p_delta);
-      INFO("Value: " << result.value());
 
       if(!state.stop && result < bestResult) {
+        INFO("Value: " << result.value());
         bestResult = result;
         bestParams = current;
       }
