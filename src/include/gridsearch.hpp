@@ -17,9 +17,6 @@ namespace gridsearch {
   double compare_IS(Wave& result, Wave& original);
 
   struct Comparisons {
-    static std::string metric;
-    static std::string aggregate;
-
     Comparisons()
       :LogSpectrum(0) { }
 
@@ -28,14 +25,6 @@ namespace gridsearch {
 
     Comparisons(const Comparisons& o)
       :LogSpectrum(o.LogSpectrum) { }
-
-    static double aggregate_values(double v1, double v2) {
-      if(Comparisons::aggregate == "sum")
-        return v1 + v2;
-      if(Comparisons::aggregate == "max")
-        return std::max(v1, v2);
-      assert(false); // metric-aggregate must be one of [sum, max]
-    }
 
     //double ItakuraSaito;
     double LogSpectrum;
@@ -65,25 +54,62 @@ namespace gridsearch {
 
     double value() const {
       return LogSpectrum;
-      /*      if(Comparisons::metric == "ItSt")
-        return ItakuraSaito;
-      if(Comparisons::metric == "LogS")
-        return LogSpectrum;
-      assert(false); // Metric must be one of [ItSt, LogS]
-      */
+    }
+
+    static void aggregate(const std::vector<Comparisons>& params,
+                          Comparisons* sum=0,
+                          Comparisons* max=0,
+                          Comparisons* avg=0) {
+      Comparisons sumTemp, avgTemp;
+      auto maxIndex = 0;
+      for(auto i = 0u; i < params.size(); i++) {
+        if(params[i] < params[maxIndex])
+          maxIndex = i;
+        sumTemp = sumTemp + params[i];
+      }
+      avgTemp.LogSpectrum = sumTemp.LogSpectrum / params.size();
+      //avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
+      if(sum)
+        *sum = sumTemp;
+      if(max)
+        *max = params[maxIndex];
+      if(avg)
+        *avg = avgTemp;
+    }
+  };
+
+  struct TrainingOutput {
+    Comparisons cmp;
+    std::vector<int> path;
+    std::array<cost, 2> bestValues;
+  };
+
+  struct TrainingOutputs : public std::vector<TrainingOutput> {
+    cost value() const {
+      auto count = this->size();
+      std::vector<Comparisons> comps(count);
+      for(unsigned i = 0; i < count; i++)
+        comps[i] = (*this)[i].cmp;
+
+      Comparisons result;
+      Comparisons::aggregate(comps, 0, 0, &result);
+      return result.value();
     }
   };
 
   struct ResynthParams {
-    void init(int index, bool* flag) {
+    
+    void init(int index, bool* flag,
+              std::vector< std::vector<FrameFrequencies> >* precomputed) {
       this->index = index;
       this->flag = flag;
+      this->precompFrames = precomputed;
     }
 
     int index;
     bool* flag;
-    Comparisons result;
     std::vector< std::vector<FrameFrequencies> >* precompFrames;
+    TrainingOutput result;
   };
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec);

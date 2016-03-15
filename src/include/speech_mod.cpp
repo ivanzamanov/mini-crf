@@ -201,6 +201,7 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // preallocate the complete wave result,
   // but only temporarily
   WaveDataTemp result = WaveData::allocate(completeDuration, sourceData->sampleRate());
+  //INFO(completeDuration << " in " << result.size() << " samples");
   do_resynthesis(result, waveData, opts);
 
   /*WaveDataTemp result2 = WaveData::allocate(completeDuration, sourceData->sampleRate());

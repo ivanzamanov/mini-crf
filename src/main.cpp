@@ -140,13 +140,11 @@ int baseline(const Options& opts) {
 }
 
 bool Progress::enabled = true;
-std::string gridsearch::Comparisons::metric = "";
-std::string gridsearch::Comparisons::aggregate = "";
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  std::cout << std::fixed;
-  std::cerr << std::fixed;
+  (std::cout << std::scientific);
+  (std::cerr << std::scientific);
   Options opts;
   if(!init_tool(argc, argv, &opts)) {
     print_usage();
