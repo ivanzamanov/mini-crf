@@ -119,27 +119,3 @@ procedure unforcePointProcess
   Remove
   pointProcess = originalPointProcess
 endproc
-
-# TODO
-procedure getFrameBoundaries
-  startPoint_ = lastTime
-
-  selectObject: soundObj
-
-  selectObject: mfccObj
-  startFrame = Get frame number from time... startPoint_
-  startFrame = max(1, startFrame)
-  endFrame = Get frame number from time... endPoint_
-
-  startFrame = floor(startFrame)
-  endFrame = ceiling(endFrame)
-
-  startFrame = max(startFrame, lastFrame)
-  endFrame = max(endFrame, startFrame + 1)
-
-  # Explicitly - first feature frame is the last frame...
-  startFrame = lastFrame
-  lastFrame = endFrame
-
-  lastTime = endPoint_
-endproc

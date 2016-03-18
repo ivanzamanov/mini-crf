@@ -1,1 +1,0 @@
-appendInfoLine: "Running script"
