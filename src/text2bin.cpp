@@ -98,15 +98,6 @@ void validate_data(std::ifstream& input) {
   std::cout << "Bin corpus size: " << n_corpus.size() << std::endl;
 }
 
-std::ostream& operator<<(std::ostream& str, const FeatureValues& fv) {
-  str << "(";
-  str << fv[0];
-  for(unsigned i = 1; i < fv.size(); i++)
-    str << ", " << fv[i];
-  str << ")";
-  return str;
-}
-
 void calculateEnergy(PhonemeAlphabet& alphabet) {
   for(auto& p : alphabet.labels) {
     FileData fileData = alphabet.file_data_of(p);
@@ -124,7 +115,6 @@ void calculateEnergy(PhonemeAlphabet& alphabet) {
 }
 
 bool Progress::enabled = true;
-std::string gridsearch::Comparisons::metric = "";
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
 

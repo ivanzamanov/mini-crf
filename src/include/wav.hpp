@@ -38,7 +38,7 @@ struct WaveData {
   WaveData range(int offset, int length) {
     return WaveData(data, this->offset + offset, length, sampleRate);
   }
-  float duration() const { return length / sampleRate; }
+  double duration() const { return length / sampleRate; }
   short* begin() const { return data; }
   short* end() const { return data + length; }
   short& operator[](int i) const { return data[offset + i]; }
@@ -58,19 +58,19 @@ struct WaveData {
       str << data[i] << '\n';
   }
 
-  float toDuration(int sampleCount) const {
+  double toDuration(int sampleCount) const {
     return WaveData::toDuration(sampleCount, sampleRate);
   }
 
-  int toSamples(float duration) const {
+  int toSamples(double duration) const {
     return WaveData::toSamples(duration, sampleRate);
   }
 
-  static float toDuration(int sampleCount, unsigned sampleRate) {
-    return (float) sampleCount / sampleRate;
+  static double toDuration(int sampleCount, unsigned sampleRate) {
+    return (double) sampleCount / sampleRate;
   }
 
-  static int toSamples(float duration, unsigned sampleRate) {
+  static int toSamples(double duration, unsigned sampleRate) {
     return duration * sampleRate;
   }
 
@@ -90,7 +90,7 @@ struct WaveData {
     return WaveData(newData, 0, origin.length, origin.sampleRate);
   }
 
-  static WaveData allocate(float duration, unsigned sampleRate) {
+  static WaveData allocate(double duration, unsigned sampleRate) {
     int samples = duration * sampleRate;
     short* data = (short*) calloc(samples, sizeof(short));
     return WaveData(data, 0, samples, sampleRate);
@@ -114,8 +114,8 @@ struct SpeechWaveData : public WaveData {
 
   // simply the first mark
   int mark() const { return marks[0]; }
-  float localDuration() const { return ((float)length / 2) / sampleRate; }
-  float localPitch() const { return 1 / localDuration(); }
+  double localDuration() const { return ((double)length / 2) / sampleRate; }
+  double localPitch() const { return 1 / localDuration(); }
 
   const SpeechWaveData& copy_from(const WaveData& wd) const {
     *( (WaveData*) this) = wd;
@@ -204,19 +204,19 @@ struct Wave {
     return h.sampleRate;
   }
 
-  float toDuration(int sampleCount) const {
-    return (float) sampleCount / sampleRate();
+  double toDuration(int sampleCount) const {
+    return (double) sampleCount / sampleRate();
   }
 
-  int toSamples(float duration) const {
+  int toSamples(double duration) const {
     return duration * sampleRate();
   }
 
   unsigned bytesPerSample() const { return h.bitsPerSample / 8; }
   unsigned length() const { return h.samplesBytes / bytesPerSample(); }
-  float duration() const { return (float) length() / h.sampleRate; }
+  double duration() const { return (double) length() / h.sampleRate; }
   // The sample index at the given time
-  unsigned at_time(float time) const { return (double) time * h.sampleRate; }
+  unsigned at_time(double time) const { return (double) time * h.sampleRate; }
 
   // Checked access to sample
   short get(int i) const {
@@ -234,7 +234,7 @@ struct Wave {
     return WaveData((short*) data, startSample, endSample - startSample, sampleRate());
   }
 
-  WaveData extractByTime(float start, float end) const {
+  WaveData extractByTime(double start, double end) const {
     return extractBySample(at_time(start), at_time(end) - 1);
   }
 };

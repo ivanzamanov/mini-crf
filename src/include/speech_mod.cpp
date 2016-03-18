@@ -257,13 +257,13 @@ int overlapAddAroundMark(const WaveData& source, const int currentMark,
   return copied;
 }
 
-float nextRandFloat() {
+double nextRandFloat() {
   return 1;
   /*static int cycleMax = 4;
   static int cycle = 0;
   cycle = cycle % cycleMax + 1;
 
-  return 0.8 + (float) cycle * 0.1;*/
+  return 0.8 + (double) cycle * 0.1;*/
 }
 
 void copyVoicelessPart(const SpeechWaveData& source,
@@ -274,7 +274,7 @@ void copyVoicelessPart(const SpeechWaveData& source,
                        int sourceBound,
                        WaveData& dest) {
   auto dLen = destOffsetBound - destOffset;
-  auto scale = (float) dLen / (sourceBound - sMark);
+  auto scale = (double) dLen / (sourceBound - sMark);
   PsolaConstants limits(dest.sampleRate);
 
   //WaveDataTemp tmp(WaveData::copy(dest));

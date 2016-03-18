@@ -7,38 +7,38 @@ bool PRINT_SCALE = false;
 bool REPORT_PROGRESS = false;
 
 namespace util {
-  float mult_exp(float x, float y) {
+  double mult_exp(double x, double y) {
     if(y == 0)
       return 0;
     int sign = (y > 0) ? 1 : -1;
-    float absX = std::abs(x);
-    float logAbsY = std::log(std::abs(y));
-    float mod = std::exp( absX + logAbsY );
+    double absX = std::abs(x);
+    double logAbsY = std::log(std::abs(y));
+    double mod = std::exp( absX + logAbsY );
     return sign * mod;
   }
 
-  float mult(float x, float y) {
+  double mult(double x, double y) {
     if(x == 0 || y == 0)
       return 0;
     int sign = (x * y > 0) ? 1 : -1;
     return sign * std::exp( std::log(std::abs(x)) + std::log(std::abs(y)) );
   }
   
-  float log_mult(float logX, float logY) {
+  double log_mult(double logX, double logY) {
     return logX + logY;
   }
   
-  float log_sum(float logX, float logY) {
+  double log_sum(double logX, double logY) {
     if(logX > logY)
       std::swap(logX, logY);
     return log( exp(logY - logX) + 1) + logX;
   }
 
-  float log_sum2(float logX, float logY) {
+  double log_sum2(double logX, double logY) {
     return logX + log_sum(MY_E, logY - logX);
   }
   
-  float sum_log(float x, float y) {
+  double sum_log(double x, double y) {
     if(x == 0)
       return y;
     if(y == 0)
@@ -51,21 +51,21 @@ namespace util {
     if(same_sign) {
       sign = (x > 0) ? 1 : -1;
 
-      float logAbsX = x;
-      float log_sum = std::log( std::exp(y - logAbsX) + 1) + logAbsX;
+      double logAbsX = x;
+      double log_sum = std::log( std::exp(y - logAbsX) + 1) + logAbsX;
       return sign * std::exp ( log_sum );
     } else {
       sign = (x + y) > 0 ? 1 : -1;
       if(std::abs(x) > std::abs(y))
         std::swap(x, y);
 
-      float logAbsX = std::log(std::abs(x));
-      float log_sum = std::log( std::exp(std::log(std::abs(y)) - logAbsX) - 1) + logAbsX;
+      double logAbsX = std::log(std::abs(x));
+      double log_sum = std::log( std::exp(std::log(std::abs(y)) - logAbsX) - 1) + logAbsX;
       return sign * std::exp ( log_sum );
     }
   }
 
-  float sum(float x, float y) {
+  double sum(double x, double y) {
     if(x == 0)
       return y;
     if(y == 0)
@@ -73,14 +73,14 @@ namespace util {
     if(x == -y)
       return 0;
 
-    float logAbsX = std::log(std::abs(x));
-    float logAbsY = std::log(std::abs(y));
+    double logAbsX = std::log(std::abs(x));
+    double logAbsY = std::log(std::abs(y));
     if(logAbsX > logAbsY) {
       std::swap(logAbsX, logAbsY);
       std::swap(x, y);
     }
 
-    float result = std::log( std::exp(logAbsY - logAbsX) + 1) + logAbsX;
+    double result = std::log( std::exp(logAbsY - logAbsX) + 1) + logAbsX;
     int sign;
     if(x < 0 && y < 0) sign = -1;
     else if(x > 0 && y > 0) sign = 1;

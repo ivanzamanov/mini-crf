@@ -52,13 +52,13 @@ struct Pair {
 };
 
 namespace util {
-  float mult_exp(float x, float y);
-  float mult(float x, float y);
-  float log_mult(float logX, float logY);
-  float log_sum(float logX, float logY);
-  float log_sum2(float logX, float logY);
-  float sum_log(float x, float y);
-  float sum(float x, float y);
+  double mult_exp(double x, double y);
+  double mult(double x, double y);
+  double log_mult(double logX, double logY);
+  double log_sum(double logX, double logY);
+  double log_sum2(double logX, double logY);
+  double sum_log(double x, double y);
+  double sum(double x, double y);
 
   template<class T>
   T parse(const std::string& str) {
