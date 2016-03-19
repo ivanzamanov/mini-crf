@@ -61,45 +61,156 @@ def valueAtTime(time, lst):
     return lst[index]
 
 UNVOICED = 0.02
-def getNearest(time, pulses):
-    result = -1
+def getNearestPulse(time, pulses):
+    nextNearestPulse = -1
+    prevNearestPulse = 0
     for p, n in zip(pulses, pulses[1:]):
         if p <= time and n > time:
-            result = p
+            nextNearestPulse = p
             break
-    if abs(time - p) < UNVOICED:
-        result = p
-    else:
-        result = time
-    return result
+        prevNearestPulse = p
+
+    nearest = prevNearestPulse if abs(time - prevNearestPulse) < abs(time - nextNearestPulse) else nextNearestPulse
+    return nearest if abs(time - nearest) < UNVOICED else time
+
+def getNextPulse(pulse, pulses):
+    for p in pulses:
+        if p > pulse:
+            return p if p - pulse < UNVOICED else pulse + UNVOICED
+    return 100000
 
 def roundToPulse(intervals, pulses):
     for interval in intervals:
-        nearestStart = getNearest(interval.start, pulses)
-        nearestEnd = getNearest(interval.end, pulses)
-        if verbose: print 'Round [', interval.start, interval.end, ']', 'to', '[', nearestStart, nearestEnd, ']', (interval.start - nearestStart, interval.end - nearestEnd)
-
+        nearestStart = getNearestPulse(interval.start, pulses)
+        nearestEnd = getNearestPulse(interval.end, pulses)
+        if verbose and (nearestStart, nearestEnd) != (interval.start, interval.end):
+            print 'Round [', interval.start, interval.end, ']', 'to', '[', nearestStart, nearestEnd, ']'
+        assert abs(interval.start - nearestStart) < UNVOICED
+        assert abs(interval.end - nearestEnd) < UNVOICED
         assert nearestStart < nearestEnd
 
         interval.start = nearestStart
         interval.end = nearestEnd
     return intervals
 
+def split(phon, splitPoint):
+    return [ Interval((phon.start, phon.start + splitPoint, '')),
+             Interval((phon.start + splitPoint, phon.end, '')) ]
+
+MIN_DURATION = 0.01
+def isValidDuration(interval):
+    result = interval.duration() >= MIN_DURATION
+    return result
+
+def attemptSplit(phon, splitPoint, pulses):
+    nearest = getNearestPulse(phon.start + phon.duration() / 2, pulses)
+    currentSplit = split(phon, nearest - phon.start)
+    while not all(map(isValidDuration, currentSplit)):
+        #print 'Invalid split', phon.duration(), currentSplit[0].duration(), currentSplit[1].duration()
+        nearest = getNextPulse(nearest, pulses)
+        if nearest < phon.end:
+            currentSplit = split(phon, nearest - phon.start)
+        else:
+            break
+    if nearest >= phon.end:
+        return ((), False)
+    else:
+        return (currentSplit, True)
+
+def attemptMaxEnergySplit(phon, pulses, wave):
+    maxEnergy = 0
+    maxEnergyLeft = 0
+    for p, n in zip(pulses, pulses[1:]):
+        if n - p < UNVOICED:
+            energy = reduce(lambda x, y: x + y ** 2, extractSamples(wave, p, n)) / (n - p)
+            if energy > maxEnergy:
+                maxEnergyLeft = p
+                maxEnergy = energy
+    attempt = split(phon, p)
+    return attempt, all(map(isValidDuration, attempt))                
+
+def splitSinglePhon(phon, pulses, wave):
+    if phon.duration() < 2 * MIN_DURATION:
+        result = [ phon ]
+    else:
+        # see if there's a pulse between the start and end
+        # NOTE: pulses will contain ONLY PULSES INTERNAL TO THE PHON
+        pulses = filter(lambda p: p > phon.start and p < phon.end, pulses)
+        if not pulses:
+            if verbose: print 'Split mid'
+            # TODO: Max Energy split
+            result = split(phon, phon.duration() / 2)
+        elif len(pulses) == 1:
+            if verbose: print 'Split at single pulse'
+            # No other option
+            result = split(phon, pulses[0] - phon.start)
+            if not all(map(isValidDuration, result)):
+                result = [ phon ]
+        else:
+            # find nearest to mid
+            currentSplit, ok = attemptMaxEnergySplit(phon, pulses, wave)
+            if not ok:
+                if verbose: print 'Could not split on max energy'
+                currentSplit, ok = attemptSplit(phon, phon.duration() / 2, pulses)
+            if not ok:
+                if verbose: print 'Could not split on duration / 2'
+                currentSplit, ok = attemptSplit(phon, phon.duration() / 2 - UNVOICED, pulses)
+            if not ok:
+                if verbose: print 'Could not split on duration / 2 - UNVOICED'
+                currentSplit = split(phon, phon.duration() / 2)
+                ok = all(map(isValidDuration, currentSplit))
+
+            if not ok:
+                print 'Could not split on duration / 2...'
+                print phon, currentSplit[0], currentSplit[1]
+
+            assert ok
+            result = currentSplit
+            if verbose: print phon.duration(), '->', currentSplit[0].duration(), currentSplit[1].duration()
+            
+    if len(result) == 1:
+        result[0].label = phon.label + '-'
+    else:
+        result[0].label = '-' + phon.label
+        result[1].label = phon.label + '-'
+
+    return result
+
+def splitToSemiPhons(intervals, pulses, wave):
+    semi = []
+    for i in intervals:
+        semi = semi + splitSinglePhon(i, pulses, wave)
+        assert all(map(isValidDuration, semi))
+    return semi
+
 def generatePhonemes(wave):
     global intervals
     intervals = coalesceSilenceAndNoise(intervals)
     intervals = map(lambda i: Interval(i), intervals)
     intervals = roundToPulse(intervals, pulses)
+    intervals = splitToSemiPhons(intervals, pulses, wave)
 
     phonemes = map(lambda i: Phoneme(start=i.start,end=i.end,label=i.label), intervals)
     map(lambda p: p.populate(wave, mfcc, pulses), phonemes)
     return phonemes
+
+def extractSamples(wave, start, end):
+    sampleRate = wave.getframerate()
+    duration = end - start
+    assert duration > 0
+    wave.setpos(start * sampleRate)
+    return [ struct.unpack_from("<h", wave.readframes(1))[0]
+                    for i in range(0, int(duration * sampleRate))]
 
 class Interval:
     def __init__(self, interval):
         self.start = interval[0]
         self.end = interval[1]
         self.label = interval[2]
+    def __str__(self):
+        return str((self.start, self.end, self.label))
+    def duration(self):
+        return self.end - self.start
 
 class Phoneme:
     ''' A PhonemeInstance '''
@@ -114,13 +225,7 @@ class Phoneme:
         self.pitch = []
 
     def populate(self, wave, mfcc, pulses):
-        sampleRate = wave.getframerate()
-        wave.setpos(self.start * sampleRate)
-        samples = [ struct.unpack_from("<h", wave.readframes(1))[0]
-                    for i in range(0, int(self.duration * sampleRate))]
-
-        self.energy = reduce(lambda x, y: x + y ** 2, samples)
-
+        self.energy = reduce(lambda x, y: x + y ** 2, extractSamples(wave, self.start, self.end))
         self.mfcc = [ valueAtTime(self.start, mfcc),
                       valueAtTime(self.end, mfcc) ]
         self.pitch = [ valueAtTime(self.start, pitchValues),
