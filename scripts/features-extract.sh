@@ -48,7 +48,7 @@ do
         echo "$WAV" "$GRID" "$OUTPUT $LARYNGOGRAPH_FILE"
         GRIDS=`expr $GRIDS + 1`
     fi
-done | sort | xargs -P 1 -n $N_PARAMS -t $EXTRACTOR_SCRIPT
+done | sort | xargs -P 8 -n $N_PARAMS -t $EXTRACTOR_SCRIPT
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"

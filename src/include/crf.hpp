@@ -156,26 +156,25 @@ struct FunctionalAutomaton {
     return alphabet.size();
   }
 
+  template<bool isTransition>
   cost calculate_value(const int srcOrState,
                        const int destId,
                        const int pos,
-                       bool isTransition,
                        typename CRF::Stats* stats = 0) {
-    return calculate_value(alphabet.fromInt(srcOrState),
-                           alphabet.fromInt(destId),
-                           pos, isTransition,
-                           stats);
+    return calculate_value<isTransition>(alphabet.fromInt(srcOrState),
+                                         alphabet.fromInt(destId),
+                                         pos,
+                                         stats);
   }
 
+  template<bool isTransition>
   cost calculate_value(const typename CRF::Label& srcOrState,
                        const typename CRF::Label& dest,
                        const int pos,
-                       bool isTransition,
                        typename CRF::Stats* stats = 0) {
     typename CRF::Values vals;
-    const tuples::Applicator<decltype(dest), decltype(x)> f = {
+    const tuples::Applicator<decltype(dest), decltype(x), isTransition> f = {
       .pos = pos,
-      .isTransition = isTransition,
       .srcOrState = srcOrState,
       .dest = dest,
       .x = x
@@ -215,7 +214,7 @@ struct FunctionalAutomaton {
         auto& currentTr = children[m];
         for(auto& tr : currentTr) {
           // value of transition to that label
-          auto transitionValue = calculate_value(src, tr.child, pos, true);
+          auto transitionValue = calculate_value<true>(src, tr.child, pos);
           // concatenation of the cost of the target label
           // and the transition value
           auto child_value = funcs.concat(tr.base_value, transitionValue);
@@ -223,7 +222,7 @@ struct FunctionalAutomaton {
         }
       }
     } else {
-      auto transitionValue = calculate_value(src, src, pos, false);
+      auto transitionValue = calculate_value<false>(src, src, pos);
       // concatenation of the cost of the target label
       // and the transition value
       auto child_value = funcs.concat(transitionValue, funcs.empty());
@@ -352,15 +351,17 @@ cost concat_cost(const vector<typename CRF::Label>& y,
                  const typename CRF::Values& lambda,
                  const vector<typename CRF::Input>& x,
                  typename CRF::Stats* stats = 0) {
-  assert(x.size() > 0 && x.size() == y.size());
+  assert(x.size() > 0);
+  assert(x.size() == y.size());
+
   FunctionalAutomaton<CRF, MinPathFindFunctions> a(crf);
   a.lambda = lambda;
   a.x = x;
 
   int i = x.size() - 1;
-  cost result = a.calculate_value(y[i], y[i], i, false, stats);
+  cost result = a.template calculate_value<false>(y[i], y[i], i, stats);
   for(i--; i >= 0; i--)
-    result += a.calculate_value(y[i], y[i + 1], i, true, stats);
+    result += a.template calculate_value<true>(y[i], y[i + 1], i, stats);
   return result;
 }
 

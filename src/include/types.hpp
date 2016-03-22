@@ -9,8 +9,8 @@
 
 static const int MFCC_N = 12;
 
-typedef float coefficient;
-typedef float cost;
+typedef double coefficient;
+typedef double cost;
 typedef double probability;
 typedef float frequency;
 typedef float stime_t;

@@ -292,10 +292,9 @@ namespace tuples {
     }
   };
 
-  template<class Label, class X>
+  template<class Label, class X, bool isTransition>
   struct Applicator {
     const int pos;
-    const bool isTransition;
     const Label& srcOrState;
     const Label& dest;
     const X& x;

@@ -6,7 +6,7 @@
 #include<valarray>
 
 namespace ft {
-  typedef std::complex<float> cdouble;
+  typedef std::complex<double> cdouble;
 
   template<class Val, class Freqs=cdouble*>
   void FT(Val* values, int T, Freqs& frequencies, int F) {

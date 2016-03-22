@@ -42,7 +42,7 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
 struct TestTransFunc {
   static const bool is_state = true;
   cost operator()(int x,
-                  const TestObject& y) {
+                  const TestObject& y) const {
     return (x == y.id) ? -1 : 1;
   }
 };
@@ -118,7 +118,7 @@ void test_path(TestCRF* crf, const vector<TestCRF::Label>& labels) {
   cost conc_cost = concat_cost(labels, *crf, crf->lambda, x);
   cost cost = traverse_automaton<MinPathFindFunctions>(x, *crf, crf->lambda,
                                                        &best_path)[0];
-  assertEquals("Traverse cost", 0.0f - x.size(), conc_cost);
+  assertEquals("Traverse cost", 0.0 - x.size(), conc_cost);
   assertEquals("Concat cost", conc_cost, cost);
   verifyPath(labels, best_path);
 }
@@ -161,9 +161,9 @@ void testCrfSecondBestPath() {
   auto costs = traverse_automaton<MinPathFindFunctions, TestCRF, 2>(x, crf,
                                                                     crf.lambda,
                                                                     &best_path);
-  assertEquals("Cost", 0.0f - x.size(), costs[0]);
+  assertEquals("Cost", 0.0 - x.size(), costs[0]);
   verifyPath(x, best_path);
-  assertEquals("Cost 2", 0.0f - x.size() + 2, costs[1]);
+  assertEquals("Cost 2", 0.0 - x.size() + 2, costs[1]);
   std::cerr  << std::endl;
 }
 
@@ -176,34 +176,16 @@ void testCrfPathLength1() {
   vector<int> best_path;
   auto costs = traverse_automaton<MinPathFindFunctions>(x, crf, crf.lambda,
                                                         &best_path);
-  assertEquals("Cost", -1.0f, costs[0]);
+  assertEquals("Cost", -1.0, costs[0]);
   assertEquals("Element", x[0], best_path[0]);
 }
 
-void testSynthInputCSV() {
-  const std::string csv("id,duration,pitch\np,0.5,251.12");
-  std::stringstream csv_str(csv);
-  vector<PhonemeInstance> phons = parse_synth_input_csv(csv_str);
-
-  //assertEquals('p', phons[0].label);
-  assertEquals(0.5f, phons[0].duration);
-  assertEquals(251.12f, phons[0].first().pitch);
-
-  csv_str.seekp(0); csv_str.seekg(0);
-  print_synth_input_csv(csv_str, phons);
-  assertEquals(csv, csv_str.str());
-}
-
 bool Progress::enabled = true;
-std::string gridsearch::Comparisons::metric = "";
-std::string gridsearch::Comparisons::aggregate = "";
-
 int main() {
   try {
     testUtils();
     testCrfPathLength1();
     testCrfSecondBestPath();
-    testSynthInputCSV();
     testCRF();
 
     std::cout << "All tests passed\n";

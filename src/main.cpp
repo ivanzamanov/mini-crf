@@ -143,8 +143,8 @@ bool Progress::enabled = true;
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  (std::cout << std::scientific);
-  (std::cerr << std::scientific);
+  //(std::cout << std::fixed);//.precision(8);
+  //(std::cerr << std::fixed);//.precision(8);
   Options opts;
   if(!init_tool(argc, argv, &opts)) {
     print_usage();

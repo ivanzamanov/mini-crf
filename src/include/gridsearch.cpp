@@ -1,6 +1,8 @@
+#include<algorithm>
 #include<chrono>
 #include<thread>
 #include<valarray>
+#include<utility>
 
 #include"gridsearch.hpp"
 #include"threadpool.h"
@@ -267,7 +269,8 @@ namespace gridsearch {
                                          CRF, 2>(input, crf, crf.lambda, &path);
     params->result = {
       .cmp = Comparisons(),
-      .bestValues = bestValues
+      .bestValues = bestValues,
+      .path = path
     };
     *(params->flag) = true;
   }
@@ -424,36 +427,63 @@ namespace gridsearch {
     }
   };
 
+  template<class Diffs>
+  void printDiffs(Diffs diffs) {
+    INFO("Diffs:");
+    for(auto d : diffs)
+      std::cerr << "[" << d.first << "," << d.second << "]" << " ";
+    std::cerr << std::endl;
+  }
+  
   struct DescentSearch {
     DescentSearch(): stop(false), lastResult(-1) { }
     bool stop;
     cost lastResult;
 
     template<class Function>
-    coefficient stepSize(Function f, Params& current, Params& delta) {
-      // A list of minimums
-      auto atCurrent = f(current);
+    std::pair<coefficient, coefficient>
+    stepSize(TrainingOutputs& atCurrent, Function f, Params& delta) {
       std::vector<cost> quotients;
-      for(auto& output : atCurrent)
-        quotients.push_back(output.bestValues[1] - output.bestValues[0]);
+      for(auto& output : atCurrent) {
+        auto val = output.bestValues[1] - output.bestValues[0];
+        assert(val >= 0);
+        INFO("quot=" << val << ", " << output.bestValues[1] << " - " << output.bestValues[0]);
+        quotients.push_back(val);
+      }
 
-      auto atDeltaMax = f.findMax(delta);
-      auto atDeltaMin = f.findMin(delta);
-      std::vector<cost> denomsMin, denomsMax;
+      auto atDeltaMax = f.findMinOrMax(delta, findMaxPaths);
+      auto atDeltaMin = f.findMinOrMax(delta, findMinPaths);
+      for(auto i = 0u; i < atDeltaMax.size(); i++)
+        assert(atDeltaMin[i].bestValues[0] < atDeltaMax[i].bestValues[0]);
 
-      cost minValue = 100000000;
+      cost minValue = 10000000000;
+      cost minQuot = minValue;
       for(auto i = 0u; i < atCurrent.size(); i++) {
         auto thetaHatAtDelta = f.costOf(atCurrent[i].path, delta, i);
-        auto val = std::min(std::abs(thetaHatAtDelta - atDeltaMin[i].bestValues[0]),
-                            std::abs(thetaHatAtDelta + atDeltaMax[i].bestValues[0]));
-        if(val < minValue && val > 0) {
+
+        auto options = std::array<cost, 4> {{ std::abs(thetaHatAtDelta - atDeltaMin[i].bestValues[0]),
+                                              std::abs(thetaHatAtDelta + atDeltaMax[i].bestValues[0]),
+                                              std::abs(thetaHatAtDelta + atDeltaMin[i].bestValues[0]),
+                                              std::abs(thetaHatAtDelta - atDeltaMax[i].bestValues[0]) }};
+
+        auto quot = quotients[i];
+        auto denom = (*std::max_element(std::begin(options), std::end(options)));
+        auto val = quot / denom;
+
+        INFO(i << ": denom=" << denom << " quot=" << quot);
+        
+        if(val < minValue) {
           //INFO("thetaHatAtDelta = " << thetaHatAtDelta);
           //INFO("deltaMin = " << atDeltaMin[i].bestValues[0]);
           minValue = val;
         }
+
+        if(minQuot > quotients[i] && quotients[i] > 0)
+          minQuot = quotients[i];
       }
+
       INFO("k = " << minValue);
-      return minValue;
+      return std::make_pair(minValue, minQuot);
     }
 
     void bootstrap(Ranges& ranges, Params& current,
@@ -464,6 +494,40 @@ namespace gridsearch {
       }
 
       delta[0] = 1;
+    }
+
+    template<class Function>
+    std::pair<cost, coefficient>
+    locateStep(const Params& current,
+               const Params& delta,
+               coefficient kLowerBound,
+               coefficient kUpperBound,
+               Function f,
+               cost valueAtCurrentParams,
+               int mult) {
+      auto epsilon = kLowerBound / 100;
+      auto top = kUpperBound, bottom = kLowerBound;
+      INFO("Searching k in " << bottom << " " << top);
+
+      auto bestValue = valueAtCurrentParams;
+      auto bestK = kLowerBound;
+
+      while (top - bottom >= epsilon) {
+        auto currentK = (top + bottom) / 2;
+        auto outputAtCurrentK = f(current + delta * currentK * mult);
+        auto valueAtCurrentK = outputAtCurrentK.value();
+        INFO("Searching k in " << bottom << " " << top << " k = " << currentK << " value = " << valueAtCurrentK);
+        if(valueAtCurrentK < bestValue) {
+          bestValue = valueAtCurrentK;
+          bestK = currentK;
+        }
+
+        if(valueAtCurrentK != valueAtCurrentParams)
+          top = currentK;
+        else
+          bottom = currentK;
+      }
+      return std::make_pair(bestK * mult, bestValue);
     }
 
     template<class Function>
@@ -485,21 +549,34 @@ namespace gridsearch {
 
         auto feature = ranges[axisIndex].feature;
         auto prevValue = current[axisIndex];
-        auto k = stepSize(f, current, delta);
+
+        // A list of minimums
+        auto atCurrent = f(current);
+        auto kPair = stepSize(atCurrent, f, delta);
+
+        auto k = kPair.first,
+          kBound = kPair.second;
 
         INFO("--- " << feature);
-        auto r1 = f(current + (k * delta)),
-          r2 = f(current - (k * delta));
+        auto plus = locateStep(current, delta, k, kBound, f, lastResult, 1);
+        auto minus = locateStep(current, delta, k, kBound, f, lastResult, -1);
 
-        auto v1 = r1.value(), v2 = r2.value();
+        auto v1 = plus.first,
+          v2 = minus.first;
 
-        INFO((prevValue + k) << ", " << v1 <<
+        auto k1 = plus.second,
+          k2 = minus.second;
+
+        //auto diffs = r1.findDifferences(r2);
+        //printDiffs(diffs);
+
+        INFO((prevValue + k1) << ", " << v1 <<
              " vs " <<
-             (prevValue - k) << ", " << v2);
+             (prevValue - k2) << ", " << v2);
         if(v1 < v2) {
           INFO(feature << ": " <<
                prevValue << " -> " << prevValue + k);
-          current += k * delta;
+          current += k1 * delta;
           result = v1;
           break;
         } else if (v2 < v1) {
@@ -512,7 +589,6 @@ namespace gridsearch {
       }
 
       lastResult = result;
-      INFO(lastResult << " -> " << result << " after " << tries << " tries");
       stop = result < 0 || (lastResult == result);
       return result;
     }
@@ -601,8 +677,8 @@ namespace gridsearch {
       return outputs;
     }
 
-    template<class Params>
-    TrainingOutputs findMin(const Params& params) {
+    template<class Params, class Func>
+    TrainingOutputs findMinOrMax(const Params& params, Func f) {
       for(auto i = 0u; i < ranges.size(); i++)
         crf.set(i, params[i]);
 
@@ -612,7 +688,7 @@ namespace gridsearch {
       auto taskParams = std::vector<ResynthParams>(count);
       for(unsigned i = 0; i < count; i++) {
         taskParams[i].init(i, &flags[i], &precomputed);
-        tp.add_task(new ParamTask<ResynthParams>(&findMinPaths, &taskParams[i]));
+        tp.add_task(new ParamTask<ResynthParams>(f, &taskParams[i]));
       }
       wait_done(flags, count);
 
@@ -624,34 +700,12 @@ namespace gridsearch {
     }
 
     template<class Params>
-    TrainingOutputs findMax(const Params& params) {
-      for(auto i = 0u; i < ranges.size(); i++)
-        crf.set(i, params[i]);
-
-      auto count = corpus_test.size();
-      bool flags[count];
-      std::fill(flags, flags + count, 0);
-      auto taskParams = std::vector<ResynthParams>(count);
-      for(unsigned i = 0; i < count; i++) {
-        taskParams[i].init(i, &flags[i], &precomputed);
-        tp.add_task(new ParamTask<ResynthParams>(&findMaxPaths, &taskParams[i]));
-      }
-      wait_done(flags, count);
-
-      TrainingOutputs outputs;
-      std::for_each(taskParams.begin(), taskParams.end(), [&](ResynthParams& p) {
-          outputs.push_back(p.result);
-        });
-      return outputs;      
-    }
-
-    template<class Params>
-    cost costOf(const std::vector<int>& path, const Params& params, int i) {
+    cost costOf(const std::vector<int>& path, const Params& params, int index) {
       auto phons = crf.alphabet().to_phonemes(path);
       CRF::Values param_vals;
       for(auto i = 0u; i < param_vals.size(); i++)
         param_vals[i] = params[i];
-      return concat_cost<CRF>(phons, crf, param_vals, corpus_test.input(i));
+      return concat_cost<CRF>(phons, crf, param_vals, corpus_test.input(index));
     }
   };
 
