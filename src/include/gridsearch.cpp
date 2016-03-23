@@ -447,7 +447,7 @@ namespace gridsearch {
       for(auto& output : atCurrent) {
         auto val = output.bestValues[1] - output.bestValues[0];
         assert(val >= 0);
-        INFO("quot=" << val << ", " << output.bestValues[1] << " - " << output.bestValues[0]);
+        //INFO("quot=" << val << ", " << output.bestValues[1] << " - " << output.bestValues[0]);
         quotients.push_back(val);
       }
 
@@ -470,7 +470,7 @@ namespace gridsearch {
         auto denom = (*std::max_element(std::begin(options), std::end(options)));
         auto val = quot / denom;
 
-        INFO(i << ": denom=" << denom << " quot=" << quot);
+        //INFO(i << ": denom=" << denom << " quot=" << quot);
         
         if(val < minValue) {
           //INFO("thetaHatAtDelta = " << thetaHatAtDelta);
@@ -507,23 +507,25 @@ namespace gridsearch {
                int mult) {
       auto epsilon = kLowerBound / 100;
       auto top = kUpperBound, bottom = kLowerBound;
-      INFO("Searching k in " << bottom << " " << top);
-
       auto bestValue = valueAtCurrentParams;
       auto bestK = kLowerBound;
 
       while (top - bottom >= epsilon) {
+        INFO("Searching k in " << bottom << " " << top);
         auto currentK = (top + bottom) / 2;
         auto outputAtCurrentK = f(current + delta * currentK * mult);
         auto valueAtCurrentK = outputAtCurrentK.value();
-        INFO("Searching k in " << bottom << " " << top << " k = " << currentK << " value = " << valueAtCurrentK);
+        INFO("k -> value: " << currentK << " -> " << valueAtCurrentK);
+
         if(valueAtCurrentK < bestValue) {
           bestValue = valueAtCurrentK;
           bestK = currentK;
         }
 
-        if(valueAtCurrentK != valueAtCurrentParams)
+        if(std::abs(valueAtCurrentK - valueAtCurrentParams) > 0.0001) {
+          INFO("diff = " << std::abs(valueAtCurrentK - valueAtCurrentParams));
           top = currentK;
+        }
         else
           bottom = currentK;
       }
@@ -561,11 +563,11 @@ namespace gridsearch {
         auto plus = locateStep(current, delta, k, kBound, f, lastResult, 1);
         auto minus = locateStep(current, delta, k, kBound, f, lastResult, -1);
 
-        auto v1 = plus.first,
-          v2 = minus.first;
+        auto k1 = plus.first,
+          k2 = minus.first;
 
-        auto k1 = plus.second,
-          k2 = minus.second;
+        auto v1 = plus.second,
+          v2 = minus.second;
 
         //auto diffs = r1.findDifferences(r2);
         //printDiffs(diffs);

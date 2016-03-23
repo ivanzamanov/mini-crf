@@ -139,12 +139,29 @@ int baseline(const Options& opts) {
   return 0;
 }
 
+int couple(const Options& opts) {
+  auto inputString = opts.get_opt<std::string>("input", "");
+  auto inputPhonemes = util::split_string(inputString, ',');
+
+  std::vector<int> input(inputPhonemes.size());
+  std::transform(inputPhonemes.begin(), inputPhonemes.end(), input.begin(), util::parse<int>);
+  auto phonemeInput = crf.alphabet().to_phonemes(input);
+
+  auto outputSignal = SpeechWaveSynthesis(phonemeInput, phonemeInput, crf.alphabet())
+    .get_coupling(opts);
+  auto outputFile = opts.get_opt<std::string>("output", "resynth.wav");
+  std::ofstream wav_output(outputFile);
+  outputSignal.write(wav_output);
+
+  return 0;
+}
+
 bool Progress::enabled = true;
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  //(std::cout << std::fixed);//.precision(8);
-  //(std::cerr << std::fixed);//.precision(8);
+  (std::cout << std::scientific);
+  (std::cerr << std::scientific);
   Options opts;
   if(!init_tool(argc, argv, &opts)) {
     print_usage();
@@ -165,6 +182,8 @@ int main(int argc, const char** argv) {
     return gridsearch::train(opts);
   case Options::Mode::BASELINE:
     return baseline(opts);
+  case Options::Mode::COUPLE:
+    return couple(opts);
   default:
     ERROR("Unrecognized mode " << opts.mode);
     return 1;

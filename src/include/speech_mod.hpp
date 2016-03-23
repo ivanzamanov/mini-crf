@@ -16,8 +16,8 @@ extern int EXTRA_TIME;
 
 struct SpeechWaveSynthesis {
   SpeechWaveSynthesis(std::vector<PhonemeInstance>& source,
-             const std::vector<PhonemeInstance>& target,
-             PhonemeAlphabet& origin)
+                      const std::vector<PhonemeInstance>& target,
+                      PhonemeAlphabet& origin)
     : source(source), target(target), origin(origin)
   { };
 
@@ -27,8 +27,11 @@ struct SpeechWaveSynthesis {
 
   Wave get_resynthesis(const Options& opts);
   Wave get_resynthesis_td();
+
+  Wave get_coupling(const Options& opts);
 private:
   void do_resynthesis(WaveData, SpeechWaveData*, const Options& opts);
+  void do_coupling(WaveData, SpeechWaveData*, const Options& opts);
   Wave get_resynthesis(bool FD);
 };
 

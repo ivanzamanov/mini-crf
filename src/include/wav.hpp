@@ -38,6 +38,7 @@ struct WaveData {
   WaveData range(int offset, int length) {
     return WaveData(data, this->offset + offset, length, sampleRate);
   }
+
   double duration() const { return length / sampleRate; }
   short* begin() const { return data; }
   short* end() const { return data + length; }
@@ -85,15 +86,19 @@ struct WaveData {
   }
 
   static WaveData copy(const WaveData& origin) {
-    short* newData = new short[origin.length];
+    auto newData = (short*) malloc(origin.length * sizeof(data[0]));
     memcpy(newData, origin.data, origin.length * sizeof(data[0]));
     return WaveData(newData, 0, origin.length, origin.sampleRate);
   }
 
   static WaveData allocate(double duration, unsigned sampleRate) {
     int samples = duration * sampleRate;
-    short* data = (short*) calloc(samples, sizeof(short));
-    return WaveData(data, 0, samples, sampleRate);
+    auto newData = (short*) calloc(samples, sizeof(short));
+    return WaveData(newData, 0, samples, sampleRate);
+  }
+
+  static void deallocate(WaveData& wd) {
+    if(wd.data) free(wd.data);
   }
 };
 
@@ -101,6 +106,7 @@ struct WaveDataTemp : public WaveData {
   WaveDataTemp(const WaveData& data)
     : WaveData(data.data, data.offset, data.length, data.sampleRate)
   { }
+
   ~WaveDataTemp() {
     free(data);
   }
@@ -118,7 +124,7 @@ struct SpeechWaveData : public WaveData {
   double localPitch() const { return 1 / localDuration(); }
 
   const SpeechWaveData& copy_from(const WaveData& wd) const {
-    *( (WaveData*) this) = wd;
+    *( (WaveData*) this) = WaveData::copy(wd);
     return *this;
   }
 };
@@ -165,11 +171,9 @@ struct WaveHeader {
 
 struct Wave {
   Wave(): data(0) { }
-  Wave(std::istream& istr) { data = 0; read(istr); }
-  ~Wave() {
-    if(data)
-      free(data);
-  }
+  Wave(std::istream& istr):Wave() { read(istr); }
+  Wave(std::string& fileName):Wave() { read(fileName); }
+  ~Wave() { if(data) free(data); }
 
   WaveHeader h;
   char* data;

@@ -1,4 +1,5 @@
 #include<exception>
+#include<algorithm>
 
 #include"speech_mod.hpp"
 #include"util.hpp"
@@ -121,37 +122,39 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const 
   return result;
 }
 
-static void readSourceData(SpeechWaveSynthesis& w, Wave* dest, SpeechWaveData* destParts) {
-  Wave* ptr = dest;
+static int readSourceData(SpeechWaveSynthesis& w, SpeechWaveData* destParts) {
   SpeechWaveData* destPtr = destParts;
   // TODO: possibly avoid reading a file multiple times...
   int i = 0;
+  int result = 0;
   for(auto& p : w.source) {
     FileData fileData = w.origin.file_data_of(p);
-    ptr -> read(fileData);
-    PsolaConstants limits(dest->sampleRate());
+    Wave wav(fileData.file);
+    result = wav.sampleRate();
+    PsolaConstants limits(wav.sampleRate());
 
     // extract wave data
-    destPtr->copy_from(ptr -> extractByTime(p.start, p.end));
-    // copy pitch marks, translating to part-local time
-    each(fileData.pitch_marks, [&](double& mark) {
-        // Omit boundaries on purpose
-        if(mark > p.start && mark < p.end)
-          destPtr -> marks.push_back(ptr -> at_time(mark) - ptr -> at_time(p.start));
-      });
+    destPtr->copy_from(wav.extractByTime(p.start, p.end));
+    // copy pitch marks, translating to part-local sample
+    for(auto mark : fileData.pitch_marks) {
+      // Omit boundaries on purpose
+      if(mark > p.start && mark < p.end)
+        destPtr -> marks.push_back(wav.at_time(mark) - wav.at_time(p.start));
+    }
 
     if(destPtr -> marks.size() > 1 && destPtr -> marks[0] < limits.maxVoicelessSamples) {
+      // ...now why do I do this?! ...
       int diff = destPtr -> marks[1] - destPtr -> marks[0];
       int count = (destPtr -> marks[0] - diff) / diff;
       for(int j = 0; j < count; j++)
-        destPtr -> marks.insert(destPtr -> marks.begin(), (count - j) * diff);
+        destPtr -> marks.insert(destPtr->marks.begin(), (count - j) * diff);
     }
 
     // and move on
-    ptr++;
     destPtr++;
     i++;
   }
+  return result;
 }
 
 Wave SpeechWaveSynthesis::get_resynthesis_td() {
@@ -168,19 +171,43 @@ Wave SpeechWaveSynthesis::get_resynthesis_td() {
   return result;
 }
 
+Wave SpeechWaveSynthesis::get_coupling(const Options& opts) {
+  const auto N = source.size();
+  SpeechWaveData* waveData = new SpeechWaveData[N];
+  auto sampleRate = readSourceData(*this, waveData);
+
+  WaveHeader h = WaveHeader::default_header();
+  h.sampleRate = sampleRate;
+  h.byteRate = sampleRate * 2;
+
+  WaveBuilder wb(h);
+
+  double completeDuration = 0;
+  each(target, [&](const PhonemeInstance& p) { completeDuration += p.duration; });
+  WaveData result = WaveData::allocate(completeDuration, sampleRate);
+
+  do_coupling(result, waveData, opts);
+  
+  wb.append(result);
+
+  std::for_each(waveData, waveData + N, WaveData::deallocate);
+  delete[] waveData;
+
+  return wb.build();
+}
+
 Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   // First off, collect the WAV data for each source unit
   const auto N = source.size();
-  Wave* sourceData = new Wave[N];
   SpeechWaveData* waveData = new SpeechWaveData[N];
-  readSourceData(*this, sourceData, waveData);
+  auto sampleRate = readSourceData(*this, waveData);
 
-  /*Wave* sourceData2 = new Wave[N];
+  /*Wave* someSourceData2 = new Wave[N];
   SpeechWaveData* waveData2 = new SpeechWaveData[N];
-  readSourceData(*this, sourceData2, waveData2);
+  readSourceData(*this, someSourceData2, waveData2);
   for(auto i = 0u; i < N; i++) {
-    for(auto j = 0u; j < sourceData[i].length(); j++)
-      assert(sourceData[i][j] == sourceData2[i][j]);
+    for(auto j = 0u; j < someSourceData[i].length(); j++)
+      assert(someSourceData[i][j] == someSourceData2[i][j]);
     for(auto j = 0u; j < waveData[i].size(); j++)
       assert(waveData[i][j] == waveData2[i][j]);
     for(auto j = 0u; j < waveData2[i].marks.size(); j++)
@@ -190,8 +217,8 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   
   // First off, prepare for output, build some default header...
   WaveHeader h = WaveHeader::default_header();
-  h.sampleRate = sourceData->sampleRate();
-  h.byteRate = sourceData->sampleRate() * 2;
+  h.sampleRate = sampleRate;
+  h.byteRate = sampleRate * 2;
 
   WaveBuilder wb(h);
 
@@ -200,11 +227,11 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
   each(target, [&](const PhonemeInstance& p) { completeDuration += p.duration; });
   // preallocate the complete wave result,
   // but only temporarily
-  WaveDataTemp result = WaveData::allocate(completeDuration, sourceData->sampleRate());
+  WaveDataTemp result(WaveData::allocate(completeDuration, sampleRate));
   //INFO(completeDuration << " in " << result.size() << " samples");
   do_resynthesis(result, waveData, opts);
 
-  /*WaveDataTemp result2 = WaveData::allocate(completeDuration, sourceData->sampleRate());
+  /*WaveDataTemp result2 = WaveData::allocate(completeDuration, someSourceData->sampleRate());
   do_resynthesis(result2, waveData, opts);
   for(auto i = 0u; i<result.size(); i++)
     assert(result[i] == result2[i]);
@@ -212,10 +239,16 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
 
   wb.append(result);
 
-  delete[] sourceData;
+  std::for_each(waveData, waveData + N, WaveData::deallocate);
   delete[] waveData;
 
   return wb.build();
+}
+
+void SpeechWaveSynthesis::do_coupling(WaveData dest,
+                                      SpeechWaveData* pieces,
+                                      const Options& opts) {
+  
 }
 
 int overlapAddAroundMark(const WaveData& source, const int currentMark,

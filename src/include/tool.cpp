@@ -28,6 +28,7 @@ void build_data(const Options& opts) {
 
   std::ifstream test_db(opts.test_db);
   build_data_bin(test_db, tool::alphabet_test, tool::corpus_test, tool::labels_test);
+  //tool::corpus_test = tool::corpus_test.testing_part();
 
   consolidate_labels(tool::alphabet_synth, tool::labels_synth, tool::labels_all);
   consolidate_labels(tool::alphabet_test, tool::labels_test, tool::labels_all);
