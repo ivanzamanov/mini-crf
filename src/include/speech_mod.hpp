@@ -42,6 +42,7 @@ struct PsolaConstants {
     maxVoicelessSamplesCopy = WaveData::toSamples(0.01f, sampleRate) * 0.9;
     maxVoicelessPeriodCopy = WaveData::toDuration(maxVoicelessPeriodCopy, sampleRate);
   }
+  PsolaConstants(const PsolaConstants& o) = default;
 
   int maxVoicelessSamples;
   double maxVoicelessPeriod;

@@ -286,13 +286,13 @@ Wave SpeechWaveSynthesis::get_coupling(const Options& opts) {
 
 template<bool flip=false>
 int overlapAddAroundMark(SpeechWaveData source,
-                         int currentMark,
+                         int sMark,
                          SpeechWaveData dest,
                          int dMark,
                          const int samplesLeft,
                          const int samplesRight,
                          bool win=true) {
-  currentMark += source.offset - source.extra.offset;
+  sMark += source.offset - source.extra.offset;
   source = source.extra;
 
   dMark += dest.offset - dest.extra.offset;
@@ -311,8 +311,8 @@ int overlapAddAroundMark(SpeechWaveData source,
   destBot = std::max(0, dMark - samplesLeft);
   destTop = std::min(dest.length, dMark);
 
-  sourceBot = std::max(0, currentMark - samplesLeft);
-  sourceTop = std::min(currentMark, source.length);
+  sourceBot = std::max(0, sMark - samplesLeft);
+  sourceTop = std::min(sMark, source.length);
 
   for(int di = destBot,
         si = sourceBot,
@@ -323,8 +323,8 @@ int overlapAddAroundMark(SpeechWaveData source,
   destBot = std::max(0, dMark);
   destTop = std::min(dest.length, dMark + samplesRight);
 
-  sourceBot = std::max(currentMark, 0);
-  sourceTop = std::min(currentMark + samplesRight, source.length);
+  sourceBot = std::max(sMark, 0);
+  sourceTop = std::min(sMark + samplesRight, source.length);
 
   gen_fall(window, samplesRight, win);
 
@@ -424,10 +424,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
 
     scaledPieces[i] = SpeechWaveData::allocate(target[i].duration, dest.sampleRate);
 
-    if(p.duration() <= 1 / pitch.at_mid())
-      scaleToPitchAndDurationSimpleTD(scaledPieces[i], p, pitch, i);
-    else
-      scaleToPitchAndDuration(scaledPieces[i], p, pitch, i);
+    scaleToPitchAndDuration(scaledPieces[i], p, pitch, i);
 
     prog.update();
   }
@@ -444,10 +441,27 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
   std::for_each(scaledPieces.begin(), scaledPieces.end(), WaveData::deallocate);
 }
 
+vector<bool> fillMissingMarks(vector<int>& marks, PsolaConstants limits) {
+  vector<int> filled;
+  vector<bool> isVoicelessFlags;
+  auto lastMark = 0;
+  for(auto mark : marks) {
+    while(mark - lastMark > limits.maxVoicelessSamples) {
+      lastMark += limits.maxVoicelessSamples;
+      filled.push_back(lastMark);
+      isVoicelessFlags.push_back(true);
+    }
+    filled.push_back(lastMark = mark);
+    isVoicelessFlags.push_back(false);
+  }
+  marks = filled;
+  return isVoicelessFlags;
+}
+
 void scaleToPitchAndDuration(SpeechWaveData dest,
                              SpeechWaveData source,
                              PitchRange pitch,
-                             int debugIndex) {
+                             int) {
   PsolaConstants limits(dest.sampleRate);
 
   // Time scale
@@ -455,75 +469,22 @@ void scaleToPitchAndDuration(SpeechWaveData dest,
 
   vector<int> sourceMarks(source.marks);
   sourceMarks.push_back(source.length);
+  auto isVoicelessFlags = fillMissingMarks(sourceMarks, limits);
 
-  // Sequence of same pitch marks, according to new duration
-  vector<int> scaledMarks;
-  for(auto mark : source.marks) scaledMarks.push_back(mark * scale);
-  scaledMarks.push_back(dest.length);
+  auto sMarkIndex = 0u;
+  auto dMark = sourceMarks[sMarkIndex];
+  while(sMarkIndex < sourceMarks.size()) {
+    auto sMark = sourceMarks[sMarkIndex];
+    auto scaledSMark = (int) sMark * scale;
+    bool voiceless = isVoicelessFlags[sMarkIndex];
 
-  auto destOffset = 0;
-  auto i = 0,
-    mark = 0,
-    nMark = sourceMarks[i];
-
-  if(limits.isVoiceless(mark, nMark))
-    copyVoicelessPart(source, destOffset, scaledMarks[i], 0, mark, nMark, dest);
-  else
-    copyVoicedPartTD(source, destOffset, scaledMarks[i],
-                     nMark, nMark + (nMark - mark), pitch, dest, debugIndex);
-
-  for(auto i = 0u; i < sourceMarks.size() - 1; i++) {
-    mark = sourceMarks[i];
-    nMark = sourceMarks[i + 1];
-
-    if(limits.isVoiceless(mark, nMark) >= limits.maxVoicelessSamples)
-      copyVoicelessPart(source, destOffset, scaledMarks[i + 1], mark, mark, nMark, dest);
-    else
-      copyVoicedPartTD(source, destOffset, scaledMarks[i + 1],
-                       mark, nMark, pitch, dest, debugIndex);
-  }
-
-  if(sourceMarks.size() == 1)
-    return;
-  i = sourceMarks.size() - 2;
-  mark = sourceMarks[i];
-  nMark = source.length;
-  copyVoicelessPart(source, destOffset, dest.length, mark, nMark, scale, dest);
-}
-
-void copyVoicedPartTD(SpeechWaveData source,
-                      int& destOffset,
-                      const int destOffsetBound,
-                      int mark,
-                      const int nMark,
-                      PitchRange pitch,
-                      SpeechWaveData dest,
-                      int) {
-  int sourcePeriodSamplesRight = nMark - mark;
-  int sourcePeriodSamplesLeft = nMark - mark;
-
-  while(destOffset <= destOffsetBound) {
-    auto periodSamples = dest.toSamples(1 / pitch.at(destOffset));
-
-    overlapAddAroundMark(source, mark, dest, destOffset,
-                         sourcePeriodSamplesLeft, sourcePeriodSamplesRight);
-
-    destOffset += periodSamples;
-  }
-}
-
-void scaleToPitchAndDurationSimpleTD(SpeechWaveData dest,
-                                     SpeechWaveData source,
-                                     PitchRange pitch,
-                                     int) {
-  // I'd rather have it rounded up
-  auto duration = dest.duration();
-  int count = duration / dest.toDuration(source.length);
-
-  int destOffset = 0;
-  for(int i = 0; i < count && destOffset < dest.length; i++) {
-    destOffset = i * dest.toSamples(1 / pitch.at(destOffset));
-    for(int j = 0; j < source.length && destOffset < dest.length; j++, destOffset++)
-      dest.plus(destOffset, source[j]);
+    while(dMark < scaledSMark) {
+      overlapAddAroundMark(source, sMark, dest, dMark,
+                           limits.maxVoicelessSamples, limits.maxVoicelessSamples);
+      dMark += voiceless
+        ? limits.maxVoicelessSamples * scale
+        : dest.toSamples(1 / pitch.at(dMark));
+    }
+    sMarkIndex++;
   }
 }
