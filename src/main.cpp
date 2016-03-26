@@ -82,25 +82,11 @@ int resynthesize(Options& opts) {
 
   outputStats(crf.lambda, stats);
 
-  std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
-  std::ofstream wav_output(outputFile);
-
   Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
     .get_resynthesis(opts);
 
-  if(opts.has_opt("verbose")) {
-    Wave tdSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-      .get_resynthesis_td();
-
-    double diff = 0;
-    for(unsigned i = 0; i < tdSignal.length(); i++)
-      diff += std::abs(outputSignal[i] - tdSignal[i]);
-
-    INFO("Samples: " << tdSignal.length());
-    INFO("TD/FD Error: " << diff);
-    INFO("TD/FD Error mean: " << diff / tdSignal.length());
-  }
-
+  std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
+  std::ofstream wav_output(outputFile);
   outputSignal.write(wav_output);
 
   FileData fileData = alphabet_test.file_data_of(input[0]);
@@ -132,7 +118,34 @@ int baseline(const Options& opts) {
 
   Wave outputSignal = SpeechWaveSynthesis(output, input, baseline_crf.alphabet())
     .get_resynthesis_td();
-  std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
+  std::string outputFile = opts.get_opt<std::string>("output", "baseline.wav");
+  std::ofstream wav_output(outputFile);
+  outputSignal.write(wav_output);
+
+  return 0;
+}
+
+int psola(const Options& opts) {
+  auto inputString = opts.get_opt<std::string>("input", "");
+  auto inputPhonemes = util::split_string(inputString, ',');
+
+  std::vector<int> input(inputPhonemes.size());
+  std::transform(inputPhonemes.begin(), inputPhonemes.end(), input.begin(), util::parse<int>);
+
+  std::vector<PhonemeInstance> phonemeInput;
+  if(input.size() > 1)
+    phonemeInput = crf.alphabet().to_phonemes(input);
+  else {
+    phonemeInput = corpus_synth.input(input[0]);
+    INFO("Input file: " << crf.alphabet().file_data_of(phonemeInput[0]).file);
+  }
+
+  auto sws = SpeechWaveSynthesis(phonemeInput, phonemeInput, crf.alphabet());
+  auto outputSignal = sws.get_resynthesis(opts);
+  auto original = sws.get_concatenation(opts);
+  original.write("original.wav");
+
+  auto outputFile = opts.get_opt<std::string>("output", "psola.wav");
   std::ofstream wav_output(outputFile);
   outputSignal.write(wav_output);
 
@@ -145,11 +158,18 @@ int couple(const Options& opts) {
 
   std::vector<int> input(inputPhonemes.size());
   std::transform(inputPhonemes.begin(), inputPhonemes.end(), input.begin(), util::parse<int>);
-  auto phonemeInput = crf.alphabet().to_phonemes(input);
+
+  std::vector<PhonemeInstance> phonemeInput;
+  if(input.size() > 1)
+    phonemeInput = crf.alphabet().to_phonemes(input);
+  else {
+    phonemeInput = corpus_synth.input(input[0]);
+    INFO("Input file: " << crf.alphabet().file_data_of(phonemeInput[0]).file);
+  }
 
   auto outputSignal = SpeechWaveSynthesis(phonemeInput, phonemeInput, crf.alphabet())
     .get_coupling(opts);
-  auto outputFile = opts.get_opt<std::string>("output", "resynth.wav");
+  auto outputFile = opts.get_opt<std::string>("output", "coupled.wav");
   std::ofstream wav_output(outputFile);
   outputSignal.write(wav_output);
 
@@ -184,6 +204,8 @@ int main(int argc, const char** argv) {
     return baseline(opts);
   case Options::Mode::COUPLE:
     return couple(opts);
+  case Options::Mode::PSOLA:
+    return psola(opts);
   default:
     ERROR("Unrecognized mode " << opts.mode);
     return 1;

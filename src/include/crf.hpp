@@ -26,7 +26,7 @@ class _Corpus;
 template<class CRF, class Functions>
 struct FunctionalAutomaton;
 
-constexpr double TRAINING_RATIO = 0.3;
+constexpr double TRAINING_RATIO = 0.03;
 
 template<class Input, class Label>
 class _Corpus {
@@ -52,22 +52,6 @@ public:
   void add(vector<Input>& input, vector<Label>& labels) {
     this->inputs.push_back(input);
     this->labels.push_back(labels);
-  };
-
-  _Corpus<Input, Label> training_part() {
-    _Corpus<Input, Label> result;
-    unsigned count = size() / TRAINING_RATIO;
-    for(unsigned i = 0; i < count; i++)
-      result.add(inputs[i], labels[i]);
-    return result;
-  };
-
-  _Corpus<Input, Label> testing_part() {
-    _Corpus<Input, Label> result;
-    unsigned count = size() / TRAINING_RATIO;
-    for(unsigned i = count; i < size(); i++)
-      result.add(inputs[i], labels[i]);
-    return result;
   };
 
 private:

@@ -25,14 +25,13 @@ struct SpeechWaveSynthesis {
   const std::vector<PhonemeInstance>& target;
   PhonemeAlphabet& origin;
 
-  Wave get_resynthesis(const Options& opts);
+  Wave get_resynthesis(const Options&);
+  Wave get_concatenation(const Options&);
   Wave get_resynthesis_td();
 
-  Wave get_coupling(const Options& opts);
+  Wave get_coupling(const Options&);
 private:
-  void do_resynthesis(WaveData, SpeechWaveData*, const Options& opts);
-  void do_coupling(WaveData, SpeechWaveData*, const Options& opts);
-  Wave get_resynthesis(bool FD);
+  void do_resynthesis(WaveData, const std::vector<SpeechWaveData>&, const Options&);
 };
 
 struct PsolaConstants {
@@ -48,6 +47,10 @@ struct PsolaConstants {
   double maxVoicelessPeriod;
   int maxVoicelessSamplesCopy;
   double maxVoicelessPeriodCopy;
+
+  bool isVoiceless(int mark1, int mark2) const {
+    return std::abs(mark2 - mark1) >= maxVoicelessSamples;
+  }
 };
 
 struct PitchRange {

@@ -1,6 +1,7 @@
 #ifndef __WAV_HPP__
 #define __WAV_HPP__
 
+#include<cassert>
 #include<cstdlib>
 #include<cstring>
 #include<iostream>
@@ -25,24 +26,29 @@ unsigned uint_from_chars(Arr arr) {
 // Does not own data
 struct WaveData {
   WaveData()
-    : data(0), offset(-1), length(-1), sampleRate(DEFAULT_SAMPLE_RATE)
+    : data(0), offset(0), length(0), sampleRate(DEFAULT_SAMPLE_RATE)
   { }
   WaveData(short* data, int offset, int length, unsigned sampleRate)
     : data(data), offset(offset), length(length), sampleRate(sampleRate)
   { }
+  WaveData& operator=(const WaveData& o) = default;
 
   short* data;
   int offset, length;
   unsigned sampleRate;
 
   WaveData range(int offset, int length) {
+    assert(offset >= 0);
+    assert(length > 0);
     return WaveData(data, this->offset + offset, length, sampleRate);
   }
 
-  double duration() const { return length / sampleRate; }
+  double duration() const { return toDuration(length); }
   short* begin() const { return data; }
   short* end() const { return data + length; }
+
   short& operator[](int i) const { return data[offset + i]; }
+
   void plus(int i, short val) {
     int newVal = (*this)[i];
     newVal += val;
@@ -67,14 +73,6 @@ struct WaveData {
     return WaveData::toSamples(duration, sampleRate);
   }
 
-  static double toDuration(int sampleCount, unsigned sampleRate) {
-    return (double) sampleCount / sampleRate;
-  }
-
-  static int toSamples(double duration, unsigned sampleRate) {
-    return duration * sampleRate;
-  }
-
   void extract(short* dest, int count, int sourceOffset=0) const {
     std::memcpy(dest, data + offset + sourceOffset, sizeof(data[0]) * count);
   }
@@ -85,9 +83,22 @@ struct WaveData {
       dest[i] = data[offset + sourceOffset + i];
   }
 
+  void copy(const WaveData& src, int offset) {
+    std::copy(data + offset, data + offset + src.length, src.data);
+  }
+
+  static double toDuration(int sampleCount, unsigned sampleRate) {
+    return (double) sampleCount / sampleRate;
+  }
+
+  static int toSamples(double duration, unsigned sampleRate) {
+    return duration * sampleRate;
+  }
+
   static WaveData copy(const WaveData& origin) {
-    auto newData = (short*) malloc(origin.length * sizeof(data[0]));
-    memcpy(newData, origin.data, origin.length * sizeof(data[0]));
+    auto bytes = origin.length * sizeof(data[0]);
+    auto newData = (short*) malloc(bytes);
+    memcpy(newData, origin.data + origin.offset, bytes);
     return WaveData(newData, 0, origin.length, origin.sampleRate);
   }
 
@@ -109,23 +120,6 @@ struct WaveDataTemp : public WaveData {
 
   ~WaveDataTemp() {
     free(data);
-  }
-};
-
-struct SpeechWaveData : public WaveData {
-  SpeechWaveData(): WaveData::WaveData() { }
-  SpeechWaveData(WaveData data): WaveData::WaveData(data) { }
-  // Sample indexes that are pitch marks
-  std::vector<int> marks;
-
-  // simply the first mark
-  int mark() const { return marks[0]; }
-  double localDuration() const { return ((double)length / 2) / sampleRate; }
-  double localPitch() const { return 1 / localDuration(); }
-
-  const SpeechWaveData& copy_from(const WaveData& wd) const {
-    *( (WaveData*) this) = WaveData::copy(wd);
-    return *this;
   }
 };
 
@@ -169,10 +163,11 @@ struct WaveHeader {
   }
 };
 
+// Owner of data, data treated as raw bytes
 struct Wave {
   Wave(): data(0) { }
   Wave(std::istream& istr):Wave() { read(istr); }
-  Wave(std::string& fileName):Wave() { read(fileName); }
+  Wave(const std::string& fileName):Wave() { read(fileName); }
   ~Wave() { if(data) free(data); }
 
   WaveHeader h;
@@ -182,7 +177,7 @@ struct Wave {
     read(data.file);
   }
 
-  void read(const std::string file) {
+  void read(const std::string& file) {
     std::ifstream str(file);
     read(str);
   }
@@ -190,7 +185,7 @@ struct Wave {
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
     if(data) free(data);
-    data = (char*) calloc(h.samplesBytes, 1);
+    data = (char*) malloc(h.samplesBytes * sizeof(char));
     istr.read((char*) data, h.samplesBytes);
   }
 
@@ -219,27 +214,61 @@ struct Wave {
   unsigned bytesPerSample() const { return h.bitsPerSample / 8; }
   unsigned length() const { return h.samplesBytes / bytesPerSample(); }
   double duration() const { return (double) length() / h.sampleRate; }
-  // The sample index at the given time
-  unsigned at_time(double time) const { return (double) time * h.sampleRate; }
-
-  // Checked access to sample
-  short get(int i) const {
-    if(i < 0 || i >= (int) length())
-      return 0;
-    return ((short*) data)[i];
-  }
 
   // Unchecked access to sample
   short& operator[](int i) const {
     return ((short*) data)[i];
   }
 
-  WaveData extractBySample(int startSample, int endSample) const {
+  WaveData extractBySample(unsigned startSample, unsigned endSample) const {
+    assert(startSample < endSample);
+    assert(endSample < length());
+
     return WaveData((short*) data, startSample, endSample - startSample, sampleRate());
   }
 
   WaveData extractByTime(double start, double end) const {
-    return extractBySample(at_time(start), at_time(end) - 1);
+    return extractBySample(toSamples(start), toSamples(end));
+  }
+};
+
+struct SpeechWaveData : public WaveData {
+  SpeechWaveData(): WaveData(), extra() { }
+  SpeechWaveData(const SpeechWaveData& o): WaveData(o), extra(o.extra) { }
+
+  static constexpr auto EXTRA_TIME = 0.005;
+  // Sample indexes that are pitch marks
+  std::vector<int> marks;
+  WaveData extra;
+
+  SpeechWaveData& operator=(const WaveData& wd) {
+    data = wd.data;
+    offset = wd.offset;
+    length = wd.length;
+    sampleRate = wd.sampleRate;
+    return *this;
+  }
+
+  void init(const Wave& wav, double start, double end) {
+    auto extraStart = std::max(0.0, start - EXTRA_TIME);
+    auto extraEnd = std::min(wav.duration(), end + EXTRA_TIME);
+
+    extra = WaveData::copy(wav.extractByTime(extraStart, extraEnd));
+    auto thisLen = extra.toSamples(end - start);
+    auto thisOffsetInExtra = extra.toSamples(start - extraStart);
+    *((WaveData*) this) = extra.range(thisOffsetInExtra, thisLen);
+  }
+
+  static SpeechWaveData allocate(double duration, int sampleRate) {
+    SpeechWaveData result;
+    result.extra = WaveData::allocate(duration + 2 * EXTRA_TIME, sampleRate);
+
+    result.data = result.extra.data;
+    result.sampleRate = result.extra.sampleRate;
+
+    result.offset = result.toSamples(EXTRA_TIME);
+    result.length = result.toSamples(duration);
+    return result;
   }
 };
 

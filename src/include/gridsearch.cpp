@@ -430,11 +430,14 @@ namespace gridsearch {
   template<class Diffs>
   void printDiffs(Diffs diffs) {
     INFO("Diffs:");
-    for(auto d : diffs)
+    auto flag = false;
+    for(auto& d : diffs) {
       std::cerr << "[" << d.first << "," << d.second << "]" << " ";
-    std::cerr << std::endl;
+      flag = true;
+    }
+    if(flag) std::cerr << std::endl;
   }
-  
+
   struct DescentSearch {
     DescentSearch(): stop(false), lastResult(-1) { }
     bool stop;
@@ -447,7 +450,6 @@ namespace gridsearch {
       for(auto& output : atCurrent) {
         auto val = output.bestValues[1] - output.bestValues[0];
         assert(val >= 0);
-        //INFO("quot=" << val << ", " << output.bestValues[1] << " - " << output.bestValues[0]);
         quotients.push_back(val);
       }
 
@@ -457,7 +459,7 @@ namespace gridsearch {
         assert(atDeltaMin[i].bestValues[0] < atDeltaMax[i].bestValues[0]);
 
       cost minValue = 10000000000;
-      cost minQuot = minValue;
+      cost maxQuot = minValue;
       for(auto i = 0u; i < atCurrent.size(); i++) {
         auto thetaHatAtDelta = f.costOf(atCurrent[i].path, delta, i);
 
@@ -470,20 +472,14 @@ namespace gridsearch {
         auto denom = (*std::max_element(std::begin(options), std::end(options)));
         auto val = quot / denom;
 
-        //INFO(i << ": denom=" << denom << " quot=" << quot);
-        
-        if(val < minValue) {
-          //INFO("thetaHatAtDelta = " << thetaHatAtDelta);
-          //INFO("deltaMin = " << atDeltaMin[i].bestValues[0]);
-          minValue = val;
-        }
+        if(val < minValue) minValue = val;
 
-        if(minQuot > quotients[i] && quotients[i] > 0)
-          minQuot = quotients[i];
+        if(maxQuot > quotients[i])
+          maxQuot = quotients[i];
       }
 
       INFO("k = " << minValue);
-      return std::make_pair(minValue, minQuot);
+      return std::make_pair(minValue, maxQuot);
     }
 
     void bootstrap(Ranges& ranges, Params& current,
@@ -503,19 +499,23 @@ namespace gridsearch {
                coefficient kLowerBound,
                coefficient kUpperBound,
                Function f,
-               cost valueAtCurrentParams,
+               TrainingOutputs& outputAtCurrentParams,
                int mult) {
-      auto epsilon = kLowerBound / 100;
-      auto top = kUpperBound, bottom = kLowerBound;
+      auto epsilon = 1;
+
+      auto top = kUpperBound,
+        bottom = kLowerBound;
+      auto valueAtCurrentParams = outputAtCurrentParams.value();
       auto bestValue = valueAtCurrentParams;
       auto bestK = kLowerBound;
 
+      TrainingOutputs outputAtLastK = outputAtCurrentParams;
       while (top - bottom >= epsilon) {
         INFO("Searching k in " << bottom << " " << top);
         auto currentK = (top + bottom) / 2;
-        auto outputAtCurrentK = f(current + delta * currentK * mult);
+        auto outputAtCurrentK = f(current + currentK * mult * delta);
         auto valueAtCurrentK = outputAtCurrentK.value();
-        INFO("k -> value: " << currentK << " -> " << valueAtCurrentK);
+        INFO("k: " << currentK << " -> " << valueAtCurrentK);
 
         if(valueAtCurrentK < bestValue) {
           bestValue = valueAtCurrentK;
@@ -528,6 +528,9 @@ namespace gridsearch {
         }
         else
           bottom = currentK;
+
+        printDiffs(outputAtLastK.findDifferences(outputAtCurrentK));
+        outputAtLastK = outputAtCurrentK;
       }
       return std::make_pair(bestK * mult, bestValue);
     }
@@ -560,17 +563,14 @@ namespace gridsearch {
           kBound = kPair.second;
 
         INFO("--- " << feature);
-        auto plus = locateStep(current, delta, k, kBound, f, lastResult, 1);
-        auto minus = locateStep(current, delta, k, kBound, f, lastResult, -1);
+        auto plus = locateStep(current, delta, k, kBound, f, atCurrent, 1);
+        auto minus = locateStep(current, delta, k, kBound, f, atCurrent, -1);
 
         auto k1 = plus.first,
           k2 = minus.first;
 
         auto v1 = plus.second,
           v2 = minus.second;
-
-        //auto diffs = r1.findDifferences(r2);
-        //printDiffs(diffs);
 
         INFO((prevValue + k1) << ", " << v1 <<
              " vs " <<
@@ -698,7 +698,7 @@ namespace gridsearch {
       std::for_each(taskParams.begin(), taskParams.end(), [&](ResynthParams& p) {
           outputs.push_back(p.result);
         });
-      return outputs;      
+      return outputs;
     }
 
     template<class Params>
