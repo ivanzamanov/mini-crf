@@ -49,12 +49,13 @@ struct WaveData {
 
   short& operator[](int i) const { return data[offset + i]; }
 
-  void plus(int i, short val) {
-    int newVal = (*this)[i];
+  template<class T>
+  void plus(int i, T val) {
+    double newVal = this->data[i];
     newVal += val;
-    newVal = std::max(newVal, SHRT_MIN);
-    newVal = std::min(newVal, SHRT_MAX);
-    (*this)[i] = (short) newVal;
+    newVal = std::max(newVal, (double) SHRT_MIN);
+    newVal = std::min(newVal, (double) SHRT_MAX);
+    this->data[i] = (short) newVal;
   }
   unsigned size() const { return length; }
 
@@ -92,7 +93,7 @@ struct WaveData {
   }
 
   static int toSamples(double duration, unsigned sampleRate) {
-    return duration * sampleRate;
+    return std::round(duration * sampleRate);
   }
 
   static WaveData copy(const WaveData& origin) {
@@ -228,15 +229,46 @@ struct Wave {
   }
 
   WaveData extractByTime(double start, double end) const {
-    return extractBySample(toSamples(start), toSamples(end));
+    return extractBySample(toSamples(start), toSamples(end) - 1);
+  }
+};
+
+struct WaveBuilder {
+  WaveBuilder(WaveHeader h): h(h) {
+    data = 0;
+    this->h.samplesBytes = 0;
+  }
+  WaveHeader h;
+  char* data;
+
+  void append(const WaveData& w) {
+    append((char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
+  }
+  
+  void append(const Wave& w, int offset, int count) {
+    append(w.data + offset, count * w.h.bitsPerSample / 8);
+  }
+
+  void append(char* data, int count) {
+    this->data = (char*) realloc(this->data, h.samplesBytes + count);
+    memcpy(this->data + h.samplesBytes, data, count);
+
+    h.setSampleBytes(h.samplesBytes + count);
+  }
+
+  Wave build() {
+    Wave result;
+    result.h = h;
+    result.data = this->data;
+    return result;
   }
 };
 
 struct SpeechWaveData : public WaveData {
   SpeechWaveData(): WaveData(), extra() { }
-  SpeechWaveData(const SpeechWaveData& o): WaveData(o), extra(o.extra) { }
+  SpeechWaveData(const SpeechWaveData& o): WaveData(o), marks(o.marks),  extra(o.extra) { }
 
-  static constexpr auto EXTRA_TIME = 0.005;
+  static constexpr auto EXTRA_TIME = 0.02;
   // Sample indexes that are pitch marks
   std::vector<int> marks;
   WaveData extra;
@@ -270,36 +302,17 @@ struct SpeechWaveData : public WaveData {
     result.length = result.toSamples(duration);
     return result;
   }
-};
 
-struct WaveBuilder {
-  WaveBuilder(WaveHeader h): h(h) {
-    data = 0;
-    this->h.samplesBytes = 0;
+  static void toFile(const SpeechWaveData& swd, const std::string file) {
+    WaveHeader h = WaveHeader::default_header();
+    h.sampleRate = swd.sampleRate;
+    h.byteRate = swd.sampleRate * 2;
+    WaveBuilder wb(h);
+    wb.append(swd);
+    wb.build().write(file);
   }
-  WaveHeader h;
-  char* data;
-
-  void append(WaveData& w) {
-    append((char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
-  }
-  
-  void append(Wave& w, int offset, int count) {
-    append(w.data + offset, count * w.h.bitsPerSample / 8);
-  }
-
-  void append(char* data, int count) {
-    this->data = (char*) realloc(this->data, h.samplesBytes + count);
-    memcpy(this->data + h.samplesBytes, data, count);
-
-    h.setSampleBytes(h.samplesBytes + count);
-  }
-
-  Wave build() {
-    Wave result;
-    result.h = h;
-    result.data = this->data;
-    return result;
+  static void toFile(SpeechWaveData& swd) {
+    SpeechWaveData::toFile(swd, "swd.wav");
   }
 };
 

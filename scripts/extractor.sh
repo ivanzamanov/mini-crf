@@ -7,7 +7,7 @@ fi
 set -e
 
 #PRAAT_SCRIPT=$(readlink -f `dirname $0`/extract.praat)
-PRAAT_SCRIPT=$(`dirname $0`/praat/extract-new.praat)
+PRAAT_SCRIPT=`dirname $0`/praat/extract-new.praat
 
 if [ ! -f $PRAAT_SCRIPT ]; then
   echo "No such file $PRAAT_SCRIPT"

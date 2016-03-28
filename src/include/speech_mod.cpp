@@ -12,20 +12,15 @@ using std::vector;
 
 bool SMOOTH = false;
 bool SCALE_ENERGY = false;
+
 // Mod commons
-
-template<class T>
-short truncate(T v) {
-  v = std::max(v, (T) SHRT_MIN);
-  v = std::min(v, (T) SHRT_MAX);
-  return (short) v;
-}
-
 double hann(double i, int size) {
-  return 0.5 * (1 - cos(2 * M_PI * i / size));
+  return 0.5 - 0.5 * cos(2.0 * M_PI * i / (size - 1));
+  //return 0.5 * (1 - cos(2 * M_PI * i / size));
 }
 
 void gen_fall(double* data, int size, bool window=true) {
+  size++;
   //transform(data, size, [&](int, double&) { return 1; });
   size = size * 2;
   transform(data, size / 2, [=](int i, double) {
@@ -35,6 +30,7 @@ void gen_fall(double* data, int size, bool window=true) {
 }
 
 void gen_rise(double* data, int size, bool window=true) {
+  size++;
   //transform(data, size, [&](int, double&) { return 1; });
   size = size * 2;
   transform(data, size / 2, [=](int i, double) {
@@ -42,10 +38,6 @@ void gen_rise(double* data, int size, bool window=true) {
     });
 }
 
-void scaleToPitchAndDurationSimpleTD(SpeechWaveData dest,
-                                     SpeechWaveData source,
-                                     PitchRange pitch,
-                                     int debugIndex);
 void copyVoicedPartTD(SpeechWaveData source,
                       int& destOffset,
                       const int destOffsetBound,
@@ -61,10 +53,11 @@ void copyVoicelessPart(const SpeechWaveData& source,
                        int sMark,
                        int sourceBound,
                        SpeechWaveData dest);
-void scaleToPitchAndDuration(SpeechWaveData dest,
-                             SpeechWaveData source,
-                             PitchRange pitch,
-                             int debugIndex);
+int scaleToPitchAndDuration(SpeechWaveData dest,
+                            SpeechWaveData source,
+                            PitchRange pitch,
+                            int lastMark,
+                            int debugIndex);
 
 PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const WaveData& dest) {
   unsigned i = 0;
@@ -113,7 +106,7 @@ static int readSourceData(SpeechWaveSynthesis& w, std::vector<SpeechWaveData>& d
     for(auto mark : fileData.pitch_marks) {
       // Omit boundaries on purpose
       if(mark > p.start && mark < p.end)
-        part.marks.push_back(wav.toSamples(mark) - wav.toSamples(p.start));
+        part.marks.push_back(wav.toSamples(mark - p.start));
     }
 
     destParts[i] = part;
@@ -130,7 +123,7 @@ Wave SpeechWaveSynthesis::get_resynthesis_td() {
   return result;
 }
 
-Wave SpeechWaveSynthesis::get_concatenation(const Options& opts) {
+Wave SpeechWaveSynthesis::get_concatenation(const Options&) {
   // First off, collect the WAV data for each source unit
   vector<SpeechWaveData> waveData(source.size());
   auto sampleRate = readSourceData(*this, waveData);
@@ -285,18 +278,18 @@ Wave SpeechWaveSynthesis::get_coupling(const Options& opts) {
 }
 
 template<bool flip=false>
-int overlapAddAroundMark(SpeechWaveData source,
+int overlapAddAroundMark(SpeechWaveData& src,
                          int sMark,
-                         SpeechWaveData dest,
+                         SpeechWaveData& dst,
                          int dMark,
                          const int samplesLeft,
                          const int samplesRight,
                          bool win=true) {
-  sMark += source.offset - source.extra.offset;
-  source = source.extra;
+  sMark += src.offset - src.extra.offset;
+  auto source = src.extra;
 
-  dMark += dest.offset - dest.extra.offset;
-  dest = dest.extra;
+  dMark += dst.offset - dst.extra.offset;
+  auto dest = dst.extra;
 
   DEBUG(LOG("Mark " << dMark));
 
@@ -314,10 +307,10 @@ int overlapAddAroundMark(SpeechWaveData source,
   sourceBot = std::max(0, sMark - samplesLeft);
   sourceTop = std::min(sMark, source.length);
 
-  for(int di = destBot,
-        si = sourceBot,
-        wi = 0; di < destTop && si < sourceTop; di++, si++, wi++)
-    dest.plus(flip ? destTop - di : di, source[si] * window[wi]);
+  for(auto di = destBot, si = sourceBot, wi = 0;
+      di < destTop && si < sourceTop;
+      di++, si++, wi++)
+    dest.plus<double>(flip ? destTop - di : di, source[si] * window[wi]);
 
   // And Fall
   destBot = std::max(0, dMark);
@@ -328,43 +321,12 @@ int overlapAddAroundMark(SpeechWaveData source,
 
   gen_fall(window, samplesRight, win);
 
-  for(int di = destBot,
-        si = sourceBot,
-        wi = 0; di < destTop && si < sourceTop; di++, si++, wi++)
-    dest.plus(flip ? destTop - di : di, source[si] * window[wi]);
+  for(auto di = destBot, si = sourceBot, wi = 0;
+      di < destTop && si < sourceTop;
+      di++, si++, wi++)
+    dest.plus<double>(flip ? destTop - di : di, source[si] * window[wi]);
 
   return std::min(destTop - destBot, sourceTop - sourceBot);
-}
-
-void copyVoicelessPart(const SpeechWaveData& source,
-                       int& dMark,
-                       const int destOffsetBound,
-                       const int,
-                       int sMark,
-                       int sourceBound,
-                       SpeechWaveData dest) {
-  auto dLen = destOffsetBound - dMark;
-  auto scale = (double) dLen / (sourceBound - sMark);
-  PsolaConstants limits(dest.sampleRate);
-
-  bool flip = false;
-  while(dMark < destOffsetBound) {
-    auto periodSamples = limits.maxVoicelessSamplesCopy;
-    int copied;
-    if(flip)
-      copied = overlapAddAroundMark<true>(source, sMark, dest, dMark,
-                                    periodSamples, periodSamples);
-    else
-      copied = overlapAddAroundMark<false>(source, sMark, dest, dMark,
-                                  periodSamples, periodSamples);
-
-    if(copied == 0)
-      break;
-
-    sMark += copied / scale;
-    dMark += copied;
-    flip = !flip;
-  }
 }
 
 void coupleScaledPieces(vector<SpeechWaveData>& scaledPieces,
@@ -410,7 +372,7 @@ void coupleScaledPieces(vector<SpeechWaveData>& scaledPieces,
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
                                          const vector<SpeechWaveData>& pieces,
-                                         const Options& opts) {
+                                         const Options&) {
   PitchRange pitchTier[target.size()];
 
   PitchTier pt = initPitchTier(pitchTier, target, dest);
@@ -418,13 +380,16 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
   Progress prog(target.size(), "PSOLA: ");
   vector<SpeechWaveData> scaledPieces(target.size());
 
+  auto lastMark = 0;
   for(auto i = 0u; i < target.size(); i++) {
     auto& p = pieces[i];
     auto& pitch = pt.ranges[i];
 
     scaledPieces[i] = SpeechWaveData::allocate(target[i].duration, dest.sampleRate);
 
-    scaleToPitchAndDuration(scaledPieces[i], p, pitch, i);
+    lastMark = scaleToPitchAndDuration(scaledPieces[i], p, pitch, lastMark, i);
+    lastMark -= scaledPieces[i].length;
+    assert(lastMark >= 0);
 
     prog.update();
   }
@@ -434,9 +399,21 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
 
   // Now simply transfer and cleanup...
   auto destOffset = 0;
+  int i = 0;
   for(const auto& p : scaledPieces) {
+    auto extraOffset = p.offset - p.extra.offset;
+    if(destOffset >= extraOffset)
+      for(auto i = 0; i < extraOffset; i++)
+        dest.plus<double>(destOffset - extraOffset + i, p.extra[i]);
+
     for(auto i = 0; i < p.length && destOffset < dest.length; i++, destOffset++)
-      dest[destOffset] = p[i];
+      dest.plus<double>(destOffset, p[i]);
+
+    /*auto extraLength = p.extra.length - p.length;
+    for(auto i = 0; i < extraLength && destOffset + i < dest.length; i++)
+    dest.plus<double>(destOffset + i, p.extra[p.length + i]);*/
+    SpeechWaveData::toFile(p, "/tmp/" + std::to_string(i) + ".wav");
+    i++;
   }
   std::for_each(scaledPieces.begin(), scaledPieces.end(), WaveData::deallocate);
 }
@@ -458,33 +435,59 @@ vector<bool> fillMissingMarks(vector<int>& marks, PsolaConstants limits) {
   return isVoicelessFlags;
 }
 
-void scaleToPitchAndDuration(SpeechWaveData dest,
-                             SpeechWaveData source,
-                             PitchRange pitch,
-                             int) {
+static int getPeriodOfMark(int markIndex, vector<int>& sourceMarks) {
+  auto mark = sourceMarks[markIndex];
+  if(mark == 0)
+    return sourceMarks[markIndex + 1];
+  if(markIndex == (int) sourceMarks.size() - 1)
+    return mark - sourceMarks[markIndex - 1];
+  return std::min(mark - sourceMarks[markIndex - 1], sourceMarks[markIndex + 1] - mark);
+}
+
+int scaleToPitchAndDuration(SpeechWaveData dest,
+                            SpeechWaveData source,
+                            PitchRange pitch,
+                            int firstMark,
+                            int debugIndex) {
   PsolaConstants limits(dest.sampleRate);
 
   // Time scale
   double scale = dest.duration() / source.duration();
 
   vector<int> sourceMarks(source.marks);
+  sourceMarks.insert(sourceMarks.begin(), 0);
   sourceMarks.push_back(source.length);
   auto isVoicelessFlags = fillMissingMarks(sourceMarks, limits);
 
   auto sMarkIndex = 0u;
-  auto dMark = sourceMarks[sMarkIndex];
-  while(sMarkIndex < sourceMarks.size()) {
+  auto dMark = firstMark;
+  int destPeriod;
+  //INFO("duration: " << source.duration() << " -> " << dest.duration());
+
+  while (sMarkIndex < sourceMarks.size() - 1) {
     auto sMark = sourceMarks[sMarkIndex];
-    auto scaledSMark = (int) sMark * scale;
+    auto scaledSMark = sourceMarks[sMarkIndex + 1] * scale;
+
     bool voiceless = isVoicelessFlags[sMarkIndex];
 
     while(dMark < scaledSMark) {
-      overlapAddAroundMark(source, sMark, dest, dMark,
-                           limits.maxVoicelessSamples, limits.maxVoicelessSamples);
-      dMark += voiceless
-        ? limits.maxVoicelessSamples * scale
+      int sourcePeriod = voiceless
+        ? limits.maxVoicelessSamples
+        : getPeriodOfMark(sMarkIndex, sourceMarks);
+
+      destPeriod = voiceless
+        ? limits.maxVoicelessSamples
         : dest.toSamples(1 / pitch.at(dMark));
+
+      overlapAddAroundMark(source, sMark, dest, dMark,
+                           sourcePeriod, sourcePeriod);
+      //INFO(source.toDuration(sMark) << " -> " << dest.toDuration(dMark) << " " << dest.toDuration(sourcePeriod));
+
+      dMark += destPeriod;
+      assert(destPeriod > 0);
     }
     sMarkIndex++;
   }
+  INFO(debugIndex << ": last mark " << dest.toDuration(dMark - dest.length) << " period: " << dest.toDuration(destPeriod));
+  return dMark;
 }

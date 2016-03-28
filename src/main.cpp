@@ -82,12 +82,15 @@ int resynthesize(Options& opts) {
 
   outputStats(crf.lambda, stats);
 
-  Wave outputSignal = SpeechWaveSynthesis(output, input, crf.alphabet())
-    .get_resynthesis(opts);
+  auto sws = SpeechWaveSynthesis(output, input, crf.alphabet());
+  Wave outputSignal = sws.get_resynthesis(opts);
 
   std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
   std::ofstream wav_output(outputFile);
   outputSignal.write(wav_output);
+
+  auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
+  sws2.get_concatenation(opts).write("original.wav");
 
   FileData fileData = alphabet_test.file_data_of(input[0]);
   Wave sourceSignal;
@@ -134,13 +137,13 @@ int psola(const Options& opts) {
 
   std::vector<PhonemeInstance> phonemeInput;
   if(input.size() > 1)
-    phonemeInput = crf.alphabet().to_phonemes(input);
+    phonemeInput = alphabet_test.to_phonemes(input);
   else {
-    phonemeInput = corpus_synth.input(input[0]);
-    INFO("Input file: " << crf.alphabet().file_data_of(phonemeInput[0]).file);
+    phonemeInput = corpus_test.input(input[0]);
+    INFO("Input file: " << alphabet_test.file_data_of(phonemeInput[0]).file);
   }
 
-  auto sws = SpeechWaveSynthesis(phonemeInput, phonemeInput, crf.alphabet());
+  auto sws = SpeechWaveSynthesis(phonemeInput, phonemeInput, alphabet_test);
   auto outputSignal = sws.get_resynthesis(opts);
   auto original = sws.get_concatenation(opts);
   original.write("original.wav");
@@ -180,8 +183,8 @@ bool Progress::enabled = true;
 
 int main(int argc, const char** argv) {
   std::ios_base::sync_with_stdio(false);
-  (std::cout << std::scientific);
-  (std::cerr << std::scientific);
+  (std::cout << std::fixed).precision(10);
+  (std::cerr << std::fixed).precision(10);
   Options opts;
   if(!init_tool(argc, argv, &opts)) {
     print_usage();

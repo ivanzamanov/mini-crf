@@ -83,9 +83,8 @@ std::vector<PhonemeInstance> parse_file(FileData& fileData, StringLabelProvider&
   }
 
   size = value<int>(stream, "pulses");
-  fileData.pitch_marks.resize(size);
   for(auto i = 0; i < size; i++)
-    fileData.pitch_marks[i] = value<float>(stream, "p");
+    fileData.pitch_marks.push_back(value<double>(stream, "p"));
   return result;
 }
 

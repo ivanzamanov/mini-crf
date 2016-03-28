@@ -12,9 +12,9 @@ static const int MFCC_N = 12;
 typedef double coefficient;
 typedef double cost;
 typedef double probability;
-typedef float frequency;
-typedef float stime_t;
-typedef float mfcc_t;
+typedef double frequency;
+typedef double stime_t;
+typedef double mfcc_t;
 typedef std::array<mfcc_t, MFCC_N> MfccArray;
 typedef unsigned id_t;
 
