@@ -23,7 +23,7 @@ namespace tool {
     vector<unsigned> old_ids;
     vector<unsigned> new_ids;
 
-    const LabelAlphabet<PhonemeInstance>::LabelClass get_class(PhoneticLabel label) const {
+    const LabelAlphabet<PhonemeInstance>::LabelClass& get_class(PhoneticLabel label) const {
       return classes[label];
     }
 

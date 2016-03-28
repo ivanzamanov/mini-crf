@@ -247,8 +247,7 @@ int couplePieces(SpeechWaveData& p, SpeechWaveData& n) {
   return minOffset;
 }
 
-void do_coupling(vector<SpeechWaveData>& pieces,
-                 const Options&) {
+void do_coupling(vector<SpeechWaveData>& pieces) {
   auto i = 1u;
   while(i < pieces.size()) {
     auto adjustment = couplePieces(pieces[i - 1], pieces[i]);
@@ -257,13 +256,13 @@ void do_coupling(vector<SpeechWaveData>& pieces,
   }
 }
 
-Wave SpeechWaveSynthesis::get_coupling(const Options& opts) {
+Wave SpeechWaveSynthesis::get_coupling(const Options&) {
   const auto N = source.size();
   assert(N > 1);
   vector<SpeechWaveData> waveData(N);
   auto sampleRate = readSourceData(*this, waveData);
 
-  do_coupling(waveData, opts);
+  do_coupling(waveData);
 
   // Now simply transfer and cleanup...
   WaveHeader h = WaveHeader::default_header();
@@ -330,8 +329,7 @@ int overlapAddAroundMark(SpeechWaveData& src,
 }
 
 void coupleScaledPieces(vector<SpeechWaveData>& scaledPieces,
-                        const vector<SpeechWaveData>& originalPieces,
-                        const Options& opts) {
+                        const vector<SpeechWaveData>& originalPieces) {
   for(auto i = 0u; i < scaledPieces.size(); i++) {
     auto& scaled = scaledPieces[i];
     auto& original = originalPieces[i];
@@ -367,7 +365,7 @@ void coupleScaledPieces(vector<SpeechWaveData>& scaledPieces,
     scaled = newScaled;
   }
 
-  do_coupling(scaledPieces, opts);
+  do_coupling(scaledPieces);
 }
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
@@ -395,7 +393,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
   }
   prog.finish();
 
-  //coupleScaledPieces(scaledPieces, pieces, opts);
+  //coupleScaledPieces(scaledPieces, pieces);
 
   // Now simply transfer and cleanup...
   auto destOffset = 0;
@@ -448,7 +446,7 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
                             SpeechWaveData source,
                             PitchRange pitch,
                             int firstMark,
-                            int debugIndex) {
+                            int) {
   PsolaConstants limits(dest.sampleRate);
 
   // Time scale
@@ -488,6 +486,6 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
     }
     sMarkIndex++;
   }
-  INFO(debugIndex << ": last mark " << dest.toDuration(dMark - dest.length) << " period: " << dest.toDuration(destPeriod));
+  //INFO(debugIndex << ": last mark " << dest.toDuration(dMark - dest.length) << " period: " << dest.toDuration(destPeriod));
   return dMark;
 }

@@ -23,10 +23,6 @@ struct LabelAlphabet {
 
   unsigned size() const { return labels.size(); }
 
-  bool allowedState(const LabelObject& l1, const LabelObject& l2) const {
-    return l1.label == l2.label;
-  }
-
   LabelObject& fromInt(int i) {
     return labels[i];
   }

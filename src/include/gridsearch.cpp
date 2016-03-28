@@ -443,9 +443,27 @@ namespace gridsearch {
     bool stop;
     cost lastResult;
 
+    cost findSomeOtherValue(vector<int>& excludedPath, Params& params, int index) {
+      vector<int> somePath(excludedPath);
+      auto someIndex = somePath.size() / 2;
+      auto phonId = somePath[someIndex];
+      auto matching = alphabet_synth.get_class(alphabet_synth.fromInt(phonId));
+      for(auto& m : matching)
+        if(m != phonId) {
+          somePath[someIndex] = m;
+          break;
+        }
+
+      auto y = alphabet_synth.to_phonemes(somePath);
+      CRF::Values param_vals;
+      for(auto i = 0u; i < param_vals.size(); i++)
+        param_vals[i] = params[i];
+      return concat_cost(y, crf, param_vals, corpus_test.input(index));
+    }
+
     template<class Function>
     std::pair<coefficient, coefficient>
-    stepSize(TrainingOutputs& atCurrent, Function f, Params& delta) {
+    stepSize(TrainingOutputs& atCurrent, Function f, Params& delta, Params& current) {
       std::vector<cost> quotients;
       for(auto& output : atCurrent) {
         auto val = output.bestValues[1] - output.bestValues[0];
@@ -459,7 +477,7 @@ namespace gridsearch {
         assert(atDeltaMin[i].bestValues[0] < atDeltaMax[i].bestValues[0]);
 
       cost minValue = 10000000000;
-      cost maxQuot = minValue;
+      auto minIndex = 0u;
       for(auto i = 0u; i < atCurrent.size(); i++) {
         auto thetaHatAtDelta = f.costOf(atCurrent[i].path, delta, i);
 
@@ -472,14 +490,14 @@ namespace gridsearch {
         auto denom = (*std::max_element(std::begin(options), std::end(options)));
         auto val = quot / denom;
 
-        if(val < minValue) minValue = val;
-
-        if(maxQuot > quotients[i])
-          maxQuot = quotients[i];
+        if(val < minValue) {
+          minIndex = i;
+          minValue = val;
+        }
       }
 
       INFO("k = " << minValue);
-      return std::make_pair(minValue, maxQuot);
+      return std::make_pair(minValue, findSomeOtherValue(atCurrent[minIndex].path, current, minIndex));
     }
 
     void bootstrap(Ranges& ranges, Params& current,
@@ -508,6 +526,8 @@ namespace gridsearch {
       auto valueAtCurrentParams = outputAtCurrentParams.value();
       auto bestValue = valueAtCurrentParams;
       auto bestK = kLowerBound;
+
+      assert(f(current + top * mult * delta).value() != f(current + bottom * mult * delta).value());
 
       TrainingOutputs outputAtLastK = outputAtCurrentParams;
       while (top - bottom >= epsilon) {
@@ -557,7 +577,7 @@ namespace gridsearch {
 
         // A list of minimums
         auto atCurrent = f(current);
-        auto kPair = stepSize(atCurrent, f, delta);
+        auto kPair = stepSize(atCurrent, f, delta, current);
 
         auto k = kPair.first,
           kBound = kPair.second;
