@@ -498,14 +498,14 @@ namespace gridsearch {
         }
       }
 
-      INFO("k = " << minValue);
+      INFO("k_min = " << minValue);
       return std::make_pair(minValue, findSomeOtherValue(atCurrent[minIndex].path, current, minIndex) / denomAtMin);
     }
 
     void bootstrap(Ranges& ranges, Params& current,
                    Params& delta, Params& p_delta) {
       for(auto i = 0u; i < ranges.size(); i++) {
-        current[i] = (ranges[i].from + ranges[i].to) / 2;
+        current[i] = 0.01;
         delta[i] = p_delta[i] = 0;
       }
 
@@ -523,38 +523,43 @@ namespace gridsearch {
                int mult) {
       auto epsilon = 1;
 
-      auto top = kUpperBound,
-        bottom = kLowerBound;
+      auto top = kUpperBound * mult,
+        bottom = kLowerBound * mult;
       auto valueAtCurrentParams = outputAtCurrentParams.value();
       auto bestValue = valueAtCurrentParams;
       auto bestK = kLowerBound;
 
-      assert(f(current + top * mult * delta).value() != f(current + bottom * mult * delta).value());
+      assert(f(current + top * delta).value() != f(current + bottom * delta).value());
 
       TrainingOutputs outputAtLastK = outputAtCurrentParams;
-      while (top - bottom >= epsilon) {
-        INFO("Searching k in " << bottom << " " << top);
-        auto currentK = (top + bottom) / 2;
-        auto outputAtCurrentK = f(current + currentK * mult * delta);
-        auto valueAtCurrentK = outputAtCurrentK.value();
-        INFO("k: " << currentK << " -> " << valueAtCurrentK);
+      INFO("Searching k in " << bottom << " " << top);
+      auto currentK = bottom;
+      auto outputAtCurrentK = f(current + currentK * delta);
+      auto valueAtCurrentK = outputAtCurrentK.value();
+      while (std::abs(top - bottom) >= epsilon) {
+        (std::cerr << ".").flush();
+        currentK = (top + bottom) / 2;
+        outputAtCurrentK = f(current + currentK * delta);
+        valueAtCurrentK = outputAtCurrentK.value();
 
         if(valueAtCurrentK < bestValue) {
           bestValue = valueAtCurrentK;
           bestK = currentK;
         }
 
-        if(std::abs(valueAtCurrentK - valueAtCurrentParams) > 0.0001) {
-          INFO("diff with current min = " << std::abs(valueAtCurrentK - valueAtCurrentParams));
+        if(std::abs(valueAtCurrentK - valueAtCurrentParams) > 0.0001)
+          //INFO("diff with current min = " << std::abs(valueAtCurrentK - valueAtCurrentParams));
           top = currentK;
-        }
         else
           bottom = currentK;
 
         //printDiffs(outputAtLastK.findDifferences(outputAtCurrentK));
         outputAtLastK = outputAtCurrentK;
       }
-      return std::make_pair(bestK * mult, bestValue);
+      std::cerr << std::endl;
+      INFO("Best k = " << bestK);
+      INFO("F: " << valueAtCurrentParams << " -> " << bestValue);
+      return std::make_pair(bestK, bestValue);
     }
 
     template<class Function>
@@ -575,7 +580,6 @@ namespace gridsearch {
         delta[axisIndex] = 1;
 
         auto feature = ranges[axisIndex].feature;
-        auto prevValue = current[axisIndex];
 
         // A list of minimums
         auto atCurrent = f(current);
@@ -594,26 +598,23 @@ namespace gridsearch {
         auto v1 = plus.second,
           v2 = minus.second;
 
-        INFO((prevValue + k1) << ", " << v1 <<
-             " vs " <<
-             (prevValue - k2) << ", " << v2);
-        if(v1 < v2) {
-          INFO(feature << ": " <<
-               prevValue << " -> " << prevValue + k);
-          current += k1 * delta;
+        if(v1 < v2 && v1 < lastResult) {
+          INFO("Choose k " << k1);
+          current += (k1 * delta);
           result = v1;
           break;
-        } else if (v2 < v1) {
-          INFO(feature << ": " <<
-               prevValue << " -> " << prevValue - k);
-          current -= k * delta;
+        } else if (v2 < v1 && v2 < lastResult) {
+          INFO("Choose k " << k2);
+          current += (k2 * delta);
           result = v2;
           break;
         }
       }
 
-      lastResult = result;
+      if(lastResult == result) { INFO("No improvement") };
+      if(result < 0) { INFO("Negative " << result) };
       stop = result < 0 || (lastResult == result);
+      lastResult = result;
       return result;
     }
   };
