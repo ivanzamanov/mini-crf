@@ -478,6 +478,7 @@ namespace gridsearch {
 
       cost minValue = 10000000000;
       auto minIndex = 0u;
+      auto denomAtMin = 0u;
       for(auto i = 0u; i < atCurrent.size(); i++) {
         auto thetaHatAtDelta = f.costOf(atCurrent[i].path, delta, i);
 
@@ -493,11 +494,12 @@ namespace gridsearch {
         if(val < minValue) {
           minIndex = i;
           minValue = val;
+          denomAtMin = denom;
         }
       }
 
       INFO("k = " << minValue);
-      return std::make_pair(minValue, findSomeOtherValue(atCurrent[minIndex].path, current, minIndex));
+      return std::make_pair(minValue, findSomeOtherValue(atCurrent[minIndex].path, current, minIndex) / denomAtMin);
     }
 
     void bootstrap(Ranges& ranges, Params& current,
@@ -543,13 +545,13 @@ namespace gridsearch {
         }
 
         if(std::abs(valueAtCurrentK - valueAtCurrentParams) > 0.0001) {
-          INFO("diff = " << std::abs(valueAtCurrentK - valueAtCurrentParams));
+          INFO("diff with current min = " << std::abs(valueAtCurrentK - valueAtCurrentParams));
           top = currentK;
         }
         else
           bottom = currentK;
 
-        printDiffs(outputAtLastK.findDifferences(outputAtCurrentK));
+        //printDiffs(outputAtLastK.findDifferences(outputAtCurrentK));
         outputAtLastK = outputAtCurrentK;
       }
       return std::make_pair(bestK * mult, bestValue);
