@@ -126,6 +126,36 @@ namespace util {
 bool compare(std::string &, std::string&);
 bool compare(int& i1, int& i2);
 
+template<class V = double, class I = double, bool _log = true>
+struct CompareAccumulator {
+  V bestValue;
+  I bestIndex;
+  bool isSet = false;
+
+  V add(V value, I index) {
+    compare(value, index);
+    return value;
+  }
+
+  bool compare(CompareAccumulator other) {
+    return compare(other.bestValue, other.bestIndex);
+  }
+
+  bool compare(V value, I index) {
+    if(value < bestValue || !isSet) {
+      if(isSet && _log) {
+        INFO("Acc " << bestValue << " <- " << value << " -> " << bestIndex << " <- " << index);
+      }
+
+      isSet = true;
+      bestValue = value;
+      bestIndex = index;
+      return true;
+    }
+    return false;
+  }
+};
+
 template<class T>
 bool compare(std::vector<T> &v1, std::vector<T> &v2) {
   bool same = v1.size() == v2.size();
@@ -204,7 +234,7 @@ struct BinaryReader {
 
 struct Progress {
   static bool enabled;
-  
+
   Progress(unsigned total=0, std::string prefix="Progress: "): total(total), progress(0), prefix(prefix) { }
   unsigned total, progress;
   std::string prefix;
@@ -220,7 +250,6 @@ struct Progress {
     if(REPORT_PROGRESS)
       std::cerr << " Done " << std::endl;
   }
-
 };
 
 template<class T, unsigned size>

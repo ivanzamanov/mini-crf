@@ -476,8 +476,7 @@ namespace gridsearch {
       for(auto i = 0u; i < atDeltaMax.size(); i++)
         assert(atDeltaMin[i].bestValues[0] < atDeltaMax[i].bestValues[0]);
 
-      cost minValue = 10000000000;
-      auto minIndex = 0u;
+      CompareAccumulator<cost, int, true> acc;
       auto denomAtMin = 0u;
       for(auto i = 0u; i < atCurrent.size(); i++) {
         auto thetaHatAtDelta = f.costOf(atCurrent[i].path, delta, i);
@@ -490,22 +489,20 @@ namespace gridsearch {
         auto quot = quotients[i];
         auto denom = (*std::max_element(std::begin(options), std::end(options)));
         auto val = quot / denom;
-
-        if(val < minValue) {
-          minIndex = i;
-          minValue = val;
+        if(acc.compare(val, i))
           denomAtMin = denom;
-        }
       }
 
-      INFO("k_min = " << minValue);
-      return std::make_pair(minValue, findSomeOtherValue(atCurrent[minIndex].path, current, minIndex) / denomAtMin);
+      INFO("k_min = " << acc.bestValue);
+      auto someOtherValue = findSomeOtherValue(atCurrent[acc.bestIndex].path,
+                                               current, acc.bestIndex) / denomAtMin;
+      return std::make_pair(acc.bestValue, someOtherValue);
     }
 
     void bootstrap(Ranges& ranges, Params& current,
                    Params& delta, Params& p_delta) {
       for(auto i = 0u; i < ranges.size(); i++) {
-        current[i] = 0.01;
+        current[i] = 0.0001;
         delta[i] = p_delta[i] = 0;
       }
 
@@ -513,7 +510,7 @@ namespace gridsearch {
     }
 
     template<class Function>
-    std::pair<cost, coefficient>
+    CompareAccumulator<double, double>
     locateStep(const Params& current,
                const Params& delta,
                coefficient kLowerBound,
@@ -526,29 +523,24 @@ namespace gridsearch {
       auto top = kUpperBound * mult,
         bottom = kLowerBound * mult;
       auto valueAtCurrentParams = outputAtCurrentParams.value();
-      auto bestValue = valueAtCurrentParams;
-      auto bestK = kLowerBound;
+      CompareAccumulator<double, double> acc;
+      acc.add(valueAtCurrentParams, 0);
 
-      assert(f(current + top * delta).value() != f(current + bottom * delta).value());
+      assert( acc.add(f(current + top * delta).value(), top)
+              != acc.add(f(current + bottom * delta).value(), bottom)
+              );
 
       TrainingOutputs outputAtLastK = outputAtCurrentParams;
       INFO("Searching k in " << bottom << " " << top);
-      auto currentK = bottom;
-      auto outputAtCurrentK = f(current + currentK * delta);
-      auto valueAtCurrentK = outputAtCurrentK.value();
+
       while (std::abs(top - bottom) >= epsilon) {
         (std::cerr << ".").flush();
-        currentK = (top + bottom) / 2;
-        outputAtCurrentK = f(current + currentK * delta);
-        valueAtCurrentK = outputAtCurrentK.value();
-
-        if(valueAtCurrentK < bestValue) {
-          bestValue = valueAtCurrentK;
-          bestK = currentK;
-        }
+        auto currentK = (top + bottom) / 2;
+        auto outputAtCurrentK = f(current + currentK * delta);
+        auto valueAtCurrentK = outputAtCurrentK.value();
+        acc.compare(valueAtCurrentK, currentK);
 
         if(std::abs(valueAtCurrentK - valueAtCurrentParams) > 0.0001)
-          //INFO("diff with current min = " << std::abs(valueAtCurrentK - valueAtCurrentParams));
           top = currentK;
         else
           bottom = currentK;
@@ -557,9 +549,9 @@ namespace gridsearch {
         outputAtLastK = outputAtCurrentK;
       }
       std::cerr << std::endl;
-      INFO("Best k = " << bestK);
-      INFO("F: " << valueAtCurrentParams << " -> " << bestValue);
-      return std::make_pair(bestK, bestValue);
+      INFO("Best k = " << acc.bestIndex);
+      INFO("F: " << valueAtCurrentParams << " -> " << acc.bestValue);
+      return acc;
     }
 
     template<class Function>
@@ -583,31 +575,25 @@ namespace gridsearch {
 
         // A list of minimums
         auto atCurrent = f(current);
+        if(lastResult == -1)
+          lastResult = atCurrent.value();
         auto kPair = stepSize(atCurrent, f, delta, current);
 
         auto k = kPair.first,
           kBound = kPair.second;
 
         INFO("--- " << feature);
-        auto plus = locateStep(current, delta, k, kBound, f, atCurrent, 1);
-        auto minus = locateStep(current, delta, k, kBound, f, atCurrent, -1);
+        auto acc = locateStep(current, delta, k, kBound, f, atCurrent, 1);
+        acc.compare(locateStep(current, delta, k, kBound, f, atCurrent, -1));
 
-        auto k1 = plus.first,
-          k2 = minus.first;
-
-        auto v1 = plus.second,
-          v2 = minus.second;
-
-        if(v1 < v2 && v1 < lastResult) {
-          INFO("Choose k " << k1);
-          current += (k1 * delta);
-          result = v1;
+        if(acc.bestValue < lastResult) {
+          k = acc.bestIndex;
+          current += k * delta;
+          INFO("Choose k " << k);
+          result = acc.bestValue;
           break;
-        } else if (v2 < v1 && v2 < lastResult) {
-          INFO("Choose k " << k2);
-          current += (k2 * delta);
-          result = v2;
-          break;
+        } else {
+          INFO("Yielded no improvement");
         }
       }
 
@@ -748,10 +734,10 @@ namespace gridsearch {
     }
 
     Ranges ranges = {{
+        Range("trans-mfcc", 0, 2, 0.01),
         Range("trans-ctx", 0, 300, 1),
         Range("trans-pitch", 0, 300, 1),
         Range("state-pitch", 0, 300, 1),
-        Range("trans-mfcc", 0, 2, 0.01),
         Range("state-duration", 0, 300, 1),
         Range("state-energy", 0, 300, 1)
       }};
