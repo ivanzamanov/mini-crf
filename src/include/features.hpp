@@ -40,8 +40,8 @@ struct MFCCDist {
     const MfccArray& mfcc1 = prev.last().mfcc;
     const MfccArray& mfcc2 = next.first().mfcc;
     cost result = 0;
-    for (unsigned i = 0; i < mfcc1.size(); i++) {
-      cost diff = mfcc1[i] - mfcc2[i];
+    for (auto i = 0u; i < mfcc1.size() / 2; i++) {
+      auto diff = mfcc1[i] - mfcc2[i];
       result += diff * diff;
     }
     return std::sqrt(result);
