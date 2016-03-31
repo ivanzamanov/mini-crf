@@ -733,14 +733,23 @@ namespace gridsearch {
       return -1;
     }
 
-    Ranges ranges = {{
-        Range("trans-mfcc", 0, 2, 0.01),
-        Range("trans-ctx", 0, 300, 1),
-        Range("trans-pitch", 0, 300, 1),
-        Range("state-pitch", 0, 300, 1),
-        Range("state-duration", 0, 300, 1),
-        Range("state-energy", 0, 300, 1)
-      }};
+    Ranges ranges;
+    if(opts.has_opt("ranges")) {
+      auto names = util::split_string(opts.get_string("ranges"), ',');
+      auto i = 0u;
+      for(auto& name : names)
+        ranges[i++] = Range(name, 0, 1, 0.1);
+      assert(i == ranges.size());
+    } else {
+      ranges = {{
+          Range("trans-ctx", 0, 300, 1),
+          Range("trans-mfcc", 0, 2, 0.01),
+          Range("trans-pitch", 0, 300, 1),
+          Range("state-pitch", 0, 300, 1),
+          Range("state-duration", 0, 300, 1),
+          Range("state-energy", 0, 300, 1)
+        }};
+    }
     for(auto& it : ranges)
       INFO("Range " << it.to_string());
 
