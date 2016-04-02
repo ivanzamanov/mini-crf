@@ -60,7 +60,7 @@ struct PitchRange {
       return at(0);
     else if (c >= length)
       return at(length - 1);
-    //assert(!(c < 0 || c > length)); // Bad sample index
+    assert(!(c < 0 || c > length)); // Bad sample index
     return left * (1 - c / length) + right * c / length;
   }
   

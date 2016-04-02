@@ -71,8 +71,8 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const 
   for(i++; i < target.size(); i++) {
     //offset = WaveData::toSamples(totalDuration);
     offset = 0;
-    //left = (std::exp(target[i].pitch_contour[0]) + tier[i-1].right) / 2;
-    left = std::exp(target[i].pitch_contour[0]);
+    left = (std::exp(target[i].pitch_contour[0]) + tier[i-1].right) / 2;
+    //left = std::exp(target[i].pitch_contour[0]);
     // Smooth out pitch at the concatenation points
     //tier[i-1].right = left;
     right = std::exp(target[i].pitch_contour[1]);
