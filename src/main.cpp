@@ -90,7 +90,8 @@ int resynthesize(Options& opts) {
   outputSignal.write(wav_output);
 
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
-  sws2.get_concatenation(opts).write("original.wav");
+  auto concatenation = sws2.get_concatenation(opts);
+  concatenation.write("original.wav");
 
   FileData fileData = alphabet_test.file_data_of(input[0]);
   Wave sourceSignal;
@@ -98,7 +99,12 @@ int resynthesize(Options& opts) {
   if(opts.has_opt("verbose")) {
     gridsearch::Comparisons cmp;
     cmp.fill(outputSignal, sourceSignal);
-    INFO("LogSpectrum = " << cmp.value());
+    INFO("Original: LogSpectrum = " << cmp.value());
+    INFO("Original: SegSNR = " << cmp.SegSNR);
+
+    cmp.fill(concatenation, outputSignal);
+    INFO("Concat: LogSpectrum = " << cmp.value());
+    INFO("Concat: SegSNR = " << cmp.SegSNR);
   }
   return 0;
 }

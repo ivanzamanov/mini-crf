@@ -3,6 +3,7 @@
 #include<thread>
 #include<valarray>
 #include<utility>
+#include<cmath>
 
 #include"gridsearch.hpp"
 #include"threadpool.h"
@@ -47,80 +48,9 @@ struct Range {
 };
 typedef std::array<Range, FC> Ranges;
 
-template<int FeatureCount>
-struct _ValueCache {
-  _ValueCache(std::string path): path(path) {
-    init();
-  }
-
-  std::string path;
-  std::vector<gridsearch::Comparisons> values;
-  std::vector<std::array<double, FeatureCount> > args;
-
-  bool load(std::array<Range, FeatureCount>& ranges, gridsearch::Comparisons& result) const {
-    for(unsigned i = 0; i < args.size(); i++) {
-      bool found = true;
-      for(unsigned j = 0; j < args[i].size(); j++)
-        found = found && (args[i][j] == ranges[j].current);
-      if(found) {
-        result = values[i];
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void save(std::array<Range, FeatureCount>& ranges, const gridsearch::Comparisons& result) {
-    values.push_back(result);
-    std::array<double, FeatureCount> new_args;
-    for(unsigned i = 0; i < ranges.size(); i++)
-      new_args[i] = ranges[i].current;
-    args.push_back(new_args);
-  }
-
-  void persist() {
-    std::ofstream str(path);
-    BinaryWriter w(&str);
-    unsigned size = values.size();
-    w << size;
-    for(unsigned i = 0; i < size; i++) {
-      for(unsigned j = 0; j < FeatureCount; j++)
-        w << args[i][j];
-      //w << values[i].ItakuraSaito;
-      w << values[i].LogSpectrum;
-    }
-    INFO("Persisted " << size << " values in " << path);
-  }
-
-private:
-  void init() {
-    std::ifstream str(path);
-    BinaryReader reader(&str);
-    unsigned size; reader >> size;
-    if(!reader.ok()) {
-      INFO("No existing value cache");
-      return;
-    }
-    INFO("Values in cache " << path << " " << size);
-    for(unsigned i = 0; i < size; i++) {
-      std::array<double, FeatureCount> args;
-      gridsearch::Comparisons values;
-      double arg;
-      for(unsigned j = 0; j < FeatureCount; j++) {
-        reader >> arg;
-        args[j] = arg;
-      }
-      reader >> values.LogSpectrum;
-      this->args.push_back(args);
-      this->values.push_back(values);
-    }
-  }
-};
-typedef _ValueCache<FC> ValueCache;
-
 namespace gridsearch {
 
-  std::vector<FrameFrequencies> toFFTdFrames(Wave& wave) {
+  std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave) {
     auto frameOffset = 0u;
     std::vector<FrameFrequencies> result;
 
@@ -151,19 +81,7 @@ namespace gridsearch {
     return result;
   }
 
-  // TODO
-  double compare_IS(Wave& result, Wave& original) {
-    return 0;
-    double value = 0;
-    each_frame(result, original, 0.05, [&](WaveData, WaveData) {
-        value++;
-      });
-    assert(false); // ItakuraSaito not yet implemented
-    return value;
-  }
-
-  //__attribute__ ((optnone))
-  double compare_LogSpectrum(Wave& result, std::vector<FrameFrequencies>& frames2) {
+  double compare_LogSpectrum(const Wave& result, std::vector<FrameFrequencies>& frames2) {
     auto frames1 = toFFTdFrames(result);
     bool check = std::abs((int) frames1.size() - (int) frames2.size()) <= 2;
     if(!check) {
@@ -189,12 +107,34 @@ namespace gridsearch {
     return value / minSize;
   }
 
-  double compare_LogSpectrum(Wave& result, Wave& original) {
+  double compare_LogSpectrum(const Wave& result, const Wave& original) {
     auto frames2 = toFFTdFrames(original);
     auto value = compare_LogSpectrum(result, frames2);
-    //auto value2 = compare_LogSpectrum(result, frames2);
-    //assert(value == value2);
     return value;
+  }
+
+  double compare_SegSNR(const Wave& result, const Wave& original) {
+    constexpr auto FSize = 512;
+    FrameQueue<FSize> fq1(result),
+      fq2(original);
+    int frameCount = 0;
+    double total = 0;
+    while(fq1.hasNext() && fq2.hasNext()) {
+      frameCount++;
+      auto &b1 = fq1.next(),
+        &b2 = fq2.next();
+
+      double thisFrame = 0;
+      for(auto i = 0u; i < b1.size(); i++) {
+        auto quot = std::pow(b1[i], 2);
+        auto denom = std::pow(b2[i] - b1[i], 2);
+        if(denom != 0)
+          thisFrame += quot / denom;
+      }
+      total += std::log10(thisFrame);
+    }
+    assert(fq1.offset == fq2.offset);
+    return total * 10.0 / frameCount;
   }
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
@@ -214,17 +154,9 @@ namespace gridsearch {
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(outputPath);
     auto SWS = SpeechWaveSynthesis(output, input, crf.alphabet());
     Wave resultSignal = SWS.get_resynthesis_td();
-    /*Wave rs2 = SWS.get_resynthesis_td();
-    for(auto i = 0u; i < resultSignal.length(); i++)
-      assert(resultSignal[i] == rs2[i]);
-    */
-
     auto& frames = *(params->precompFrames);
 
     Comparisons result(0, compare_LogSpectrum(resultSignal, frames[index]));
-    /*auto LS2 = compare_LogSpectrum(resultSignal, frames[index]);
-    assert(LS2 == result.value());
-    */
     return result;
   }
 
@@ -236,18 +168,6 @@ namespace gridsearch {
     auto bestValues = traverse_automaton<MinPathFindFunctions,
                                          CRF, 2>(input, crf, crf.lambda, &path);
     auto result = doCompare(params, input, path);
-
-    /*std::vector<int> path2;
-    traverse_automaton<MinPathFindFunctions>(input, crf, crf.lambda, &path2);
-    for(auto i = 0u; i < path.size(); i++)
-      assert(path[i] == path2[i]);
-    */
-
-    /*
-    auto result2 = doCompare(params, input, path);
-    assert(result.value() == result2.value());
-    */
-
     params->result = {
       .cmp = result,
       .bestValues = bestValues,
@@ -305,12 +225,6 @@ namespace gridsearch {
             cerr << std::endl;
             );
     }
-  }
-
-  double randDouble() {
-    static int c = 0;
-    c++;
-    return - (c * c) % 357;
   }
 
   struct FFTPrecomputeParams {
@@ -610,7 +524,6 @@ namespace gridsearch {
                      Function& f,
                      Ranges& ranges,
                      int maxIterations,
-                     ValueCache&,
                      std::string csvFile) {
     std::ofstream csvOutput(csvFile);
     csvPrintHeaders(csvOutput, csvFile, ranges);
@@ -665,7 +578,7 @@ namespace gridsearch {
     template<class Params>
     TrainingOutputs operator()(const Params& params) const {
 #ifdef DEBUG_TRAINING
-      return Comparisons().dummy(randDouble());
+      return Comparisons::dummy();
 #endif
 
       for(auto i = 0u; i < ranges.size(); i++)
@@ -722,10 +635,9 @@ namespace gridsearch {
 
   int train(const Options& opts) {
     Progress::enabled = false;
-    APPLY_WINDOW_CMP = opts.get_opt("apply-window-cmp", false);
+    APPLY_WINDOW_CMP = opts.get_opt("apply-window-cmp", true);
     WINDOW_OVERLAP = opts.get_opt("window-overlap", 0.1);
-    ValueCache vc(opts.get_opt<std::string>("value-cache", "value-cache.bin"));
-
+    
     //#pragma omp parallel for
     ThreadPool tp(opts.get_opt<int>("thread-count", 8));
     if (tp.initialize_threadpool() < 0) {
@@ -767,7 +679,6 @@ namespace gridsearch {
     auto searchAlgo = DescentSearch();
     auto result = descentSearch(searchAlgo, Function, ranges,
                                 opts.get_opt<int>("max-iterations", 9999999),
-                                vc,
                                 opts.get_string("csv-file"));
 
     INFO("Best at: ");

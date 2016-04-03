@@ -8,6 +8,7 @@
 #include<fstream>
 #include<vector>
 #include<climits>
+#include<valarray>
 
 #include"types.hpp"
 
@@ -111,6 +112,13 @@ struct WaveData {
 
   static void deallocate(WaveData& wd) {
     if(wd.data) free(wd.data);
+  }
+
+  static std::valarray<double> asValarray(WaveData wd) {
+    std::valarray<double> result(wd.size());
+    for(auto i = 0u; i < wd.size(); i++)
+      result[i] = wd[i];
+    return result;
   }
 };
 
@@ -244,7 +252,7 @@ struct WaveBuilder {
   void append(const WaveData& w) {
     append((char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
   }
-  
+
   void append(const Wave& w, int offset, int count) {
     append(w.data + offset, count * w.h.bitsPerSample / 8);
   }
@@ -313,6 +321,28 @@ struct SpeechWaveData : public WaveData {
   }
   static void toFile(SpeechWaveData& swd) {
     SpeechWaveData::toFile(swd, "swd.wav");
+  }
+};
+
+template<unsigned frameSize>
+struct FrameQueue {
+  FrameQueue(const Wave& wave):
+    wave(wave), offset(0) { }
+  const Wave& wave;
+  std::array<short, frameSize> buffer;
+  unsigned offset;
+
+  bool hasNext() const {
+    return buffer.size() + offset <= wave.length();
+  }
+
+  const std::array<short, frameSize>& next() {
+    std::fill(buffer.begin(), buffer.end(), 0);
+    WaveData wd = wave.extractBySample(offset, offset + buffer.size());
+    for(auto i = 0u; i < wd.size(); i++)
+      buffer[i] = wd[i];
+    offset += wd.size();
+    return buffer;
   }
 };
 
