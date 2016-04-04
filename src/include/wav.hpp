@@ -275,7 +275,7 @@ struct WaveBuilder {
 struct SpeechWaveData : public WaveData {
   SpeechWaveData(): WaveData(), extra() { }
   SpeechWaveData(const SpeechWaveData& o): WaveData(o), marks(o.marks),  extra(o.extra) { }
-
+  
   static constexpr auto EXTRA_TIME = 0.02;
   // Sample indexes that are pitch marks
   std::vector<int> marks;
@@ -311,7 +311,7 @@ struct SpeechWaveData : public WaveData {
     return result;
   }
 
-  static void toFile(const SpeechWaveData& swd, const std::string file) {
+  static void toFile(const WaveData& swd, const std::string file) {
     WaveHeader h = WaveHeader::default_header();
     h.sampleRate = swd.sampleRate;
     h.byteRate = swd.sampleRate * 2;
