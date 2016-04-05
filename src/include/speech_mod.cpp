@@ -376,7 +376,7 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
     auto& pitch = pt.ranges[i];
 
     scaledPieces[i] = SpeechWaveData::allocate(target[i].duration, dest.sampleRate);
-
+    PRINT_SCALE(i << ": duration = " << p.duration() / scaledPieces[i].duration());
     lastMark = scaleToPitchAndDuration(scaledPieces[i], p, pitch, lastMark, i);
     //INFO("last mark: " << scaledPieces[i].toDuration(lastMark));
     lastMark -= scaledPieces[i].length;
@@ -420,11 +420,15 @@ vector<bool> fillMissingMarks(vector<int>& marks, PsolaConstants limits) {
   vector<bool> isVoicelessFlags;
   auto lastMark = 0;
   for(auto mark : marks) {
-    while(mark - lastMark > limits.maxVoicelessSamples) {
-      lastMark += limits.maxVoicelessSamples;
-      filled.push_back(lastMark);
-      isVoicelessFlags.push_back(true);
+    if(mark - lastMark > limits.maxVoicelessSamples) {
+      auto period = limits.voicelessSamplesCopy;
+      while(mark - lastMark > period) {
+        lastMark += period;
+        filled.push_back(lastMark);
+        isVoicelessFlags.push_back(true);
+      }
     }
+
     filled.push_back(lastMark = mark);
     isVoicelessFlags.push_back(false);
   }
@@ -445,7 +449,7 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
                             SpeechWaveData source,
                             PitchRange pitch,
                             int firstMark,
-                            int) {
+                            int debugIndex) {
   PsolaConstants limits(dest.sampleRate);
 
   // Time scale
@@ -470,15 +474,16 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
 
     while(dMark < scaledSMark) {
       int sourcePeriod = voiceless
-        ? limits.maxVoicelessSamples
+        ? limits.voicelessSamplesCopy
         : getPeriodOfMark(sMarkIndex, sourceMarks);
 
       auto destPeriod = voiceless
-        ? limits.maxVoicelessSamples
+        ? limits.voicelessSamplesCopy
         : dest.toSamples(1 / pitch.at(dMark));
 
       overlapAddAroundMark(source, sMark, dest, dMark,
                            sourcePeriod, sourcePeriod);
+      PRINT_SCALE(debugIndex << ": " << (double) sourcePeriod / destPeriod);
       /*SpeechWaveData::toFile(dest, "/tmp/dest-mark-" + std::to_string(X++) + ".wav");
       INFO(source.toDuration(sMark) << " -> " << dest.toDuration(dMark) << " " << voiceless);
       INFO(source.toDuration(sourcePeriod) << " " << dest.toDuration(destPeriod));*/

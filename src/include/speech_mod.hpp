@@ -37,12 +37,15 @@ private:
 struct PsolaConstants {
   PsolaConstants(int sampleRate) {
     // F0 of less than 50 Hz will be considered voiceless
-    maxVoicelessSamples = WaveData::toSamples(0.02f, sampleRate);
+    maxVoicelessSamples = WaveData::toSamples(0.02, sampleRate);
+    voicelessSamplesCopy = WaveData::toSamples(0.004, sampleRate);
     maxVoicelessPeriod = WaveData::toDuration(maxVoicelessSamples, sampleRate);
   }
   PsolaConstants(const PsolaConstants& o) = default;
 
   int maxVoicelessSamples;
+  int voicelessSamplesCopy;
+
   double maxVoicelessPeriod;
 };
 
