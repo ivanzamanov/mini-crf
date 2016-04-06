@@ -37,11 +37,14 @@ appendInfoLine: "file=", soundPath$
 # Pitch
 appendInfoLine: "[Pitch]"
 selectObject: pitch
-pitchFrameCount = Get number of frames
-for frame from 1 to pitchFrameCount
+time = 0
+while time < soundDuration
+    time = time + 0.001
+    frame = Get frame number from time... time
+    frame = round(frame)
     value = Get value in frame... frame Hertz
     appendInfoLine: value
-endfor
+endwhile
 
 # Pitch Pulses
 appendInfoLine: "[Pulses]"
@@ -56,15 +59,28 @@ appendInfoLine: soundDuration
 # MFCC
 appendInfoLine: "[MFCC]"
 selectObject: mfcc
-mfccFrameCount = Get number of frames
-for frame from 1 to mfccFrameCount
-    value = Get value in frame... frame 1
-    for i from 2 to mfccCount
-        value = Get value in frame... frame i
-        appendInfo: " ", value
-    endfor
+time = 0
+while time < soundDuration
+    time = time + 0.001
+    frame = Get frame number from time... time
+    frame = round(frame)
+    #frame = max(1, frame)
+    #appendInfoLine: frame, " ", time
+    if frame < 1
+       value = 0
+       for i from 2 to mfccCount
+           value = 0
+           appendInfo: " ", value
+       endfor
+    else
+      value = Get value in frame... frame 1
+      for i from 2 to mfccCount
+          value = Get value in frame... frame i
+          appendInfo: " ", value
+      endfor
+    endif
     appendInfoLine: ""
-endfor
+endwhile
 
 # Text Grid
 appendInfoLine: "[TextGrid]"

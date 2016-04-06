@@ -253,7 +253,7 @@ class Phoneme:
             writeln(' '.join(map(str, mfcc)))
 
 # --- Args ---
-TIME_STEP = 0.01
+TIME_STEP = 0.001
 args = sys.argv[1:]
 verbose = '-v' in args
 if verbose:
@@ -295,6 +295,7 @@ for line in map(lambda line: line.strip('\n\r'), inputStream.readlines()):
 
 inputStream.close()
 
+#print(len(pitchValues), len(mfcc))
 assert len(pitchValues) == len(mfcc)
 
 if verbose: print 'Pitch Values', len(pitchValues)
