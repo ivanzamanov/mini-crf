@@ -5,7 +5,7 @@
 #include"speech_mod.hpp"
 #include"util.hpp"
 #include"fourier.hpp"
-#include"libmfcc.hpp"
+#include"comparisons.hpp"
 
 using namespace util;
 using std::vector;
@@ -165,14 +165,6 @@ template<class Frame>
 void extractFrame(Frame& f, WaveData& src, int from) {
   for(auto i = 0u; i < f.size(); i++)
     f[i] = src[from + i];
-}
-
-template<class Frame, class Holder>
-void computeMFCC(const Frame& f, Holder& h, int sampleRate) {
-  double data[f.size()];
-  for(auto i = 0u; i < f.size(); i++) data[i] = f[i].real();
-  for(auto i = 0u; i < h.size(); i++)
-    h[i] = GetCoefficient(data, sampleRate, 42, f.size(), i + 1);
 }
 
 template<class Frame>

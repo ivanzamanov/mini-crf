@@ -4,79 +4,11 @@
 #include<cassert>
 #include<utility>
 
-#include"types.hpp"
 #include"options.hpp"
 #include"speech_mod.hpp"
-#include"fourier.hpp"
+#include"comparisons.hpp"
 
 namespace gridsearch {
-  constexpr size_t FFT_SIZE = 512;
-  typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
-
-  double compare_LogSpectrum(const Wave& result, const Wave& original);
-  double compare_LogSpectrum(const Wave& result, const std::vector<FrameFrequencies>&);
-  double compare_SegSNR(const Wave& result, const Wave& original);
-
-  struct Comparisons {
-    Comparisons()
-      :LogSpectrum(0) { }
-
-    Comparisons(double, double ls)
-      :LogSpectrum(ls) { }
-
-    Comparisons(const Comparisons& o)
-      :LogSpectrum(o.LogSpectrum) { }
-
-    //double ItakuraSaito;
-    double LogSpectrum;
-    double SegSNR;
-
-    const Comparisons& fill(Wave& dist, Wave& original) {
-      LogSpectrum = compare_LogSpectrum(dist, original);
-      SegSNR = compare_SegSNR(dist, original);
-      return *this;
-    }
-
-    bool operator<=(const Comparisons& o) const {
-      return LogSpectrum <= o.LogSpectrum;
-    }
-
-    const Comparisons operator+(const Comparisons o) const {
-      Comparisons result(0, LogSpectrum + o.LogSpectrum);
-      return result;
-    }
-
-    double value() const {
-      return LogSpectrum;
-    }
-
-    static Comparisons dummy() {
-      static int c = 0;
-      c++;
-      return Comparisons(0, - (c * c) % 357);
-    }
-
-    static void aggregate(const std::vector<Comparisons>& params,
-                          Comparisons* sum=0,
-                          Comparisons* max=0,
-                          Comparisons* avg=0) {
-      Comparisons sumTemp, avgTemp;
-      auto maxIndex = 0;
-      for(auto i = 0u; i < params.size(); i++) {
-        if(params[i] <= params[maxIndex])
-          maxIndex = i;
-        sumTemp = sumTemp + params[i];
-      }
-      avgTemp.LogSpectrum = sumTemp.value() / params.size();
-      //avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
-      if(sum)
-        *sum = sumTemp;
-      if(max)
-        *max = params[maxIndex];
-      if(avg)
-        *avg = avgTemp;
-    }
-  };
 
   struct TrainingOutput {
     Comparisons cmp;

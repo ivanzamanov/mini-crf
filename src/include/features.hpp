@@ -4,7 +4,6 @@
 #include<cmath>
 #include<tuple>
 
-#include"crf.hpp"
 #include"speech_synthesis.hpp"
 
 using namespace tool;

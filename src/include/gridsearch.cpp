@@ -9,14 +9,8 @@
 #include"threadpool.h"
 #include"crf.hpp"
 #include"tool.hpp"
-#include"parser.hpp"
 
 //#define DEBUG_TRAINING
-
-extern double hann(double i, int size);
-
-static bool APPLY_WINDOW_CMP = false;
-static float WINDOW_OVERLAP = 0.1;
 
 static constexpr auto FC = PhoneticFeatures::size;
 typedef std::valarray<coefficient> Params;
@@ -49,93 +43,6 @@ struct Range {
 typedef std::array<Range, FC> Ranges;
 
 namespace gridsearch {
-
-  std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave) {
-    auto frameOffset = 0u;
-    std::vector<FrameFrequencies> result;
-
-    std::valarray<cdouble> buffer(gridsearch::FFT_SIZE);
-    FrameFrequencies values;
-
-    auto overlap = buffer.size() * WINDOW_OVERLAP;
-    while(frameOffset + buffer.size() < wave.length()) {
-
-      WaveData frame = wave.extractBySample(frameOffset, frameOffset + buffer.size());
-      frameOffset += (frame.size() - overlap);
-
-      std::fill(std::begin(buffer), std::end(buffer), 0);
-      for(auto i = 0u; i < frame.size(); i++) {
-        buffer[i] = frame[i];
-        if(APPLY_WINDOW_CMP)
-          buffer[i] *= hann(i, frame.size());
-      }
-
-      ft::fft(buffer);
-      for(auto j = 0u; j < values.size(); j++)
-        values[j] = buffer[j];
-
-      result.push_back(values);
-    }
-    assert(result.size() > 0);
-    //INFO(result.size() << " from " << wave.duration() << " in " << wave.length() << " samples");
-    return result;
-  }
-
-  double compare_LogSpectrum(const Wave& result, std::vector<FrameFrequencies>& frames2) {
-    auto frames1 = toFFTdFrames(result);
-    bool check = std::abs((int) frames1.size() - (int) frames2.size()) <= 2;
-    if(!check) {
-      ERROR(frames1.size() << " and " << frames2.size());
-    }
-    assert(check);
-
-    int minSize = std::min(frames1.size(), frames2.size());
-    double value = 0;
-    for(auto j = 0; j < minSize; j++) {
-      double diff = 0;
-      auto& freqs1 = frames1[j];
-      auto& freqs2 = frames2[j];
-      for(auto i = 0u; i < freqs1.size(); i++) {
-        auto m1 = std::norm(freqs1[i]);
-        m1 = m1 ? m1 : 1;
-        auto m2 = std::norm(freqs2[i]);
-        m2 = m2 ? m2 : 1;
-        diff += std::pow( std::log10( m2 / m1), 2 );
-      }
-      value += diff;
-    }
-    return value / minSize;
-  }
-
-  double compare_LogSpectrum(const Wave& result, const Wave& original) {
-    auto frames2 = toFFTdFrames(original);
-    auto value = compare_LogSpectrum(result, frames2);
-    return value;
-  }
-
-  double compare_SegSNR(const Wave& result, const Wave& original) {
-    constexpr auto FSize = 512;
-    FrameQueue<FSize> fq1(result),
-      fq2(original);
-    int frameCount = 0;
-    double total = 0;
-    while(fq1.hasNext() && fq2.hasNext()) {
-      frameCount++;
-      auto &b1 = fq1.next(),
-        &b2 = fq2.next();
-
-      double thisFrame = 0;
-      for(auto i = 0u; i < b1.size(); i++) {
-        auto quot = std::pow(b1[i], 2);
-        auto denom = std::pow(b2[i] - b1[i], 2);
-        if(denom != 0)
-          thisFrame += quot / denom;
-      }
-      total += std::log10(thisFrame);
-    }
-    assert(fq1.offset == fq2.offset);
-    return total * 10.0 / frameCount;
-  }
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec) {
     std::string result(1, ' ');
@@ -635,9 +542,7 @@ namespace gridsearch {
 
   int train(const Options& opts) {
     Progress::enabled = false;
-    APPLY_WINDOW_CMP = opts.get_opt("apply-window-cmp", true);
-    WINDOW_OVERLAP = opts.get_opt("window-overlap", 0.1);
-    
+
     //#pragma omp parallel for
     ThreadPool tp(opts.get_opt<int>("thread-count", 8));
     if (tp.initialize_threadpool() < 0) {

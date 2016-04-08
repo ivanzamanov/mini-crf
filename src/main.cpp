@@ -94,17 +94,12 @@ int resynthesize(Options& opts) {
   concatenation.write("original.wav");
 
   FileData fileData = alphabet_test.file_data_of(input[0]);
-  Wave sourceSignal;
-  sourceSignal.read(fileData.file);
   if(opts.has_opt("verbose")) {
-    gridsearch::Comparisons cmp;
-    cmp.fill(outputSignal, sourceSignal);
-    INFO("Original: LogSpectrum = " << cmp.value());
-    INFO("Original: SegSNR = " << cmp.SegSNR);
-
+    Comparisons cmp;
     cmp.fill(concatenation, outputSignal);
-    INFO("Concat: LogSpectrum = " << cmp.value());
-    INFO("Concat: SegSNR = " << cmp.SegSNR);
+    INFO("LogSpectrum = " << cmp.LogSpectrum);
+    INFO("SegSNR = " << cmp.SegSNR);
+    INFO("MFCC = " << cmp.MFCC);
   }
   return 0;
 }
