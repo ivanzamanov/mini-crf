@@ -11,7 +11,7 @@
 namespace gridsearch {
 
   struct TrainingOutput {
-    Comparisons cmp;
+    double cmp;
     std::vector<int> path;
     std::array<cost, 2> bestValues;
   };
@@ -19,13 +19,13 @@ namespace gridsearch {
   struct TrainingOutputs : public std::vector<TrainingOutput> {
     cost value() const {
       auto count = this->size();
-      std::vector<Comparisons> comps(count);
+      std::vector<double> comps(count);
       for(unsigned i = 0; i < count; i++)
         comps[i] = (*this)[i].cmp;
 
-      Comparisons result;
+      double result;
       Comparisons::aggregate(comps, 0, 0, &result);
-      return result.value();
+      return result;
     }
 
     typedef vector<std::pair<int, cost> > Diffs;

@@ -54,7 +54,7 @@ namespace gridsearch {
     return result;
   }
 
-  Comparisons doCompare(ResynthParams* params,
+  double doCompare(ResynthParams* params,
                          const std::vector<PhonemeInstance>& input,
                          std::vector<int>& outputPath) {
     auto index = params->index;
@@ -63,8 +63,7 @@ namespace gridsearch {
     Wave resultSignal = SWS.get_resynthesis_td();
     auto& frames = *(params->precompFrames);
 
-    Comparisons result(0, compare_LogSpectrum(resultSignal, frames[index]));
-    return result;
+    return Comparisons::compare(resultSignal, frames[index]);
   }
 
   void doResynthIndex(ResynthParams* params) {
@@ -95,7 +94,7 @@ namespace gridsearch {
     auto bestValues = traverse_automaton<MaxPathFindFunctions,
                                          CRF, 2>(input, crf, crf.lambda, &path);
     params->result = {
-      .cmp = Comparisons(),
+      .cmp = 0,
       .bestValues = bestValues,
       .path = path
     };
@@ -110,7 +109,7 @@ namespace gridsearch {
     auto bestValues = traverse_automaton<MinPathFindFunctions,
                                          CRF, 2>(input, crf, crf.lambda, &path);
     params->result = {
-      .cmp = Comparisons(),
+      .cmp = 0,
       .bestValues = bestValues,
       .path = path
     };
@@ -484,10 +483,6 @@ namespace gridsearch {
 
     template<class Params>
     TrainingOutputs operator()(const Params& params) const {
-#ifdef DEBUG_TRAINING
-      return Comparisons::dummy();
-#endif
-
       for(auto i = 0u; i < ranges.size(); i++)
         crf.set(i, params[i]);
 

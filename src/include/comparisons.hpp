@@ -45,13 +45,9 @@ struct Comparisons {
   Comparisons()
     :LogSpectrum(0) { }
 
-  Comparisons(double, double ls)
-    :LogSpectrum(ls) { }
-
   Comparisons(const Comparisons& o)
     :LogSpectrum(o.LogSpectrum) { }
 
-  //double ItakuraSaito;
   double LogSpectrum;
   double SegSNR;
   double MFCC;
@@ -63,38 +59,22 @@ struct Comparisons {
     MFCC = compare_MFCC(dist, frames);
   }
 
-  bool operator<=(const Comparisons& o) const {
-    return LogSpectrum <= o.LogSpectrum;
+  static double compare(const Wave& signal, const std::vector<FrameFrequencies>& original) {
+    return compare_LogSpectrum(signal, original);
   }
 
-  const Comparisons operator+(const Comparisons o) const {
-    Comparisons result(0, LogSpectrum + o.LogSpectrum);
-    return result;
-  }
-
-  double value() const {
-    return LogSpectrum;
-  }
-
-  static Comparisons dummy() {
-    static int c = 0;
-    c++;
-    return Comparisons(0, - (c * c) % 357);
-  }
-
-  static void aggregate(const std::vector<Comparisons>& params,
-                        Comparisons* sum=0,
-                        Comparisons* max=0,
-                        Comparisons* avg=0) {
-    Comparisons sumTemp, avgTemp;
+  static void aggregate(const std::vector<double>& params,
+                        double* sum=0,
+                        double* max=0,
+                        double* avg=0) {
+    double sumTemp, avgTemp;
     auto maxIndex = 0;
     for(auto i = 0u; i < params.size(); i++) {
       if(params[i] <= params[maxIndex])
         maxIndex = i;
       sumTemp = sumTemp + params[i];
     }
-    avgTemp.LogSpectrum = sumTemp.value() / params.size();
-    //avgTemp.ItakuraSaito = sumTemp.ItakuraSaito / params.size();
+    avgTemp = sumTemp / params.size();
     if(sum)
       *sum = sumTemp;
     if(max)
