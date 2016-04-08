@@ -59,8 +59,14 @@ struct Comparisons {
     MFCC = compare_MFCC(dist, frames);
   }
 
-  static double compare(const Wave& signal, const std::vector<FrameFrequencies>& original) {
-    return compare_LogSpectrum(signal, original);
+  static double compare(const Wave& signal,
+                        const std::vector<FrameFrequencies>& original,
+                        std::string metric) {
+    if(metric == "MFCC")
+      return compare_MFCC(signal, original);
+    if(metric == "LogSpectrum")
+      return compare_LogSpectrum(signal, original);
+    assert(false);
   }
 
   static void aggregate(const std::vector<double>& params,

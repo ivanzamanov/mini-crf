@@ -12,6 +12,8 @@
 
 //#define DEBUG_TRAINING
 
+static std::string METRIC = "MFCC";
+
 static constexpr auto FC = PhoneticFeatures::size;
 typedef std::valarray<coefficient> Params;
 
@@ -55,15 +57,15 @@ namespace gridsearch {
   }
 
   double doCompare(ResynthParams* params,
-                         const std::vector<PhonemeInstance>& input,
-                         std::vector<int>& outputPath) {
+                   const std::vector<PhonemeInstance>& input,
+                   std::vector<int>& outputPath) {
     auto index = params->index;
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(outputPath);
     auto SWS = SpeechWaveSynthesis(output, input, crf.alphabet());
     Wave resultSignal = SWS.get_resynthesis_td();
     auto& frames = *(params->precompFrames);
 
-    return Comparisons::compare(resultSignal, frames[index]);
+    return Comparisons::compare(resultSignal, frames[index], METRIC);
   }
 
   void doResynthIndex(ResynthParams* params) {
@@ -212,7 +214,7 @@ namespace gridsearch {
 
     template<class Function>
     cost nextStep(Function f, Ranges& ranges, Params& current,
-                         Params& delta, Params&) {
+                  Params& delta, Params&) {
       // first non-0 index
       auto i = 0u;
       while(i < delta.size() && delta[i] == 0)
@@ -538,6 +540,7 @@ namespace gridsearch {
   int train(const Options& opts) {
     Progress::enabled = false;
 
+    METRIC = opts.get_opt<std::string>("metric", "MFCC");
     //#pragma omp parallel for
     ThreadPool tp(opts.get_opt<int>("thread-count", 8));
     if (tp.initialize_threadpool() < 0) {
