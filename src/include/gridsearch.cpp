@@ -332,7 +332,7 @@ namespace gridsearch {
     }
 
     template<class Function>
-    CompareAccumulator<double, double>
+    std::pair<double, TrainingOutputs>
     locateStep(const Params& current,
                const Params& delta,
                coefficient kLowerBound,
@@ -344,36 +344,27 @@ namespace gridsearch {
 
       auto top = kUpperBound * mult,
         bottom = kLowerBound * mult;
-      auto valueAtCurrentParams = outputAtCurrentParams.value();
-      CompareAccumulator<double, double> acc;
-      acc.add(valueAtCurrentParams, 0);
-
-      assert( acc.add(f(current + top * delta).value(), top)
-              != acc.add(f(current + bottom * delta).value(), bottom)
-              );
 
       TrainingOutputs outputAtLastK = outputAtCurrentParams;
       INFO("Searching k in " << bottom << " " << top);
 
+      auto currentK = (top + bottom) / 2;
+      TrainingOutputs outputAtCurrentK;
       while (std::abs(top - bottom) >= epsilon) {
         (std::cerr << ".").flush();
-        auto currentK = (top + bottom) / 2;
-        auto outputAtCurrentK = f(current + currentK * delta);
-        auto valueAtCurrentK = outputAtCurrentK.value();
-        acc.compare(valueAtCurrentK, currentK);
+        currentK = (top + bottom) / 2;
+        outputAtCurrentK = f(current + currentK * delta);
 
-        if(std::abs(valueAtCurrentK - valueAtCurrentParams) > 0.0001)
-          top = currentK;
-        else
+        if(outputAtCurrentK == outputAtLastK)
           bottom = currentK;
+        else
+          top = currentK;
 
-        //printDiffs(outputAtLastK.findDifferences(outputAtCurrentK));
         outputAtLastK = outputAtCurrentK;
       }
       std::cerr << std::endl;
-      INFO("Best k = " << acc.bestIndex);
-      INFO("F: " << valueAtCurrentParams << " -> " << acc.bestValue);
-      return acc;
+      INFO("k = " << currentK);
+      return std::make_pair(currentK, outputAtCurrentK);
     }
 
     template<class Function>
@@ -405,14 +396,13 @@ namespace gridsearch {
           kBound = kPair.second;
 
         INFO("--- " << feature);
-        auto acc = locateStep(current, delta, k, kBound, f, atCurrent, 1);
-        acc.compare(locateStep(current, delta, k, kBound, f, atCurrent, -1));
+        auto stepPair = locateStep(current, delta, k, kBound, f, atCurrent, 1);
 
-        if(acc.bestValue < lastResult) {
-          k = acc.bestIndex;
+        if(stepPair.second.value() < lastResult) {
+          k = stepPair.first;
           current += k * delta;
           INFO("Choose k " << k);
-          result = acc.bestValue;
+          result = stepPair.second.value();
           break;
         } else {
           INFO("Yielded no improvement");

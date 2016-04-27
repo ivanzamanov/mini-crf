@@ -11,9 +11,14 @@
 namespace gridsearch {
 
   struct TrainingOutput {
+    // Comparison value between input and output
     double cmp;
     std::vector<int> path;
     std::array<cost, 2> bestValues;
+
+    bool operator==(const TrainingOutput& o) const {
+      return cmp == o.cmp && path == o.path;
+    }
   };
 
   struct TrainingOutputs : public std::vector<TrainingOutput> {
