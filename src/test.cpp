@@ -63,7 +63,7 @@ template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
   if(expected != actual) {
     std::cerr << "Expected " << expected << ", actual " << actual << std::endl;
-    throw "Assert failed: " + msg;
+    ERROR("Assert failed: " + msg); assert(false);
   }
 }
 

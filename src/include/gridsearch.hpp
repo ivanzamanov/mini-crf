@@ -16,6 +16,10 @@ namespace gridsearch {
     std::vector<int> path;
     std::array<cost, 2> bestValues;
 
+    bool equalPaths(const TrainingOutput& o) const {
+      return path == o.path;
+    }
+
     bool operator==(const TrainingOutput& o) const {
       return cmp == o.cmp && path == o.path;
     }
@@ -53,16 +57,19 @@ namespace gridsearch {
 
   struct ResynthParams {
     void init(int index, bool* flag,
-              std::vector< std::vector<FrameFrequencies> >* precomputed) {
+              std::vector< std::vector<FrameFrequencies> >* precomputed,
+              bool compare=true) {
       this->index = index;
       this->flag = flag;
       this->precompFrames = precomputed;
+      this->compare = compare;
     }
 
     int index;
     bool* flag;
     std::vector< std::vector<FrameFrequencies> >* precompFrames;
     TrainingOutput result;
+    bool compare;
   };
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec);

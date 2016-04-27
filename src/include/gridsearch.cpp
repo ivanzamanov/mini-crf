@@ -59,6 +59,8 @@ namespace gridsearch {
   double doCompare(ResynthParams* params,
                    const std::vector<PhonemeInstance>& input,
                    std::vector<int>& outputPath) {
+    if(!params->compare)
+      return 0;
     auto index = params->index;
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(outputPath);
     auto SWS = SpeechWaveSynthesis(output, input, crf.alphabet());
@@ -346,14 +348,14 @@ namespace gridsearch {
         bottom = kLowerBound * mult;
 
       TrainingOutputs outputAtLastK = outputAtCurrentParams;
-      INFO("Searching k in " << bottom << " " << top);
+      INFO("Searching k in " << bottom << " " << top << ":");
 
       auto currentK = (top + bottom) / 2;
       TrainingOutputs outputAtCurrentK;
       while (std::abs(top - bottom) >= epsilon) {
         (std::cerr << ".").flush();
         currentK = (top + bottom) / 2;
-        outputAtCurrentK = f(current + currentK * delta);
+        outputAtCurrentK = f(current + currentK * delta, false);
 
         if(outputAtCurrentK == outputAtLastK)
           bottom = currentK;
@@ -396,6 +398,7 @@ namespace gridsearch {
           kBound = kPair.second;
 
         INFO("--- " << feature);
+        // pair <k, TrainingOutputs>
         auto stepPair = locateStep(current, delta, k, kBound, f, atCurrent, 1);
 
         if(stepPair.second.value() < lastResult) {
@@ -474,7 +477,7 @@ namespace gridsearch {
     Ranges& ranges;
 
     template<class Params>
-    TrainingOutputs operator()(const Params& params) const {
+    TrainingOutputs operator()(const Params& params, bool compare=true) const {
       for(auto i = 0u; i < ranges.size(); i++)
         crf.set(i, params[i]);
 
@@ -483,7 +486,7 @@ namespace gridsearch {
       std::fill(flags, flags + count, 0);
       auto taskParams = std::vector<ResynthParams>(count);
       for(unsigned i = 0; i < count; i++) {
-        taskParams[i].init(i, &flags[i], &precomputed);
+        taskParams[i].init(i, &flags[i], &precomputed, compare);
         tp.add_task(new ParamTask<ResynthParams>(&resynthIndex, &taskParams[i]));
       }
       wait_done(flags, count);

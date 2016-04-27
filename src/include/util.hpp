@@ -254,24 +254,41 @@ struct Progress {
 
 template<class T, unsigned size>
 struct pqueue : std::array<T, size> {
-  explicit pqueue(): std::array<T, size>() { }
+  explicit pqueue(): std::array<T, size>(), _size(0u) { }
+
+  unsigned _size;
 
   template<class Comparator>
-  pqueue& push(const T& v, const Comparator& cmp) {
+  pqueue<T,size>& push(const T& v, const Comparator& cmp) {
     auto& t = *this;
 
     auto i = 0u;
-    while(i < size && cmp(t[i], v))
+    while(i < _size && cmp(t[i], v))
       i++;
     if(i >= size) return *this;
+    if(_size < size) _size++;
 
-    int j = ((int) size) - 2;
+    int j = ((int) _size) - 2;
     while(j >= (int) i) {
       t[j + 1] = t[j];
       j--;
     }
 
     t[i] = v;
+    return *this;
+  }
+};
+
+template<class T>
+struct pqueue<T, 1> : std::array<T, 1> {
+  bool isSet = false;
+
+  template<class Comparator>
+  pqueue& push(const T& v, const Comparator& cmp) {
+    if(!isSet || !cmp(this->operator[](0), v)) {
+      isSet = true;
+      this->operator[](0) = v;
+    }
     return *this;
   }
 };

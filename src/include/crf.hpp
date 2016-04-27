@@ -189,8 +189,8 @@ struct FunctionalAutomaton {
     };
     // Holds 2 best paths
     pqueue<Transition, kBest> pq;
-    for(auto& tr : pq)
-      tr.set(0, funcs.worst());
+    //    for(auto& tr : pq)
+    //  tr.set(0, funcs.worst());
 
     const auto isTransition = (x.size() > 1) && (pos != x.size() - 1);
     if(isTransition) {
@@ -227,8 +227,8 @@ struct FunctionalAutomaton {
       return funcs.is_better(tr1.base_value, tr2.base_value);
     };
     pqueue<Transition, kBestValues> pq;
-    for(auto& tr : pq)
-      tr.set(0, funcs.worst());
+    //    for(auto& tr : pq)
+    //      tr.set(0, funcs.worst());
     for(auto m = 0u; m < allowed.size(); m++) {
       auto srcId = allowed[m];
 
