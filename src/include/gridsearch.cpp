@@ -90,27 +90,13 @@ namespace gridsearch {
     *(params->flag) = true;
   }
 
-  void findMaxPaths(ResynthParams* params) {
+  template<class Functions>
+  void findPaths(ResynthParams* params) {
     auto index = params->index;
     const auto& input = corpus_test.input(index);
     std::vector<int> path;
 
-    auto bestValues = traverse_automaton<MaxPathFindFunctions,
-                                         CRF, 2>(input, crf, crf.lambda, &path);
-    params->result = {
-      .cmp = 0,
-      .bestValues = bestValues,
-      .path = path
-    };
-    *(params->flag) = true;
-  }
-
-  void findMinPaths(ResynthParams* params) {
-    auto index = params->index;
-    const auto& input = corpus_test.input(index);
-    std::vector<int> path;
-
-    auto bestValues = traverse_automaton<MinPathFindFunctions,
+    auto bestValues = traverse_automaton<Functions,
                                          CRF, 2>(input, crf, crf.lambda, &path);
     params->result = {
       .cmp = 0,
@@ -295,26 +281,16 @@ namespace gridsearch {
         quotients.push_back(val);
       }
 
-      auto atDeltaMax = f.findMinOrMax(delta, findMaxPaths);
-      auto atDeltaMin = f.findMinOrMax(delta, findMinPaths);
-      for(auto i = 0u; i < atDeltaMax.size(); i++)
-        assert(atDeltaMin[i].bestValues[0] < atDeltaMax[i].bestValues[0]);
+      auto atDeltaMax = f.findMinOrMax(delta, findPaths<MaxPathFindFunctions> );
 
       CompareAccumulator<cost, int, true> acc;
-      auto denomAtMin = 0u;
       for(auto i = 0u; i < atCurrent.size(); i++) {
-        auto thetaHatAtDelta = f.costOf(atCurrent[i].path, delta, i);
-
-        auto options = std::array<cost, 4> {{ std::abs(thetaHatAtDelta - atDeltaMin[i].bestValues[0]),
-                                              std::abs(thetaHatAtDelta + atDeltaMax[i].bestValues[0]),
-                                              std::abs(thetaHatAtDelta + atDeltaMin[i].bestValues[0]),
-                                              std::abs(thetaHatAtDelta - atDeltaMax[i].bestValues[0]) }};
-
-        auto quot = quotients[i];
-        auto denom = (*std::max_element(std::begin(options), std::end(options)));
-        auto val = quot / denom;
-        if(acc.compare(val, i))
-          denomAtMin = denom;
+        auto& yHat = atCurrent[i].path;
+        auto& yMax = atDeltaMax[i].path;
+        auto yMaxVal = atDeltaMax[i].value();
+        auto yHatAtDeltaVal = f.costOf(atCurrent[i].path, delta, i);
+        if(yMaxVal )
+          acc.compare(val, i);
       }
 
       INFO("k_min = " << acc.bestValue);
@@ -507,7 +483,7 @@ namespace gridsearch {
       bool flags[count];
       std::fill(flags, flags + count, 0);
       auto taskParams = std::vector<ResynthParams>(count);
-      for(unsigned i = 0; i < count; i++) {
+      for(auto i = 0u; i < count; i++) {
         taskParams[i].init(i, &flags[i], &precomputed);
         tp.add_task(new ParamTask<ResynthParams>(f, &taskParams[i]));
       }

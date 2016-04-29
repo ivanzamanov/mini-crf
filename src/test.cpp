@@ -39,7 +39,7 @@ struct TestAlphabet : LabelAlphabet<TestObject> {
   }
 };
 
-struct TestTransFunc {
+struct TestStateFunc {
   static const bool is_state = true;
   cost operator()(int x,
                   const TestObject& y) const {
@@ -49,7 +49,7 @@ struct TestTransFunc {
 
 struct TestFeatures {
   static constexpr auto Functions =
-    std::make_tuple(TestTransFunc{});
+    std::make_tuple(TestStateFunc{});
 
   static constexpr auto Names =
     std::make_tuple("size");
@@ -62,7 +62,7 @@ typedef CRandomField<TestAlphabet, int, TestFeatures> TestCRF;
 template<class T>
 void assertEquals(std::string msg, T expected, T actual) {
   if(expected != actual) {
-    std::cerr << "Expected " << expected << ", actual " << actual << std::endl;
+    ERROR("Expected " << expected << ", actual " << actual);
     ERROR("Assert failed: " + msg); assert(false);
   }
 }
@@ -136,10 +136,7 @@ void testCRF() {
 
   TestCRF crf;
   crf.label_alphabet = new TestAlphabet();
-  TestCRF::Values lambda;
-  lambda[0] = 1.0;
-
-  crf.lambda = lambda;
+  crf.lambda = {{1.0f}};
 
   vector<TestObject> x;
   for(int i = 0; i < crf.alphabet().size(); i++)
@@ -163,7 +160,7 @@ void testCrfSecondBestPath() {
                                                                     &best_path);
   assertEquals("Cost", 0.0 - x.size(), costs[0]);
   verifyPath(x, best_path);
-  assertEquals("Cost 2", 0.0 - x.size() + 2, costs[1]);
+  assertEquals("Cost 2", 0.0 - x.size() + 1, costs[1]);
   std::cerr  << std::endl;
 }
 

@@ -263,9 +263,8 @@ struct pqueue : std::array<T, size> {
     auto& t = *this;
 
     auto i = 0u;
-    while(i < _size && cmp(t[i], v))
-      i++;
-    if(i >= size) return *this;
+    while(i < _size && cmp(t[i], v)) i++;
+    if(i == size) return *this;
     if(_size < size) _size++;
 
     int j = ((int) _size) - 2;
