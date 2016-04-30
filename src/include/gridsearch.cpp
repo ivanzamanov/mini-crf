@@ -70,26 +70,6 @@ namespace gridsearch {
     return Comparisons::compare(resultSignal, frames[index], METRIC);
   }
 
-  void doResynthIndex(ResynthParams* params) {
-    auto index = params->index;
-    const auto& input = corpus_test.input(index);
-    std::vector<int> path;
-
-    auto bestValues = traverse_automaton<MinPathFindFunctions,
-                                         CRF, 2>(input, crf, crf.lambda, &path);
-    auto result = doCompare(params, input, path);
-    params->result = {
-      .cmp = result,
-      .bestValues = bestValues,
-      .path = path
-    };
-  }
-
-  void resynthIndex(ResynthParams* params) {
-    doResynthIndex(params);
-    *(params->flag) = true;
-  }
-
   template<class Functions>
   void findPaths(ResynthParams* params) {
     auto index = params->index;
@@ -98,8 +78,11 @@ namespace gridsearch {
 
     auto bestValues = traverse_automaton<Functions,
                                          CRF, 2>(input, crf, crf.lambda, &path);
+    auto cmp = 0.0;
+    if(params -> compare)
+      cmp = doCompare(params, input, path);
     params->result = {
-      .cmp = 0,
+      .cmp = cmp,
       .bestValues = bestValues,
       .path = path
     };
@@ -187,17 +170,93 @@ namespace gridsearch {
   struct BruteSearch {
     BruteSearch(int maxPasses): maxPasses(maxPasses), stop(false) { }
 
+    TrainingOutputs outputAtLastPoint;
     int maxPasses, pass = 0;
     bool stop;
 
-    void bootstrap(Ranges& ranges, Params& current,
-                   Params& delta, Params& p_delta) {
+    template<class Function>
+    cost bootstrap(Ranges& ranges, Params& current,
+                   Params& delta, Params& p_delta, Function f) {
       for(auto i = 0u; i < ranges.size(); i++) {
         current[i] = ranges[i].from;
         delta[i] = p_delta[i] = 0;
       }
       current[0] = 1;
       delta[1] = 1;
+      outputAtLastPoint = f(current);
+      return outputAtLastPoint.value();
+    }
+
+    template<class Function>
+    std::pair<double, TrainingOutputs>
+    locateStep(const Params& current,
+               const Params& delta,
+               coefficient kLowerBound,
+               coefficient kUpperBound,
+               Function f,
+               const TrainingOutputs& outputAtCurrentParams) {
+      auto epsilon = 0.001;
+
+      auto top = kUpperBound,
+        bottom = kLowerBound;
+
+      INFO("Searching k in " << bottom << " " << top << ":");
+
+      auto searchIn = [](double bottom, double top) {
+        return bottom + (top - bottom) / 2;
+      };
+      auto currentK = searchIn(bottom, top);
+      TrainingOutputs outputAtCurrentK;
+      while (std::abs(top - bottom) >= epsilon) {
+        currentK = searchIn(bottom, top);
+        outputAtCurrentK = f(current + currentK * delta, false);
+
+        if(outputAtCurrentK == outputAtCurrentParams) {
+          bottom = currentK;
+          (std::cerr << "-").flush();
+        } else {
+          top = currentK;
+          (std::cerr << "_").flush();
+        }
+      }
+      std::cerr << std::endl;
+      INFO("k = " << top);
+      return std::make_pair(top, f(current + top * delta, true));
+    }
+
+    template<class Function>
+    std::pair<coefficient, coefficient>
+    stepSize(TrainingOutputs& atCurrent, Function f,
+             const Params& delta, const Params& current) {
+      auto atDeltaMax = f.findMinOrMax(delta, findPaths<MaxPathFindFunctions>, false);
+
+      CompareAccumulator<cost, int, true> acc;
+      for(auto i = 0u; i < atCurrent.size(); i++) {
+        auto& yHat = atCurrent[i].path;
+        auto& yMax = atDeltaMax[i].path;
+
+        auto yMaxAtDeltaVal = atDeltaMax[i].value();
+        auto yHatAtDeltaVal = f.costOf(yHat, delta, i);
+        auto yHatAtThetaVal = atCurrent[i].value();
+        auto yMaxAtThetaVal = f.costOf(yMax, current, i);
+
+        auto kBound = (yMaxAtThetaVal - yHatAtThetaVal) / (yHatAtDeltaVal - yMaxAtDeltaVal);
+        if(kBound > 0)
+          acc.compare(kBound, i);
+      }
+
+      INFO("k_max = " << acc.bestValue);
+      return std::make_pair(0, acc.bestValue);
+    }
+
+    template<class Function>
+    std::pair<double, TrainingOutputs>
+    findMinimalStep(TrainingOutputs& atCurrent, Function f,
+                    const Params& delta, const Params& current) {
+      auto kBounds = stepSize(atCurrent, f, delta, current);
+      auto kPair = locateStep(current, delta, kBounds.first, kBounds.second, f, atCurrent);
+      outputAtLastPoint = kPair.second;
+      return kPair;
     }
 
     template<class Function>
@@ -248,101 +307,23 @@ namespace gridsearch {
     if(flag) std::cerr << std::endl;
   }
 
-  struct DescentSearch {
-    DescentSearch(): stop(false), lastResult(-1) { }
-    bool stop;
+  struct DescentSearch : BruteSearch {
+    DescentSearch(): BruteSearch(1), lastResult(-1) { }
     cost lastResult;
 
-    cost findSomeOtherValue(vector<int>& excludedPath, Params& params, int index) {
-      vector<int> somePath(excludedPath);
-      auto someIndex = somePath.size() / 2;
-      auto phonId = somePath[someIndex];
-      auto matching = alphabet_synth.get_class(alphabet_synth.fromInt(phonId));
-      for(auto& m : matching)
-        if(m != phonId) {
-          somePath[someIndex] = m;
-          break;
-        }
-
-      auto y = alphabet_synth.to_phonemes(somePath);
-      CRF::Values param_vals;
-      for(auto i = 0u; i < param_vals.size(); i++)
-        param_vals[i] = params[i];
-      return concat_cost(y, crf, param_vals, corpus_test.input(index));
-    }
-
     template<class Function>
-    std::pair<coefficient, coefficient>
-    stepSize(TrainingOutputs& atCurrent, Function f, Params& delta, Params& current) {
-      std::vector<cost> quotients;
-      for(auto& output : atCurrent) {
-        auto val = output.bestValues[1] - output.bestValues[0];
-        assert(val >= 0);
-        quotients.push_back(val);
-      }
-
-      auto atDeltaMax = f.findMinOrMax(delta, findPaths<MaxPathFindFunctions> );
-
-      CompareAccumulator<cost, int, true> acc;
-      for(auto i = 0u; i < atCurrent.size(); i++) {
-        auto& yHat = atCurrent[i].path;
-        auto& yMax = atDeltaMax[i].path;
-        auto yMaxVal = atDeltaMax[i].value();
-        auto yHatAtDeltaVal = f.costOf(atCurrent[i].path, delta, i);
-        if(yMaxVal )
-          acc.compare(val, i);
-      }
-
-      INFO("k_min = " << acc.bestValue);
-      auto someOtherValue = findSomeOtherValue(atCurrent[acc.bestIndex].path,
-                                               current, acc.bestIndex) / denomAtMin;
-      return std::make_pair(acc.bestValue, someOtherValue);
-    }
-
-    void bootstrap(Ranges& ranges, Params& current,
-                   Params& delta, Params& p_delta) {
+    cost bootstrap(Ranges& ranges, Params& current,
+                   Params& delta, Params& p_delta, Function f) {
       for(auto i = 0u; i < ranges.size(); i++) {
         current[i] = 0.0001;
         delta[i] = p_delta[i] = 0;
       }
 
       delta[0] = 1;
-    }
-
-    template<class Function>
-    std::pair<double, TrainingOutputs>
-    locateStep(const Params& current,
-               const Params& delta,
-               coefficient kLowerBound,
-               coefficient kUpperBound,
-               Function f,
-               TrainingOutputs& outputAtCurrentParams,
-               int mult) {
-      auto epsilon = 1;
-
-      auto top = kUpperBound * mult,
-        bottom = kLowerBound * mult;
-
-      TrainingOutputs outputAtLastK = outputAtCurrentParams;
-      INFO("Searching k in " << bottom << " " << top << ":");
-
-      auto currentK = (top + bottom) / 2;
-      TrainingOutputs outputAtCurrentK;
-      while (std::abs(top - bottom) >= epsilon) {
-        (std::cerr << ".").flush();
-        currentK = (top + bottom) / 2;
-        outputAtCurrentK = f(current + currentK * delta, false);
-
-        if(outputAtCurrentK == outputAtLastK)
-          bottom = currentK;
-        else
-          top = currentK;
-
-        outputAtLastK = outputAtCurrentK;
-      }
-      std::cerr << std::endl;
-      INFO("k = " << currentK);
-      return std::make_pair(currentK, outputAtCurrentK);
+      outputAtLastPoint = f(current);
+      lastResult = outputAtLastPoint.value();
+      return outputAtLastPoint.value();
+      //return lastResult;
     }
 
     template<class Function>
@@ -358,30 +339,20 @@ namespace gridsearch {
       INFO("Last result = " << lastResult);
       while(tries < current.size() && (lastResult >= result)) {
         auto axisIndex = (i + tries++) % delta.size();
-
+        INFO("--- " << ranges[axisIndex].feature);
         std::fill(std::begin(delta), std::end(delta), 0);
         delta[axisIndex] = 1;
 
-        auto feature = ranges[axisIndex].feature;
+        auto atCurrent = outputAtLastPoint;
+        auto stepPair = findMinimalStep(atCurrent, f, delta, current);
+        auto k = stepPair.first;
+        auto plusKValue = stepPair.second.value();
 
-        // A list of minimums
-        auto atCurrent = f(current);
-        if(lastResult == -1)
-          lastResult = atCurrent.value();
-        auto kPair = stepSize(atCurrent, f, delta, current);
-
-        auto k = kPair.first,
-          kBound = kPair.second;
-
-        INFO("--- " << feature);
-        // pair <k, TrainingOutputs>
-        auto stepPair = locateStep(current, delta, k, kBound, f, atCurrent, 1);
-
-        if(stepPair.second.value() < lastResult) {
-          k = stepPair.first;
+        INFO("At Theta " << lastResult << ", At DeltaPlusK " << plusKValue);
+        if(plusKValue < lastResult) {
           current += k * delta;
           INFO("Choose k " << k);
-          result = stepPair.second.value();
+          result = plusKValue;
           break;
         } else {
           INFO("Yielded no improvement");
@@ -410,11 +381,10 @@ namespace gridsearch {
       delta = make_params(),
       p_delta = make_params();
 
-    state.bootstrap(ranges, current, delta, p_delta);
     auto iteration = 1;
     LOG(" --- Iteration " << iteration++);
-    auto result = f(current).value(),
-      bestResult = result;
+    auto result = state.bootstrap(ranges, current, delta, p_delta, f);
+    auto bestResult = result;
 
     LOG(" --- Value " << result);
     bestParams = current;
@@ -453,47 +423,46 @@ namespace gridsearch {
     Ranges& ranges;
 
     template<class Params>
-    TrainingOutputs operator()(const Params& params, bool compare=true) const {
+    void set_params(const Params& params) const {
       for(auto i = 0u; i < ranges.size(); i++)
         crf.set(i, params[i]);
+    }
 
-      auto count = corpus_test.size();
-      bool flags[count];
-      std::fill(flags, flags + count, 0);
-      auto taskParams = std::vector<ResynthParams>(count);
-      for(unsigned i = 0; i < count; i++) {
-        taskParams[i].init(i, &flags[i], &precomputed, compare);
-        tp.add_task(new ParamTask<ResynthParams>(&resynthIndex, &taskParams[i]));
-      }
-      wait_done(flags, count);
-
+    template<class TaskParams, class Params>
+    TrainingOutputs get_outputs(TaskParams& taskParams, const Params& params) const {
       TrainingOutputs outputs;
       std::for_each(taskParams.begin(), taskParams.end(), [&](ResynthParams& p) {
           outputs.push_back(p.result);
         });
+      VLOG << "Params:";
+      for(auto i = 0u; i < ranges.size(); i++)
+        VLOG << '\t' << ranges[i].feature << "=" << params[i];
+      VLOG << std::endl;
+
+      auto i = 0;
+      for(auto& to : outputs) {
+        VLOG << i << ':';
+        for(auto y : to.path)
+          VLOG << '\t' << y;
+        VLOG << "\t=" << to.cmp;
+        VLOG << std::endl;
+      }
       return outputs;
     }
 
     template<class Params, class Func>
-    TrainingOutputs findMinOrMax(const Params& params, Func f) {
-      for(auto i = 0u; i < ranges.size(); i++)
-        crf.set(i, params[i]);
-
+    TrainingOutputs findMinOrMax(const Params& params, Func f, bool compare=true) const {
+      set_params(params);
       auto count = corpus_test.size();
       bool flags[count];
       std::fill(flags, flags + count, 0);
       auto taskParams = std::vector<ResynthParams>(count);
       for(auto i = 0u; i < count; i++) {
-        taskParams[i].init(i, &flags[i], &precomputed);
+        taskParams[i].init(i, &flags[i], &precomputed, compare);
         tp.add_task(new ParamTask<ResynthParams>(f, &taskParams[i]));
       }
       wait_done(flags, count);
-
-      TrainingOutputs outputs;
-      std::for_each(taskParams.begin(), taskParams.end(), [&](ResynthParams& p) {
-          outputs.push_back(p.result);
-        });
-      return outputs;
+      return get_outputs(taskParams, params);
     }
 
     template<class Params>
@@ -503,6 +472,11 @@ namespace gridsearch {
       for(auto i = 0u; i < param_vals.size(); i++)
         param_vals[i] = params[i];
       return concat_cost<CRF>(phons, crf, param_vals, corpus_test.input(index));
+    }
+
+    template<class Params>
+    TrainingOutputs operator()(const Params& params, bool compare=true) const {
+      return findMinOrMax(params, findPaths<MinPathFindFunctions>, compare);
     }
   };
 

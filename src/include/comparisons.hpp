@@ -73,7 +73,8 @@ struct Comparisons {
                         double* sum=0,
                         double* max=0,
                         double* avg=0) {
-    double sumTemp, avgTemp;
+    double sumTemp = 0,
+      avgTemp = 0;
     auto maxIndex = 0;
     for(auto i = 0u; i < params.size(); i++) {
       if(params[i] <= params[maxIndex])

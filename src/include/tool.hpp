@@ -9,7 +9,7 @@
 
 namespace tool {
   extern Corpus corpus_synth, corpus_test;
-  
+
   extern CRF crf;
   extern BaselineCRF baseline_crf;
   extern PhonemeAlphabet alphabet_synth, alphabet_test;
@@ -17,6 +17,8 @@ namespace tool {
   extern StringLabelProvider labels_synth;
   extern StringLabelProvider labels_test;
   extern StringLabelProvider labels_all;
+
+  extern std::ofstream VLOG;
 
   bool init_tool(int argc, const char** argv, Options* opts);
 }

@@ -45,6 +45,8 @@ namespace tool {
   StringLabelProvider labels_test;
   StringLabelProvider labels_all;
 
+  std::ofstream VLOG;
+
   bool init_tool(int argc, const char** argv, Options* opts) {
     *opts = Options::parse_options(argc, argv);
     if(!Options::has_required(*opts))
@@ -55,6 +57,8 @@ namespace tool {
     SCALE_ENERGY = opts->has_opt("energy");
     PRINT_SCALE = opts->has_opt("print-scale");
     REPORT_PROGRESS = opts->has_opt("progress");
+
+    VLOG = std::ofstream(opts->get_opt<std::string>("vlog", "vlog.log"));
 
     crf.label_alphabet = &alphabet_synth;
     baseline_crf.label_alphabet = &alphabet_synth;

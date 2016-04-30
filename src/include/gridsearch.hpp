@@ -16,21 +16,24 @@ namespace gridsearch {
     std::vector<int> path;
     std::array<cost, 2> bestValues;
 
+    cost value() const {
+      return cmp;
+    }
+
     bool equalPaths(const TrainingOutput& o) const {
       return path == o.path;
     }
 
     bool operator==(const TrainingOutput& o) const {
-      return cmp == o.cmp && path == o.path;
+      return path == o.path;
     }
   };
 
   struct TrainingOutputs : public std::vector<TrainingOutput> {
     cost value() const {
-      auto count = this->size();
-      std::vector<double> comps(count);
-      for(unsigned i = 0; i < count; i++)
-        comps[i] = (*this)[i].cmp;
+      std::vector<double> comps;
+      for(auto& output : (*this))
+        comps.push_back(output.cmp);
 
       double result;
       Comparisons::aggregate(comps, 0, 0, &result);
