@@ -167,25 +167,10 @@ namespace gridsearch {
     }
   }
 
-  struct BruteSearch {
-    BruteSearch(int maxPasses): maxPasses(maxPasses), stop(false) { }
-
+  struct SearchBase {
+    SearchBase(): stop(false) { }
     TrainingOutputs outputAtLastPoint;
-    int maxPasses, pass = 0;
     bool stop;
-
-    template<class Function>
-    cost bootstrap(Ranges& ranges, Params& current,
-                   Params& delta, Params& p_delta, Function f) {
-      for(auto i = 0u; i < ranges.size(); i++) {
-        current[i] = ranges[i].from;
-        delta[i] = p_delta[i] = 0;
-      }
-      current[0] = 1;
-      delta[1] = 1;
-      outputAtLastPoint = f(current);
-      return outputAtLastPoint.value();
-    }
 
     template<class Function>
     std::pair<double, TrainingOutputs>
@@ -258,57 +243,65 @@ namespace gridsearch {
       outputAtLastPoint = kPair.second;
       return kPair;
     }
+  };
+
+  struct BruteSearch : public SearchBase {
+    BruteSearch(int maxPasses): SearchBase(), maxPasses(maxPasses) { }
+
+    int maxPasses, pass = 0, nextAxis = 0;
+
+    template<class Function>
+    cost bootstrap(Ranges& ranges, Params& current,
+                   Params& delta, Params& p_delta, Function f) {
+      for(auto i = 0u; i < ranges.size(); i++) {
+        current[i] = ranges[i].from;
+        delta[i] = p_delta[i] = 0;
+      }
+      current[0] = 1;
+      delta[1] = 1;
+      outputAtLastPoint = f(current);
+      return outputAtLastPoint.value();
+    }
 
     template<class Function>
     cost nextStep(Function f, Ranges& ranges, Params& current,
                   Params& delta, Params&) {
-      // first non-0 index
-      auto i = 0u;
-      while(i < delta.size() && delta[i] == 0)
-        i++;
+      auto axis = nextAxis;
+      if(axis == 0)
+        pass++;
+      nextAxis = (nextAxis + 1) % ranges.size();
 
-      if(current[i] < ranges[i].to) {
-        // Do nothing, step and axis don't change
-        INFO(ranges[i].feature << ": " << current[i] << " -> " << (current[i] + delta[i]));
-      } else {
-        // Stop moving along this axis
-        delta[i] = 0;
-        // Pick next axis
-        auto nextIndex = (i + 1) % delta.size();
-        if(nextIndex == 0) {// If a new round has begun...
-          pass++;
-          if(pass > maxPasses) {
-            stop = true;
-            return 0;
+      std::fill(std::begin(delta), std::end(delta), 0);
+      delta[axis] = 1;
+
+      auto newParams = current;
+      TrainingOutputs bestOutput = outputAtLastPoint;
+      auto bestParams = current;
+      while(true) {
+        auto stepPair = findMinimalStep(outputAtLastPoint, f, delta, newParams);
+        auto k = stepPair.first;
+        newParams = newParams + (k * delta);
+
+        if(k != 0) {
+          if(bestOutput.value() < stepPair.second.value()) {
+            bestOutput = stepPair.second;
+            bestParams = newParams;
           }
+        } else {
+          break;
         }
-
-        // Pick density of new axis
-        delta[nextIndex] = ranges[nextIndex].step;
-        // Reset value along new axis
-        current[nextIndex] = ranges[nextIndex].from;
-
-        INFO(ranges[i].feature << " -> " << ranges[nextIndex].feature);
       }
 
-      current += delta;
-      return f(current);
+      outputAtLastPoint = bestOutput;
+      current = bestParams;
+      if(pass > maxPasses)
+        stop = true;
+      return bestOutput.value();
     }
   };
 
-  template<class Diffs>
-  void printDiffs(Diffs diffs) {
-    INFO("Diffs:");
-    auto flag = false;
-    for(auto& d : diffs) {
-      std::cerr << "[" << d.first << "," << d.second << "]" << " ";
-      flag = true;
-    }
-    if(flag) std::cerr << std::endl;
-  }
-
-  struct DescentSearch : BruteSearch {
-    DescentSearch(): BruteSearch(1), lastResult(-1) { }
+  struct DescentSearch : public SearchBase {
+    DescentSearch(): SearchBase(), lastResult(-1) { }
     cost lastResult;
 
     template<class Function>
@@ -371,11 +364,7 @@ namespace gridsearch {
   cost descentSearch(State state,
                      Function& f,
                      Ranges& ranges,
-                     int maxIterations,
-                     std::string csvFile) {
-    std::ofstream csvOutput(csvFile);
-    csvPrintHeaders(csvOutput, csvFile, ranges);
-
+                     int maxIterations) {
     Params current = make_params(),
       bestParams = make_params(),
       delta = make_params(),
@@ -391,7 +380,6 @@ namespace gridsearch {
 
     while(iteration <= maxIterations && !state.stop) {
       LOG(" --- Iteration " << iteration++);
-      csvPrint(csvOutput, csvFile, ranges, result);
 
       result = state.nextStep(f, ranges, current, delta, p_delta);
 
@@ -521,11 +509,10 @@ namespace gridsearch {
 
     auto Function = TrainingFunction(precompFrames, tp, ranges);
 
-    //auto searchAlgo = BruteSearch(opts.get_opt<unsigned>("training-passes", 3));
-    auto searchAlgo = DescentSearch();
+    auto searchAlgo = BruteSearch(opts.get_opt<unsigned>("training-passes", 3));
+    //auto searchAlgo = DescentSearch();
     auto result = descentSearch(searchAlgo, Function, ranges,
-                                opts.get_opt<int>("max-iterations", 9999999),
-                                opts.get_string("csv-file"));
+                                opts.get_opt<int>("max-iterations", 9999999));
 
     INFO("Best at: ");
     for(auto& r : ranges)
