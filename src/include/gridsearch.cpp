@@ -213,24 +213,38 @@ namespace gridsearch {
     std::pair<coefficient, coefficient>
     stepSize(TrainingOutputs& atCurrent, Function f,
              const Params& delta, const Params& current) {
-      auto atDeltaMax = f.findMinOrMax(delta, findPaths<MaxPathFindFunctions>, false);
+      auto atDeltaMax = f.findMinOrMax(delta, findPaths<MinPathFindFunctions>, false);
 
       CompareAccumulator<cost, int, true> acc;
       for(auto i = 0u; i < atCurrent.size(); i++) {
         auto& yHat = atCurrent[i].path;
         auto& yMax = atDeltaMax[i].path;
+        if(yHat == yMax) {
+          INFO("yHat == yMax");
+          continue;
+        }
 
-        auto yMaxAtDeltaVal = atDeltaMax[i].value();
-        auto yHatAtDeltaVal = f.costOf(yHat, delta, i);
-        auto yHatAtThetaVal = atCurrent[i].value();
-        auto yMaxAtThetaVal = f.costOf(yMax, current, i);
+        auto delta_Ymax = atDeltaMax[i].pathCost();
+        auto delta_yHat = f.costOf(yHat, delta, i);
+        auto theta_yHat = atCurrent[i].pathCost();
+        auto theta_yMax = f.costOf(yMax, current, i);
 
-        auto kBound = (yMaxAtThetaVal - yHatAtThetaVal) / (yHatAtDeltaVal - yMaxAtDeltaVal);
+        auto kBound = (theta_yMax - theta_yHat) / (delta_yHat - delta_Ymax);
         if(kBound > 0)
           acc.compare(kBound, i);
+
+        INFO("Delta.Ymax = " << delta_Ymax);
+        INFO("Delta.Yhat = " << delta_yHat);
+        INFO("Delta.Yhat - Delta.Ymax = " << delta_yHat - delta_Ymax);
+
+        INFO("Theta.Yhat = " << theta_yHat);
+        INFO("Theta.Ymax = " << theta_yMax);
+        INFO("Theta.Ymax - Theta.Yhat = " << theta_yMax - theta_yHat);
+
+        INFO("Kbound = " << kBound);
       }
 
-      INFO("k_max = " << acc.bestValue);
+      INFO("k_max = " << acc.bestValue << " at index " << acc.bestIndex);
       return std::make_pair(0, acc.bestValue);
     }
 
@@ -254,10 +268,9 @@ namespace gridsearch {
     cost bootstrap(Ranges& ranges, Params& current,
                    Params& delta, Params& p_delta, Function f) {
       for(auto i = 0u; i < ranges.size(); i++) {
-        current[i] = ranges[i].from;
+        current[i] = 0.1;
         delta[i] = p_delta[i] = 0;
       }
-      current[0] = 1;
       delta[1] = 1;
       outputAtLastPoint = f(current);
       return outputAtLastPoint.value();
@@ -270,6 +283,7 @@ namespace gridsearch {
       if(axis == 0)
         pass++;
       nextAxis = (nextAxis + 1) % ranges.size();
+      INFO("--- " << ranges[axis].feature);
 
       std::fill(std::begin(delta), std::end(delta), 0);
       delta[axis] = 1;
@@ -316,7 +330,6 @@ namespace gridsearch {
       outputAtLastPoint = f(current);
       lastResult = outputAtLastPoint.value();
       return outputAtLastPoint.value();
-      //return lastResult;
     }
 
     template<class Function>

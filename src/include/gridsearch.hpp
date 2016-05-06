@@ -16,6 +16,10 @@ namespace gridsearch {
     std::vector<int> path;
     std::array<cost, 2> bestValues;
 
+    cost pathCost() const {
+      return bestValues[0];
+    }
+
     cost value() const {
       return cmp;
     }

@@ -5,6 +5,7 @@ COMMAND="$2"
 echo "Watching with target $TARGET"
 while inotifywait -e modify include main.cpp test.cpp ; do
   make -j 4 -B $TARGET
+  kdialog --passivepopup "Exit code: $?" 3
   if [ $? == 0 -a -n "$COMMAND" ]; then
     bash -c "$COMMAND"
   fi

@@ -50,6 +50,7 @@ single
 *.wav
 *.txt
 logs*
+*.log
 *.conf
 *.json
 

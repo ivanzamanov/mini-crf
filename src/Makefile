@@ -51,5 +51,5 @@ is-wav:
 all: clean main test main-opt text2bin text2bin-opt
 
 clean:
-	rm -f $(wildcard *.exe) main main-opt db-stats test text2bin text2bin-opt
+	rm -f $(wildcard *.exe) main main-opt db-stats test text2bin text2bin-opt is-wav
 	rm -f */*.o
