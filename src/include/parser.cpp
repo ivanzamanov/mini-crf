@@ -99,7 +99,6 @@ BinaryWriter& operator<<(BinaryWriter& str, const PhonemeInstance& ph) {
   str << ph.end;
   str << ph.duration;
   str << ph.energy;
-  str << ph.energy_val;
   str << ph.label;
   str << ph.ctx_left;
   str << ph.ctx_right;
@@ -119,7 +118,6 @@ BinaryReader& operator>>(BinaryReader& str, PhonemeInstance& ph) {
   str >> ph.end;
   str >> ph.duration;
   str >> ph.energy;
-  str >> ph.energy_val;
   str >> ph.label;
   str >> ph.ctx_left;
   str >> ph.ctx_right;

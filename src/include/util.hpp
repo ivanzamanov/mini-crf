@@ -142,7 +142,19 @@ struct CompareAccumulator {
   }
 
   bool compare(V value, I index) {
-    if(value < bestValue || !isSet) {
+    bool isLesser = value < bestValue;
+    return do_compare(value, index, isLesser);
+  }
+
+  template<class Cmp>
+  bool compare(V value, I index, Cmp cmp) {
+    bool isLesser = cmp(value, bestValue);
+    return do_compare(value, index, isLesser);
+  }
+
+private:
+  bool do_compare(V value, I index, bool isLesser) {
+    if(isLesser || !isSet) {
       if(isSet && _log) {
         INFO("Acc " << bestValue << " <- " << value << " -> " << bestIndex << " <- " << index);
       }

@@ -1,6 +1,5 @@
 #include<algorithm>
 
-#include"opencl-utils.hpp"
 #include"gridsearch.hpp"
 #include"tool.hpp"
 #include"features.hpp"
@@ -11,8 +10,6 @@ using std::pair;
 using std::string;
 
 bool Progress::enabled = true;
-string gridsearch::Comparisons::metric = "";
-string gridsearch::Comparisons::aggregate = "";
 
 bool print_by_id_short(const PhonemeAlphabet& alphabet, id_t phon_id) {
   if(phon_id >= alphabet.size())
@@ -67,7 +64,7 @@ bool extract_by_label(const PhonemeAlphabet& alphabet, string label_string) {
 }
 
 template<class Func>
-bool print_stats_func_edge(const PhonemeAlphabet& alphabet, Func f, const std::string displayName) {
+bool print_stats_func_edge(const PhonemeAlphabet& alphabet, const Func f, const std::string displayName) {
   double mean = 0, max = 0;
   int n = 0;
   const vector<PhonemeInstance> dummy;
@@ -98,12 +95,76 @@ bool print_stats_field(const PhonemeAlphabet& alphabet, string label_string, Fie
   return true;
 }
 
-#define FUNC_AS_PARAM(x) x, #x
-bool print_stats(const PhonemeAlphabet& alphabet) {
-  INFO("Stats over " << alphabet.size() << " labels");
-  print_stats_func_edge(alphabet, &FUNC_AS_PARAM(Features::EnergyTrans));
-  print_stats_func_edge(alphabet, &FUNC_AS_PARAM(Features::Pitch));
-  print_stats_func_edge(alphabet, &FUNC_AS_PARAM(Features::MFCCDist));
+void compare_maxes(CRF::Values& maxes, const CRF::Values& newVals) {
+  for(auto i = 0u; i < maxes.size(); i++)
+    maxes[i] = std::max(maxes[i], newVals[i]);
+}
+
+bool print_stats() {
+  vector<std::pair<PhoneticLabel, PhoneticLabel> > presentLabelPairs;
+  vector<PhoneticLabel> presentLabels;
+  for(auto index = 0u; index < corpus_test.size(); index++) {
+    const auto& labels = corpus_test.label(index);
+
+    for(auto label : labels) {
+      bool notPresent = std::find(presentLabels.begin(), presentLabels.end(),
+                                  label.label) == presentLabels.end();
+      if(notPresent)
+        presentLabels.push_back(label.label);
+    }
+
+    for(auto i = 1u; i < labels.size(); i++) {
+      auto pair = std::make_pair(labels[i - 1].label, labels[i].label);
+      auto notPresent = std::find(presentLabelPairs.begin(), presentLabelPairs.end(),
+                                  pair) == presentLabelPairs.end();
+      if(notPresent)
+        presentLabelPairs.push_back(pair);
+    }
+  }
+
+  INFO("Labels: " << presentLabels.size());
+  INFO("Label Pairs: " << presentLabelPairs.size());
+  FunctionalAutomaton<CRF, MinPathFindFunctions> a(crf);
+  std::fill(a.lambda.begin(), a.lambda.end(), 1);
+
+  CRF::Values maxes;
+  std::fill(maxes.begin(), maxes.end(), 0);
+
+  INFO("Calculating maximal values...");
+  for(auto index = 0u; index < corpus_test.size(); index++) {
+    a.x = corpus_test.input(index);
+
+    Progress p(a.x.size(), "Sequence " + std::to_string(index + 1)
+               + " of " + std::to_string(corpus_test.size()) + " ");
+    int i = a.x.size() - 1;
+    auto labels = alphabet_synth.get_class(a.x[i]);
+    for(auto& pi : labels) {
+      auto vals = a.template calculate_values<false>(alphabet_synth.fromInt(pi),
+                                                     alphabet_synth.fromInt(pi),
+                                                     i);
+      compare_maxes(maxes, vals);
+    }
+    p.update();
+
+    for(i--; i >= 0; i--) {
+      auto labels1 = alphabet_synth.get_class(a.x[i]);
+      auto labels2 = alphabet_synth.get_class(a.x[i + 1]);
+      for(auto& pi1 : labels1) {
+        for(auto& pi2 : labels2) {
+          auto vals = a.template calculate_values<true>(alphabet_synth.fromInt(pi1),
+                                                        alphabet_synth.fromInt(pi2),
+                                                        i);
+          compare_maxes(maxes, vals);
+        }
+      }
+      p.update();
+    }
+    p.finish();
+  }
+
+  for(auto i = 0u; i < maxes.size(); i++) {
+    std::cerr << "norm-" + CRF::features::Names[i] << "=" << maxes[i] << std::endl;
+  }
   return true;
 }
 
@@ -128,7 +189,7 @@ bool handle(const Options& opts) {
     db = &alphabet_test;
 
   if(opts.has_opt("stats"))
-    return print_stats(*db);
+    return print_stats();
 
   if(opts.has_opt("phon-stats"))
     return print_phon_stats(*db);
@@ -152,7 +213,7 @@ bool handle(const Options& opts) {
 
   if(opts.has_opt("correlate"))
     return correlate(opts);
-  
+
   return false;
 }
 
@@ -162,5 +223,6 @@ int main(int argc, const char** argv) {
   if(!init_tool(argc, argv, &opts))
     return 1;
 
+  REPORT_PROGRESS = true;
   return handle(opts);
 }

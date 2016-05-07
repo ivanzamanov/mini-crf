@@ -180,7 +180,7 @@ namespace gridsearch {
                coefficient kUpperBound,
                Function f,
                const TrainingOutputs& outputAtCurrentParams) {
-      auto epsilon = 0.001;
+      auto epsilon = std::pow(0.1, 10);
 
       auto top = kUpperBound,
         bottom = kLowerBound;
@@ -230,7 +230,9 @@ namespace gridsearch {
         auto theta_yMax = f.costOf(yMax, current, i);
 
         auto kBound = (theta_yMax - theta_yHat) / (delta_yHat - delta_Ymax);
-        if(kBound > 0)
+        if(kBound > 0 &&
+           theta_yMax - theta_yHat != 0 &&
+           delta_yHat - delta_Ymax)
           acc.compare(kBound, i);
 
         INFO("Delta.Ymax = " << delta_Ymax);
@@ -268,7 +270,7 @@ namespace gridsearch {
     cost bootstrap(Ranges& ranges, Params& current,
                    Params& delta, Params& p_delta, Function f) {
       for(auto i = 0u; i < ranges.size(); i++) {
-        current[i] = 0.1;
+        current[i] = 1;
         delta[i] = p_delta[i] = 0;
       }
       delta[1] = 1;
@@ -414,19 +416,23 @@ namespace gridsearch {
   struct TrainingFunction {
     TrainingFunction(std::vector< std::vector<FrameFrequencies> >& precomputed,
                      ThreadPool& tp,
-                     Ranges& ranges): precomputed(precomputed),
-                                      tp(tp),
-                                      ranges(ranges)
+                     Ranges& ranges,
+                     const CRF::Values& norms)
+      : precomputed(precomputed),
+        tp(tp),
+        ranges(ranges),
+        norms(norms)
     { }
 
     std::vector< std::vector<FrameFrequencies> > & precomputed;
     ThreadPool& tp;
     Ranges& ranges;
+    CRF::Values norms;
 
     template<class Params>
     void set_params(const Params& params) const {
       for(auto i = 0u; i < ranges.size(); i++)
-        crf.set(i, params[i]);
+        crf.set(ranges[i].feature, params[i] / norms[i]);
     }
 
     template<class TaskParams, class Params>
@@ -469,10 +475,8 @@ namespace gridsearch {
     template<class Params>
     cost costOf(const std::vector<int>& path, const Params& params, int index) {
       auto phons = crf.alphabet().to_phonemes(path);
-      CRF::Values param_vals;
-      for(auto i = 0u; i < param_vals.size(); i++)
-        param_vals[i] = params[i];
-      return concat_cost<CRF>(phons, crf, param_vals, corpus_test.input(index));
+      set_params(params);
+      return concat_cost<CRF>(phons, crf, crf.lambda, corpus_test.input(index));
     }
 
     template<class Params>
@@ -512,6 +516,13 @@ namespace gridsearch {
     for(auto& it : ranges)
       INFO("Range " << it.to_string());
 
+    auto i = 0u;
+    CRF::Values norms;
+    for(auto& it : ranges) {
+      auto norm = opts.get_opt<double>("norm-" + it.feature, 1.0);
+      norms[i++] = norm;
+    }
+
     // Pre-compute FFTd frames of source signals
     std::vector< std::vector<FrameFrequencies> > precompFrames(corpus_test.size());
 
@@ -520,7 +531,7 @@ namespace gridsearch {
 #endif
     INFO("Done");
 
-    auto Function = TrainingFunction(precompFrames, tp, ranges);
+    auto Function = TrainingFunction(precompFrames, tp, ranges, norms);
 
     auto searchAlgo = BruteSearch(opts.get_opt<unsigned>("training-passes", 3));
     //auto searchAlgo = DescentSearch();

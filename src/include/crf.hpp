@@ -26,8 +26,6 @@ class _Corpus;
 template<class CRF, class Functions>
 struct FunctionalAutomaton;
 
-constexpr double TRAINING_RATIO = 0.03;
-
 template<class Input, class Label>
 class _Corpus {
 public:
@@ -152,10 +150,9 @@ struct FunctionalAutomaton {
   }
 
   template<bool isTransition>
-  cost calculate_value(const typename CRF::Label& srcOrState,
-                       const typename CRF::Label& dest,
-                       const int pos,
-                       typename CRF::Stats* stats = 0) {
+  typename CRF::Values calculate_values(const typename CRF::Label& srcOrState,
+                                        const typename CRF::Label& dest,
+                                        const int pos) {
     typename CRF::Values vals;
     const tuples::Applicator<decltype(dest), decltype(x), isTransition> f = {
       .pos = pos,
@@ -165,10 +162,22 @@ struct FunctionalAutomaton {
     };
     tuples::Invoke<CRF::features::size,
                    decltype(CRF::features::Functions)>{}(vals, f);
+    return vals;
+  }
 
+  template<bool isTransition>
+  cost calculate_value(const typename CRF::Label& srcOrState,
+                       const typename CRF::Label& dest,
+                       const int pos,
+                       typename CRF::Stats* stats = 0) {
+    auto vals = calculate_values<isTransition>(srcOrState,
+                                               dest,
+                                               pos);
     cost result = 0;
-    for(auto i = 0u; i < vals.size(); i++)
-      result += vals[i] * lambda[i];
+    for(auto i = 0u; i < vals.size(); i++) {
+      auto a = vals[i] * lambda[i];
+      result += a;
+    }
 
     if(stats) {
       for(auto i = 0u; i < vals.size(); i++)
