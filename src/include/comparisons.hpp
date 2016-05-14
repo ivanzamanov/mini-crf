@@ -12,6 +12,7 @@ typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
 std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave);
 
 double compare_LogSpectrum(const Wave&, const std::vector<FrameFrequencies>&);
+double compare_LogSpectrumCritical(const Wave&, const std::vector<FrameFrequencies>&);
 double compare_MFCC(const Wave&, const std::vector<FrameFrequencies>&);
 
 double compare_SegSNR(const Wave& result, const Wave& original);
@@ -49,12 +50,14 @@ struct Comparisons {
     :LogSpectrum(o.LogSpectrum) { }
 
   double LogSpectrum;
+  double LogSpectrumCritical;
   double SegSNR;
   double MFCC;
 
   void fill(Wave& dist, Wave& original) {
     auto frames = toFFTdFrames(original);
     LogSpectrum = compare_LogSpectrum(dist, frames);
+    LogSpectrumCritical = compare_LogSpectrumCritical(dist, frames);
     SegSNR = compare_SegSNR(dist, original);
     MFCC = compare_MFCC(dist, frames);
   }
@@ -66,6 +69,8 @@ struct Comparisons {
       return compare_MFCC(signal, original);
     if(metric == "LogSpectrum")
       return compare_LogSpectrum(signal, original);
+    if(metric == "LogSpectrumCritical")
+      return compare_LogSpectrumCritical(signal, original);
     assert(false);
   }
 

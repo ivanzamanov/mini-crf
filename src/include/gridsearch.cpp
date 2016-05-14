@@ -180,19 +180,20 @@ namespace gridsearch {
                coefficient kUpperBound,
                Function f,
                const TrainingOutputs& outputAtCurrentParams) {
-      auto epsilon = std::pow(0.1, 10);
-
+      auto constexpr Epsilon = 0.000000001;
       auto top = kUpperBound,
         bottom = kLowerBound;
 
       INFO("Searching k in " << bottom << " " << top << ":");
 
       auto searchIn = [](double bottom, double top) {
-        return bottom + (top - bottom) / 2;
+        return (bottom + top) / 2;
       };
       auto currentK = searchIn(bottom, top);
       TrainingOutputs outputAtCurrentK;
-      while (std::abs(top - bottom) >= epsilon) {
+      auto constexpr MAX_ITS = 20;
+      auto i = 0u;
+      while (i++ < MAX_ITS && std::abs(top - bottom) >= Epsilon) {
         currentK = searchIn(bottom, top);
         outputAtCurrentK = f(current + currentK * delta, false);
 

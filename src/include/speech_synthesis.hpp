@@ -44,13 +44,17 @@ namespace tool {
     void filter(const LabelAlphabet<PhonemeInstance>::LabelClass& source,
                 LabelAlphabet<PhonemeInstance>::LabelClass& target,
                 const PhonemeInstance& phon) const {
-      for(auto& p : source)
-        if( (between(fromInt(p).duration / phon.duration, 0.5, 2)
-             && between(fromInt(p).pitch_contour[0] - phon.pitch_contour[0], -0.69, 0.69)
-             && between(fromInt(p).pitch_contour[1] - phon.pitch_contour[1], -0.69, 0.69)
-             ) || target.empty()) {
+      //auto max = 100000u;
+      for(auto& p : source) {
+        auto& pi = fromInt(p);
+        bool matchDuration = between(fromInt(p).duration / phon.duration, 0.5, 2);
+        bool matchPitch = between(pi.pitch_contour[0] - phon.pitch_contour[0], -0.69, 0.69)
+          && between(pi.pitch_contour[1] - phon.pitch_contour[1], -0.69, 0.69);
+        if(target.empty() || (matchDuration && matchPitch))
           target.push_back(p);
-        }
+        //if(target.size() >= max)
+        //  break;
+      }
     }
 
     FileData file_data_of(const PhonemeInstance& phon) const {

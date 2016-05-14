@@ -20,7 +20,7 @@ struct LeftContext {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) const {
-    return prev.label != next.ctx_left;
+    return prev.label == next.ctx_left ? 0 : 1;
   }
 };
 

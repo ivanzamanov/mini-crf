@@ -98,6 +98,7 @@ int resynthesize(Options& opts) {
     Comparisons cmp;
     cmp.fill(concatenation, outputSignal);
     INFO("LogSpectrum = " << cmp.LogSpectrum);
+    INFO("LogSpectrumCritical = " << cmp.LogSpectrumCritical);
     INFO("SegSNR = " << cmp.SegSNR);
     INFO("MFCC = " << cmp.MFCC);
   }
