@@ -101,6 +101,7 @@ int resynthesize(Options& opts) {
     INFO("LogSpectrumCritical = " << cmp.LogSpectrumCritical);
     INFO("SegSNR = " << cmp.SegSNR);
     INFO("MFCC = " << cmp.MFCC);
+    INFO("WSS = " << cmp.WSS);
   }
   return 0;
 }

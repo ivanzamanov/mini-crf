@@ -1,3 +1,5 @@
+#include<algorithm>
+
 #include"comparisons.hpp"
 
 extern double hann(double i, int size);
@@ -32,7 +34,7 @@ double compare_LogSpectrumCritical(const Wave& result,
 
     auto diff = 0.0;
     for(auto i = 0u; i < bands1.size(); i++)
-      diff += std::pow(bands1[i] - bands2[i], 2);
+      diff += std::pow( std::log10(bands1[i] / bands2[i]), 2);
     return diff;
   };
 
@@ -112,16 +114,53 @@ static CriticalBands toCriticalBands(const FrameFrequencies& fq, int sampleRate)
 }
 
 static CriticalBands toSpectralSlopes(const CriticalBands& bands) {
-  
+  CriticalBands slopes;
+  slopes[0] = 0;
+  for(auto i = 1u; i < bands.size(); i++)
+    slopes[i] = bands[i] - bands[i-1];
+  return slopes;
 }
 
+static double findPeak(const CriticalBands& bands,
+                       const CriticalBands& slopes, unsigned i) {
+  if(slopes[i] > 0) {
+    while(slopes[i] > 0 && i < slopes.size())
+      i++;
+  } else {
+    while(slopes[i] < 0 && i != 0)
+      i--;
+  }
+  return bands[i];
+}
+
+static CriticalBands computeCriticalBandWeights(const CriticalBands& bands,
+                                                const CriticalBands& slopes) {
+  CriticalBands nearestPeaks;
+  for(auto i = 0u; i < nearestPeaks.size(); i++)
+    nearestPeaks[i] = findPeak(bands, slopes, i);
+  auto dbMax = *std::max_element(bands.begin(), bands.end());
+  CriticalBands w;
+  for(auto i = 0u; i < nearestPeaks.size(); i++)
+    w[i] = 20 / (20 + dbMax - bands[i]) * 1 / (1 + nearestPeaks[i] - bands[i]);
+  return w;
+}
+
+// As defined in Performance Assesment Method For Speech Enhancement Systems
 double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& frames2) {
   auto cmp = [=](const FrameFrequencies& f1, const FrameFrequencies& f2) {
     auto bands1 = toCriticalBands(f1, result.sampleRate());
+    std::transform(bands1.begin(), bands1.end(), bands1.begin(), [](double d) { return 10 * std::log10(d); });
     auto slopes1 = toSpectralSlopes(bands1);
-    auto bands2 = toCriticalBands(f2, result.sampleRate());
-    auto slopes2 = toSpectralSlopes(bands2);
+    auto weights1 = computeCriticalBandWeights(bands1, slopes1);
 
+    auto bands2 = toCriticalBands(f2, result.sampleRate());
+    std::transform(bands2.begin(), bands2.end(), bands2.begin(), [](double d) { return 10 * std::log10(d); });
+    auto slopes2 = toSpectralSlopes(bands2);
+    auto weights2 = computeCriticalBandWeights(bands2, slopes2);
+
+    auto result = 0.0;
+    for(auto i = 1u; i < slopes1.size(); i++)
+      result += weights1[i] * weights2[i] / 2 * (slopes1[i] - slopes2[i]);
     return 0;
   };
 
