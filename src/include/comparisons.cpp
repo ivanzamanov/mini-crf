@@ -4,7 +4,7 @@
 
 extern double hann(double i, int size);
 
-typedef std::array<double, 36> CriticalBands;
+typedef std::array<double, 24> CriticalBands;
 static CriticalBands toCriticalBands(const FrameFrequencies& fq, int sampleRate);
 static CriticalBands toSpectralSlopes(const CriticalBands& bands);
 
@@ -83,31 +83,24 @@ double compare_SegSNR(const Wave& result, const Wave& original) {
   return 1 / (total * 10.0 / frameCount);
 }
 
+//static const CriticalBands BARK_CENTERS {{ 50, 150, 250, 350, 450, 570, 700, 840, 1000, 1170, 1370, 1600, 1850, 2150, 2500, 2900, 3400, 4000, 4800, 5800, 7000, 8500, 10500, 13500 }};
+static const std::array<int, 25> BARK_BAND_EDGES {{ 0, 100, 200, 300, 400, 510, 630, 770, 920, 1080, 1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700, 4400, 5300, 6400, 7700, 9500, 12000, 15500 }};
+
 static CriticalBands toCriticalBands(const FrameFrequencies& fq, int sampleRate) {
-  auto constexpr BAND_PERIOD = 1.2 / 1000;
-  CriticalBands periodCenters;
-  for(auto i = 0u; i < periodCenters.size(); i++)
-    periodCenters[i] = (i + 1) * BAND_PERIOD;
+  auto samples = fq.size();
+  auto fromHertz = [=](double hertz) {
+    return std::round(hertz * (double) samples / sampleRate);
+  };
 
   CriticalBands powers;
   std::fill(powers.begin(), powers.end(), 0);
 
-  int samples = fq.size();
-  auto toHertz = [=](double frequency) {
-    return (double) frequency * sampleRate / samples;
-  };
-  auto periodOf = [=](double harmonic) {
-    return 1 / toHertz(harmonic);
-  };
-
-  for(auto i = 1u; i < fq.size() / 2; i++) {
-    auto period = periodOf(i);
-    auto power = std::norm(fq[i]);
-    for(auto j = 0u; j < periodCenters.size(); j++) {
-      auto top = periodCenters[j] + BAND_PERIOD;
-      auto bottom = periodCenters[j] - BAND_PERIOD;
-      if(bottom <= period && period <= top)
-        powers[j] += power;
+  for(auto i = 0u; i < powers.size(); i++) {
+    auto botF = fromHertz(BARK_BAND_EDGES[i]),
+      topF = fromHertz(BARK_BAND_EDGES[i + 1]);
+    for(; botF <= topF; botF++) {
+      assert(botF >= 0 && botF < fq.size());
+      powers[i] += std::norm(fq[botF]);
     }
   }
   return powers;
@@ -115,19 +108,19 @@ static CriticalBands toCriticalBands(const FrameFrequencies& fq, int sampleRate)
 
 static CriticalBands toSpectralSlopes(const CriticalBands& bands) {
   CriticalBands slopes;
-  slopes[0] = 0;
+  slopes[slopes.size() - 1] = 0;
   for(auto i = 1u; i < bands.size(); i++)
-    slopes[i] = bands[i] - bands[i-1];
+    slopes[i - 1] = bands[i] - bands[i-1];
   return slopes;
 }
 
 static double findPeak(const CriticalBands& bands,
-                       const CriticalBands& slopes, unsigned i) {
+                       const CriticalBands& slopes, int i) {
   if(slopes[i] > 0) {
-    while(slopes[i] > 0 && i < slopes.size())
+    while(slopes[i + 1] > 0 && i + 1 < (int) slopes.size())
       i++;
   } else {
-    while(slopes[i] < 0 && i != 0)
+    while(slopes[i - 1] < 0 && i - 1 >= 0)
       i--;
   }
   return bands[i];
@@ -147,21 +140,22 @@ static CriticalBands computeCriticalBandWeights(const CriticalBands& bands,
 
 // As defined in Performance Assesment Method For Speech Enhancement Systems
 double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& frames2) {
+  auto sampleRate = result.sampleRate();
   auto cmp = [=](const FrameFrequencies& f1, const FrameFrequencies& f2) {
-    auto bands1 = toCriticalBands(f1, result.sampleRate());
+    auto bands1 = toCriticalBands(f1, sampleRate);
     std::transform(bands1.begin(), bands1.end(), bands1.begin(), [](double d) { return 10 * std::log10(d); });
     auto slopes1 = toSpectralSlopes(bands1);
     auto weights1 = computeCriticalBandWeights(bands1, slopes1);
 
-    auto bands2 = toCriticalBands(f2, result.sampleRate());
+    auto bands2 = toCriticalBands(f2, sampleRate);
     std::transform(bands2.begin(), bands2.end(), bands2.begin(), [](double d) { return 10 * std::log10(d); });
     auto slopes2 = toSpectralSlopes(bands2);
     auto weights2 = computeCriticalBandWeights(bands2, slopes2);
 
     auto result = 0.0;
     for(auto i = 1u; i < slopes1.size(); i++)
-      result += weights1[i] * weights2[i] / 2 * (slopes1[i] - slopes2[i]);
-    return 0;
+      result += weights1[i] * weights2[i] / 2 * std::pow(slopes1[i] - slopes2[i], 2);
+    return result;
   };
 
   auto frames1 = toFFTdFrames(result);
