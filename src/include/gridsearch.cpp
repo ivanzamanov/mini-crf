@@ -10,9 +10,8 @@
 #include"crf.hpp"
 #include"tool.hpp"
 
-//#define DEBUG_TRAINING
-
 static std::string METRIC = "MFCC";
+static int MAX_PER_DELTA = 100;
 
 static constexpr auto FC = PhoneticFeatures::size;
 typedef std::valarray<coefficient> Params;
@@ -285,34 +284,40 @@ namespace gridsearch {
       auto axis = nextAxis;
       if(axis == 0)
         pass++;
+      if(pass > maxPasses)
+        stop = true;
       nextAxis = (nextAxis + 1) % ranges.size();
       INFO("--- " << ranges[axis].feature);
 
       std::fill(std::begin(delta), std::end(delta), 0);
-      delta[axis] = 1;
 
-      auto newParams = current;
       TrainingOutputs bestOutput = outputAtLastPoint;
       auto bestParams = current;
-      while(true) {
-        auto stepPair = findMinimalStep(outputAtLastPoint, f, delta, newParams);
-        auto k = stepPair.first;
-        newParams = newParams + (k * delta);
+      auto doNextStep = [&]() {
+        auto newParams = current;
+        for (auto iteration = 0; iteration < MAX_PER_DELTA; iteration++) {
+          auto stepPair = findMinimalStep(outputAtLastPoint, f, delta, newParams);
+          auto k = stepPair.first;
+          newParams = newParams + (k * delta);
 
-        if(k != 0) {
-          if(bestOutput.value() < stepPair.second.value()) {
-            bestOutput = stepPair.second;
-            bestParams = newParams;
+          if(k != 0) {
+            if(bestOutput.value() < stepPair.second.value()) {
+              bestOutput = stepPair.second;
+              bestParams = newParams;
+            }
+          } else {
+            break;
           }
-        } else {
-          break;
         }
-      }
+      };
+
+      delta[axis] = 1;
+      doNextStep();
+      delta[axis] = -1;
+      doNextStep();
 
       outputAtLastPoint = bestOutput;
       current = bestParams;
-      if(pass > maxPasses)
-        stop = true;
       return bestOutput.value();
     }
   };
@@ -403,10 +408,9 @@ namespace gridsearch {
       if(!state.stop && result < bestResult) {
         bestResult = result;
         bestParams = current;
-
-        for(auto i = 0u; i < ranges.size(); i++)
-          LOG(ranges[i].feature << "=" << current[i]);
       }
+      for(auto i = 0u; i < ranges.size(); i++)
+        LOG(ranges[i].feature << "=" << current[i]);
     }
 
     for(auto i = 0u; i < ranges.size(); i++)
@@ -490,6 +494,7 @@ namespace gridsearch {
     Progress::enabled = false;
 
     METRIC = opts.get_opt<std::string>("metric", "MFCC");
+    MAX_PER_DELTA = opts.get_opt<unsigned>("max-per-delta", 100);
     //#pragma omp parallel for
     ThreadPool tp(opts.get_opt<int>("thread-count", 8));
     if (tp.initialize_threadpool() < 0) {
@@ -527,9 +532,7 @@ namespace gridsearch {
     // Pre-compute FFTd frames of source signals
     std::vector< std::vector<FrameFrequencies> > precompFrames(corpus_test.size());
 
-#ifndef DEBUG_TRAINING
     precomputeFrames(precompFrames, tp);
-#endif
     INFO("Done");
 
     auto Function = TrainingFunction(precompFrames, tp, ranges, norms);
