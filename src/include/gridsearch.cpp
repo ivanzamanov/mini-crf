@@ -301,7 +301,7 @@ namespace gridsearch {
           newParams = newParams + (k * delta);
 
           if(k != 0) {
-            if(bestOutput.value() < stepPair.second.value()) {
+            if(bestOutput.value() > stepPair.second.value()) {
               bestOutput = stepPair.second;
               bestParams = newParams;
             }
