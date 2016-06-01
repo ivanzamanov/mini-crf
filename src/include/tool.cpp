@@ -35,7 +35,7 @@ void build_data(const Options& opts) {
 }
 
 namespace tool {
-  Corpus corpus_synth, corpus_test;
+  Corpus corpus_synth, corpus_test, corpus_eval;
 
   CRF crf;
   BaselineCRF baseline_crf;
@@ -64,7 +64,10 @@ namespace tool {
     baseline_crf.label_alphabet = &alphabet_synth;
     build_data(*opts);
 
-    corpus_test.set_max_size(opts->get_opt<unsigned>("test-corpus-size", corpus_test.size()));
+    auto testSize = opts->get_opt<unsigned>("test-corpus-size", corpus_test.size());
+    for(auto i = testSize; i < corpus_test.size(); i++)
+      corpus_eval.add(corpus_test.input(i), corpus_test.label(i));
+    corpus_test.set_max_size(testSize);
 
     pre_process(alphabet_synth, corpus_synth);
     pre_process(alphabet_test, corpus_test);

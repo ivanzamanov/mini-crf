@@ -90,7 +90,7 @@ struct Baseline {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) const {
-    return (prev.id + 1 == next.id) ? 0 : 1;
+    return (prev.old_id + 1 == next.old_id) ? 0 : 1;
   }
 };
 

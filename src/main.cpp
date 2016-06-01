@@ -56,8 +56,10 @@ int resynthesize(Options& opts) {
   crf.set("trans-ctx", opts.get_opt<double>("trans-ctx", 0));
 
   unsigned index = util::parse<int>(opts.input);
-  assert(index < corpus_test.size());
-  std::vector<PhonemeInstance> input = corpus_test.input(index);
+  bool eval = opts.has_opt("eval");
+  Corpus& corpus = (eval ? corpus_eval : corpus_test);
+  assert(index < corpus.size());
+  std::vector<PhonemeInstance> input = corpus.input(index);
 
   std::string sentence_string = gridsearch::to_text_string(input);
   INFO("Input file: " << alphabet_test.file_data_of(input[0]).file);
@@ -108,7 +110,9 @@ int resynthesize(Options& opts) {
 
 int baseline(const Options& opts) {
   unsigned index = opts.get_opt<int>("input", 0);
-  std::vector<PhonemeInstance> input = corpus_test.input(index);
+  bool eval = opts.has_opt("eval");
+  Corpus& corpus = (eval ? corpus_eval : corpus_test);
+  std::vector<PhonemeInstance> input = corpus.input(index);
 
   std::string sentence_string = gridsearch::to_text_string(input);
   std::cerr << "Input file: " << alphabet_test.file_data_of(input[0]).file << std::endl;
@@ -142,7 +146,9 @@ int psola(const Options& opts) {
   if(input.size() > 1)
     phonemeInput = alphabet_test.to_phonemes(input);
   else {
-    phonemeInput = corpus_test.input(input[0]);
+    bool eval = opts.has_opt("eval");
+    Corpus& corpus = (eval ? corpus_eval : corpus_test);
+    phonemeInput = corpus.input(input[0]);
     INFO("Input file: " << alphabet_test.file_data_of(phonemeInput[0]).file);
   }
 

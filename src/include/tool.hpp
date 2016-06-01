@@ -8,7 +8,7 @@
 #include"speech_mod.hpp"
 
 namespace tool {
-  extern Corpus corpus_synth, corpus_test;
+  extern Corpus corpus_synth, corpus_test, corpus_eval;
 
   extern CRF crf;
   extern BaselineCRF baseline_crf;
