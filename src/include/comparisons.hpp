@@ -8,15 +8,15 @@
 
 constexpr size_t FFT_SIZE = 512;
 typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
+typedef std::vector<double> CmpValues;
 
 std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave);
 
-double compare_LogSpectrum(const Wave&, const std::vector<FrameFrequencies>&);
-double compare_LogSpectrumCritical(const Wave&, const std::vector<FrameFrequencies>&);
-double compare_MFCC(const Wave&, const std::vector<FrameFrequencies>&);
-double compare_WSS(const Wave&, const std::vector<FrameFrequencies>&);
-
-double compare_SegSNR(const Wave& result, const Wave& original);
+double compare_LogSpectrum(const Wave&, const std::vector<FrameFrequencies>&, CmpValues* = 0);
+double compare_LogSpectrumCritical(const Wave&, const std::vector<FrameFrequencies>&, CmpValues* = 0);
+double compare_MFCC(const Wave&, const std::vector<FrameFrequencies>&, CmpValues* = 0);
+double compare_WSS(const Wave&, const std::vector<FrameFrequencies>&, CmpValues* = 0);
+double compare_SegSNR(const Wave& result, const Wave& original, CmpValues* = 0);
 
 template<class Frame, class Container>
 void computeMFCC(const Frame& f, Container& h, int sampleRate) {
@@ -99,6 +99,23 @@ struct Comparisons {
     if(avg)
       *avg = avgTemp;
   }
+};
+
+struct ComparisonDetails : public Comparisons {
+  CmpValues LogSpectrumValues;
+  CmpValues LogSpectrumCriticalValues;
+  CmpValues SegSNRValues;
+  CmpValues MFCCValues;
+  CmpValues WSSValues;
+
+  void fill(Wave& dist, Wave& original) {
+    auto frames = toFFTdFrames(original);
+    LogSpectrum = compare_LogSpectrum(dist, frames, &LogSpectrumValues);
+    LogSpectrumCritical = compare_LogSpectrumCritical(dist, frames, &LogSpectrumCriticalValues);
+    SegSNR = compare_SegSNR(dist, original, &SegSNRValues);
+    MFCC = compare_MFCC(dist, frames, &MFCCValues);
+    WSS = compare_WSS(dist, frames, &WSSValues);
+  }  
 };
 
 #endif

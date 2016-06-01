@@ -8,7 +8,8 @@ typedef std::array<double, 24> CriticalBands;
 static CriticalBands toCriticalBands(const FrameFrequencies& fq, int sampleRate);
 static CriticalBands toSpectralSlopes(const CriticalBands& bands);
 
-double compare_LogSpectrum(const Wave& result, const std::vector<FrameFrequencies>& frames2) {
+double compare_LogSpectrum(const Wave& result, const std::vector<FrameFrequencies>& frames2,
+                           CmpValues* frameVals) {
   auto cmp = [=](const FrameFrequencies& f1, const FrameFrequencies& f2) {
     auto diff = 0.0;
     for(auto i = 0u; i < f1.size(); i++) {
@@ -16,7 +17,9 @@ double compare_LogSpectrum(const Wave& result, const std::vector<FrameFrequencie
       m1 = m1 ? m1 : 1;
       auto m2 = std::norm(f2[i]);
       m2 = m2 ? m2 : 1;
-      diff += std::pow( std::log10( m2 / m1), 2 );
+      auto fv = std::pow( std::log10( m2 / m1), 2 );
+      if(frameVals) frameVals->push_back(fv);
+      diff += fv;
     }
     return diff;
   };
@@ -26,7 +29,8 @@ double compare_LogSpectrum(const Wave& result, const std::vector<FrameFrequencie
 }
 
 double compare_LogSpectrumCritical(const Wave& result,
-                                   const std::vector<FrameFrequencies>& frames2) {
+                                   const std::vector<FrameFrequencies>& frames2,
+                                   CmpValues* frameVals) {
   auto sampleRate = result.sampleRate();
   auto cmp = [=](const FrameFrequencies& f1, const FrameFrequencies& f2) {
     auto bands1 = toCriticalBands(f1, sampleRate);
@@ -35,6 +39,7 @@ double compare_LogSpectrumCritical(const Wave& result,
     auto diff = 0.0;
     for(auto i = 0u; i < bands1.size(); i++)
       diff += std::pow( std::log10(bands1[i] / bands2[i]), 2);
+    if(frameVals) frameVals->push_back(diff);
     return diff;
   };
 
@@ -42,7 +47,8 @@ double compare_LogSpectrumCritical(const Wave& result,
   return compare(frames1, frames2, cmp) / frames1.size();
 }
 
-double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& frames2) {
+double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& frames2,
+                    CmpValues* frameVals) {
   auto sampleRate = result.sampleRate();
   auto cmp = [=](const FrameFrequencies& f1, const FrameFrequencies& f2) {
     std::array<double, 5> mfcc1, mfcc2;
@@ -53,6 +59,7 @@ double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& fra
       auto diff = mfcc1[i] - mfcc2[i];
       r += diff * diff;
     }
+    if(frameVals) frameVals->push_back(r);
     return r;
   };
 
@@ -60,7 +67,8 @@ double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& fra
   return compare(frames1, frames2, cmp) / frames1.size();
 }
 
-double compare_SegSNR(const Wave& result, const Wave& original) {
+double compare_SegSNR(const Wave& result, const Wave& original,
+                      CmpValues* frameVals) {
   constexpr auto FSize = 512;
   FrameQueue<FSize> fq1(result),
     fq2(original);
@@ -77,7 +85,9 @@ double compare_SegSNR(const Wave& result, const Wave& original) {
       if(denom != 0)
         thisFrame += quot / denom;
     }
-    total += std::log10(thisFrame);
+    auto fv = std::log10(thisFrame);
+    if(frameVals) frameVals->push_back(fv);
+    total += fv;
   }
   assert(fq1.offset == fq2.offset);
   return 1 / (total * 10.0 / frameCount);
@@ -139,7 +149,8 @@ static CriticalBands computeCriticalBandWeights(const CriticalBands& bands,
 }
 
 // As defined in Performance Assesment Method For Speech Enhancement Systems
-double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& frames2) {
+double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& frames2,
+                   CmpValues* frameVals) {
   auto sampleRate = result.sampleRate();
   auto cmp = [=](const FrameFrequencies& f1, const FrameFrequencies& f2) {
     auto bands1 = toCriticalBands(f1, sampleRate);
@@ -155,6 +166,7 @@ double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& fram
     auto result = 0.0;
     for(auto i = 1u; i < slopes1.size(); i++)
       result += weights1[i] * weights2[i] / 2 * std::pow(slopes1[i] - slopes2[i], 2);
+    if(frameVals) frameVals->push_back(result);
     return result;
   };
 

@@ -150,22 +150,6 @@ namespace gridsearch {
     delete[] params;
   }
 
-  void csvPrintHeaders(std::ofstream& csvOutput, std::string& csvFile,
-                       Ranges& ranges) {
-    if(csvFile != std::string("")) {
-      util::join_output(csvOutput, ranges, [](const Range& r) { return r.feature; }, " ")
-        << " value" << std::endl;
-    }
-  }
-
-  void csvPrint(std::ofstream& csvOutput, std::string& csvFile,
-                Ranges& ranges, cost result) {
-    if(csvFile != std::string("")) {
-      util::join_output(csvOutput, ranges, [](const Range& r) { return r.current; }, " ")
-        << " " << result << std::endl;
-    }
-  }
-
   struct SearchBase {
     SearchBase(): stop(false) { }
     TrainingOutputs outputAtLastPoint;

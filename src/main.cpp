@@ -131,7 +131,45 @@ int baseline(const Options& opts) {
   std::string outputFile = opts.get_opt<std::string>("output", "baseline.wav");
   std::ofstream wav_output(outputFile);
   outputSignal.write(wav_output);
+  if(opts.has_opt("verbose")) {
+    auto sws = SpeechWaveSynthesis(input, input, alphabet_test);
+    auto concatenation = sws.get_concatenation(opts);
+    Comparisons cmp;
+    cmp.fill(concatenation, outputSignal);
+    INFO("LogSpectrum = " << cmp.LogSpectrum);
+    INFO("LogSpectrumCritical = " << cmp.LogSpectrumCritical);
+    INFO("SegSNR = " << cmp.SegSNR);
+    INFO("MFCC = " << cmp.MFCC);
+    INFO("WSS = " << cmp.WSS);
+  }
 
+  return 0;
+}
+
+int compare(const Options& opts) {
+  auto inputFile = opts.get_opt<std::string>("i", "");
+  auto outputFile = opts.get_opt<std::string>("o", "");
+  if(inputFile == "" || outputFile == "")
+    return 1;
+  auto w1 = Wave(inputFile);
+  auto w2 = Wave(outputFile);
+  ComparisonDetails cmp;
+  cmp.fill(w1, w2);
+
+  auto output = CSVOutput<5>(opts.get_opt<std::string>("output", "comparisons.csv"));
+  output.all_headers("LogSpectrum",
+                     "LogSpectrumCritical",
+                     "SegSNR",
+                     "MFCC",
+                     "WSS");
+  for(auto i = 0u; i < cmp.LogSpectrumValues.size(); i++) {
+    output.print(cmp.LogSpectrumValues[i],
+                 cmp.LogSpectrumCriticalValues[i],
+                 cmp.SegSNRValues[i],
+                 cmp.MFCCValues[i],
+                 cmp.WSSValues[i]);
+  }
+  INFO("Frames: " << cmp.LogSpectrumValues.size());
   return 0;
 }
 
@@ -214,6 +252,8 @@ int main(int argc, const char** argv) {
     return gridsearch::train(opts);
   case Options::Mode::BASELINE:
     return baseline(opts);
+  case Options::Mode::COMPARE:
+    return compare(opts);
   case Options::Mode::COUPLE:
     return couple(opts);
   case Options::Mode::PSOLA:

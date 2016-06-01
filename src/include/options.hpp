@@ -105,7 +105,7 @@ struct Options {
     return true;
   }
 
-  enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, BASELINE, COUPLE, PSOLA, INVALID };
+  enum Mode { SYNTH, QUERY, RESYNTH, TRAIN, BASELINE, COUPLE, PSOLA, COMPARE, INVALID };
 
   Mode get_mode() {
     std::string str = get_string("mode");
@@ -116,6 +116,7 @@ struct Options {
     else if(str == "baseline") return Mode::BASELINE;
     else if(str == "couple") return Mode::COUPLE;
     else if(str == "psola") return Mode::PSOLA;
+    else if(str == "compare") return Mode::COMPARE;
     return Mode::INVALID;
   }
 
