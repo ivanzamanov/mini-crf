@@ -18,9 +18,9 @@ double compare_LogSpectrum(const Wave& result, const std::vector<FrameFrequencie
       auto m2 = std::norm(f2[i]);
       m2 = m2 ? m2 : 1;
       auto fv = std::pow( std::log10( m2 / m1), 2 );
-      if(frameVals) frameVals->push_back(fv);
       diff += fv;
     }
+    if(frameVals) frameVals->add(diff);
     return diff;
   };
 
@@ -39,7 +39,7 @@ double compare_LogSpectrumCritical(const Wave& result,
     auto diff = 0.0;
     for(auto i = 0u; i < bands1.size(); i++)
       diff += std::pow( std::log10(bands1[i] / bands2[i]), 2);
-    if(frameVals) frameVals->push_back(diff);
+    if(frameVals) frameVals->add(diff);
     return diff;
   };
 
@@ -59,7 +59,7 @@ double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& fra
       auto diff = mfcc1[i] - mfcc2[i];
       r += diff * diff;
     }
-    if(frameVals) frameVals->push_back(r);
+    if(frameVals) frameVals->add(r);
     return r;
   };
 
@@ -86,7 +86,7 @@ double compare_SegSNR(const Wave& result, const Wave& original,
         thisFrame += quot / denom;
     }
     auto fv = std::log10(thisFrame);
-    if(frameVals) frameVals->push_back(fv);
+    if(frameVals) frameVals->add(fv);
     total += fv;
   }
   assert(fq1.offset == fq2.offset);
@@ -166,7 +166,7 @@ double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& fram
     auto result = 0.0;
     for(auto i = 1u; i < slopes1.size(); i++)
       result += weights1[i] * weights2[i] / 2 * std::pow(slopes1[i] - slopes2[i], 2);
-    if(frameVals) frameVals->push_back(result);
+    if(frameVals) frameVals->add(result);
     return result;
   };
 

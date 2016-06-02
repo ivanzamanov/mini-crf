@@ -1,6 +1,8 @@
 #ifndef __COMPARISONS_HPP__
 #define __COMPARISONS_HPP__
 
+#include<cmath>
+
 #include"wav.hpp"
 #include"fourier.hpp"
 #include"util.hpp"
@@ -8,7 +10,18 @@
 
 constexpr size_t FFT_SIZE = 512;
 typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
-typedef std::vector<double> CmpValues;
+
+struct CmpValues {
+  std::vector<double> v;
+  void add(double d) {
+    if(std::isnan(d))
+      return;
+    v.push_back(d);
+  }
+
+  unsigned size() const { return v.size(); }
+  double& operator[](unsigned i) { return v[i]; }
+};
 
 std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave);
 
@@ -102,11 +115,11 @@ struct Comparisons {
 };
 
 struct ComparisonDetails : public Comparisons {
-  CmpValues LogSpectrumValues;
-  CmpValues LogSpectrumCriticalValues;
-  CmpValues SegSNRValues;
-  CmpValues MFCCValues;
-  CmpValues WSSValues;
+  CmpValues LogSpectrumValues,
+    LogSpectrumCriticalValues,
+    SegSNRValues,
+    MFCCValues,
+    WSSValues;
 
   void fill(Wave& dist, Wave& original) {
     auto frames = toFFTdFrames(original);
