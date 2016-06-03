@@ -24,7 +24,7 @@ def main(inputFile):
         measures = [ (x, []) for x in headers ]
         rowVals = []
         for row in map(lambda x: map(float, x), reader):
-            row = [x for x in row]
+            row = [ x for x in row ]
             for x in row:
                 if math.isnan(x):
                     print(row)

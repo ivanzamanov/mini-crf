@@ -131,6 +131,9 @@ int baseline(const Options& opts) {
   std::string outputFile = opts.get_opt<std::string>("output", "baseline.wav");
   std::ofstream wav_output(outputFile);
   outputSignal.write(wav_output);
+  auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
+  auto concatenation = sws2.get_concatenation(opts);
+  concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
   if(opts.has_opt("verbose")) {
     auto sws = SpeechWaveSynthesis(input, input, alphabet_test);
     auto concatenation = sws.get_concatenation(opts);

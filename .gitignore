@@ -43,6 +43,7 @@ db-stats
 benchmark
 cygwin1.dll
 single
+is-wav
 
 *.bin
 *.csv
