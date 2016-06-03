@@ -48,7 +48,7 @@ def main(inputFile):
 
         print(table(rows,
                     headers=[ key for key, val in items],
-                    tablefmt="latex"))
+                    tablefmt="psql"))
 
         #plt.show()
 main.command()

@@ -12,7 +12,7 @@
 
 #include"types.hpp"
 
-const int DEFAULT_SAMPLE_RATE = 24000;
+const unsigned DEFAULT_SAMPLE_RATE = 24000;
 
 template<class Arr>
 unsigned uint_from_chars(Arr arr) {
@@ -326,14 +326,15 @@ struct SpeechWaveData : public WaveData {
 
 template<unsigned frameSize>
 struct FrameQueue {
-  FrameQueue(const Wave& wave):
-    wave(wave), offset(0) { }
+  FrameQueue(const Wave& wave, unsigned step=frameSize):
+    wave(wave), offset(0), step(step) { }
   const Wave& wave;
   std::array<short, frameSize> buffer;
   unsigned offset;
+  unsigned step;
 
   bool hasNext() const {
-    return buffer.size() + offset <= wave.length();
+    return buffer.size() + offset < wave.length();
   }
 
   const std::array<short, frameSize>& next() {
@@ -341,7 +342,7 @@ struct FrameQueue {
     WaveData wd = wave.extractBySample(offset, offset + buffer.size());
     for(auto i = 0u; i < wd.size(); i++)
       buffer[i] = wd[i];
-    offset += wd.size();
+    offset += step;
     return buffer;
   }
 };

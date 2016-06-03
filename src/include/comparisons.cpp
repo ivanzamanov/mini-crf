@@ -4,6 +4,9 @@
 
 extern double hann(double i, int size);
 
+static auto APPLY_WINDOW_CMP = true;
+static auto TIME_STEP = 0.01;
+
 typedef std::array<double, 24> CriticalBands;
 static CriticalBands toCriticalBands(const FrameFrequencies& fq, int sampleRate);
 static CriticalBands toSpectralSlopes(const CriticalBands& bands);
@@ -69,9 +72,9 @@ double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& fra
 
 double compare_SegSNR(const Wave& result, const Wave& original,
                       CmpValues* frameVals) {
-  constexpr auto FSize = FFT_SIZE;
-  FrameQueue<FSize> fq1(result),
-    fq2(original);
+  constexpr auto FSize = 512;
+  FrameQueue<FSize> fq1(result, result.toSamples(TIME_STEP)),
+    fq2(original, result.toSamples(TIME_STEP));
   auto frameCount = 0;
   double total = 0;
   while(fq1.hasNext() && fq2.hasNext()) {
@@ -173,9 +176,6 @@ double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& fram
   auto frames1 = toFFTdFrames(result);
   return compare(frames1, frames2, cmp) / frames1.size();
 }
-
-static auto APPLY_WINDOW_CMP = true;
-static auto TIME_STEP = 0.01;
 
 std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave) {
   double constexpr NORM = std::numeric_limits<short>::max();

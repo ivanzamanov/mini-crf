@@ -155,24 +155,24 @@ int compare(const Options& opts) {
   auto w2 = Wave(outputFile);
   ComparisonDetails cmp;
   cmp.fill(w1, w2);
+  assert(cmp.LogSpectrumValues.size() == cmp.LogSpectrumCriticalValues.size());
+  assert(cmp.LogSpectrumValues.size() == cmp.SegSNRValues.size());
+  assert(cmp.LogSpectrumValues.size() == cmp.MFCCValues.size());
+  assert(cmp.LogSpectrumValues.size() == cmp.WSSValues.size());
 
-  auto output = CSVOutput<4>(opts.get_opt<std::string>("output", "comparisons.csv"));
+  auto output = CSVOutput<5>(opts.get_opt<std::string>("output", "comparisons.csv"));
   output.all_headers("LogSpectrum",
                      "LogSpectrumCritical",
-                     //"SegSNR",
+                     "SegSNR",
                      "MFCC",
                      "WSS");
   for(auto i = 0u; i < cmp.LogSpectrumValues.size(); i++) {
     output.print(cmp.LogSpectrumValues[i],
                  cmp.LogSpectrumCriticalValues[i],
-                 //cmp.SegSNRValues[i],
+                 cmp.SegSNRValues[i],
                  cmp.MFCCValues[i],
                  cmp.WSSValues[i]);
   }
-  assert(cmp.LogSpectrumValues.size() == cmp.LogSpectrumCriticalValues.size());
-  //assert(cmp.LogSpectrumValues.size() == cmp.SegSNRValues.size());
-  assert(cmp.LogSpectrumValues.size() == cmp.MFCCValues.size());
-  assert(cmp.LogSpectrumValues.size() == cmp.WSSValues.size());
   INFO("Frames: " << cmp.LogSpectrumValues.size());
   return 0;
 }

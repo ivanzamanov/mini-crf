@@ -14,8 +14,8 @@ typedef std::array<cdouble, FFT_SIZE> FrameFrequencies;
 struct CmpValues {
   std::vector<double> v;
   void add(double d) {
-    if(std::isnan(d))
-      return;
+    //if(std::isnan(d))
+    //  return;
     v.push_back(d);
   }
 
