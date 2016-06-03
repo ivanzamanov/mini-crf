@@ -2,12 +2,18 @@ from opster import command
 import csv, numpy as np
 import scipy.stats as stats
 import math, matplotlib.pyplot as plt
+from tabulate import tabulate as table
 
 colors = np.array([ x for x in 'rgbcmyk'])
 def someColor():
     global colors
     colors = np.roll(colors, 1)
     return colors[0]
+
+fftSize = 512.0
+sampleRate = 24000.0
+timeStep = 0.01
+frameTimeStep = sampleRate / fftSize
 
 @command()
 def main(inputFile):
@@ -35,5 +41,14 @@ def main(inputFile):
             vals = np.array(v)
             print(h, 'mean=', np.mean(vals), 'std=', stats.tstd(vals))
 
-        plt.show()
+        items = sorted(valsDict.items())
+        rows = ([[h] + [
+            stats.pearsonr(v, v2)[0] for a, v2 in items
+        ] for h, v in items])
+
+        print(table(rows,
+                    headers=[ key for key, val in items],
+                    tablefmt="latex"))
+
+        #plt.show()
 main.command()

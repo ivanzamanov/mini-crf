@@ -93,7 +93,7 @@ int resynthesize(Options& opts) {
 
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
   auto concatenation = sws2.get_concatenation(opts);
-  concatenation.write("original.wav");
+  concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
 
   FileData fileData = alphabet_test.file_data_of(input[0]);
   if(opts.has_opt("verbose")) {
@@ -156,19 +156,23 @@ int compare(const Options& opts) {
   ComparisonDetails cmp;
   cmp.fill(w1, w2);
 
-  auto output = CSVOutput<5>(opts.get_opt<std::string>("output", "comparisons.csv"));
+  auto output = CSVOutput<4>(opts.get_opt<std::string>("output", "comparisons.csv"));
   output.all_headers("LogSpectrum",
                      "LogSpectrumCritical",
-                     "SegSNR",
+                     //"SegSNR",
                      "MFCC",
                      "WSS");
   for(auto i = 0u; i < cmp.LogSpectrumValues.size(); i++) {
     output.print(cmp.LogSpectrumValues[i],
                  cmp.LogSpectrumCriticalValues[i],
-                 cmp.SegSNRValues[i],
+                 //cmp.SegSNRValues[i],
                  cmp.MFCCValues[i],
                  cmp.WSSValues[i]);
   }
+  assert(cmp.LogSpectrumValues.size() == cmp.LogSpectrumCriticalValues.size());
+  //assert(cmp.LogSpectrumValues.size() == cmp.SegSNRValues.size());
+  assert(cmp.LogSpectrumValues.size() == cmp.MFCCValues.size());
+  assert(cmp.LogSpectrumValues.size() == cmp.WSSValues.size());
   INFO("Frames: " << cmp.LogSpectrumValues.size());
   return 0;
 }

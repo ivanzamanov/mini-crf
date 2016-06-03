@@ -69,7 +69,7 @@ double compare_MFCC(const Wave& result, const std::vector<FrameFrequencies>& fra
 
 double compare_SegSNR(const Wave& result, const Wave& original,
                       CmpValues* frameVals) {
-  constexpr auto FSize = 512;
+  constexpr auto FSize = FFT_SIZE;
   FrameQueue<FSize> fq1(result),
     fq2(original);
   auto frameCount = 0;
