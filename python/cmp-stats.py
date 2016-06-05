@@ -19,7 +19,7 @@ def main(inputFile):
     with open(inputFile) as f:
         reader = csv.reader(f, delimiter = '\t')
         headers = reader.__next__()[1:]
-        print(headers)
+        #print(headers)
         measures = [ (x, []) for x in headers ]
         rowVals = []
         for row in map(lambda x: map(float, x), reader):
@@ -35,10 +35,11 @@ def main(inputFile):
             vals = [ x[i] for x in rowVals]
             totalValsDict[h] = vals[0]
             valsDict[h] = vals[1:]
-            print(h, len(valsDict[h]), '=', totalValsDict[h])
+            #print(h, len(valsDict[h]), '=', totalValsDict[h])
 
         duration = totalValsDict['FrameStart']
         del totalValsDict['FrameStart']
+        del valsDict['FrameStart']
 
         items = sorted(valsDict.items())
         printStats(items)
