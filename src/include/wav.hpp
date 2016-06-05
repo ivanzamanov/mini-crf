@@ -198,7 +198,7 @@ struct Wave {
     istr.read((char*) data, h.samplesBytes);
   }
 
-  void write(std::string file) {
+  void write(const std::string& file) {
     std::ofstream str(file);
     write(str);
   }

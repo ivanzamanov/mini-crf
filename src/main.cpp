@@ -20,7 +20,6 @@ void print_usage() {
     std::cerr << "--input <input_string>\n";
     std::cerr << "--textgrid <textgrid_output>\n";
     std::cerr << "--phonid (query only)\n";
-    std::cerr << "--sentence (query only)\n";
     std::cerr << "--concat-cost (query only)\n";
     std::cerr << "--verbose\n";
     std::cerr << "synth reads input from the input file path or stdin if - is passed\n";
@@ -30,6 +29,10 @@ stime_t get_total_duration(const std::vector<PhonemeInstance>& input) {
   stime_t result = 0;
   for(auto p : input) result += p.duration;
   return result;
+}
+
+Corpus& get_corpus(const Options& opts) {
+  return opts.has_opt("eval") ? corpus_eval : corpus_test;
 }
 
 void outputStats(CRF::Values& lambda,
@@ -55,17 +58,13 @@ int resynthesize(Options& opts) {
   crf.set("trans-mfcc", opts.get_opt<double>("trans-mfcc", 0));
   crf.set("trans-ctx", opts.get_opt<double>("trans-ctx", 0));
 
-  unsigned index = util::parse<int>(opts.input);
-  bool eval = opts.has_opt("eval");
-  Corpus& corpus = (eval ? corpus_eval : corpus_test);
+  auto index = util::parse<unsigned>(opts.input);
+  auto corpus = get_corpus(opts);
   assert(index < corpus.size());
   std::vector<PhonemeInstance> input = corpus.input(index);
 
-  std::string sentence_string = gridsearch::to_text_string(input);
   INFO("Input file: " << alphabet_test.file_data_of(input[0]).file);
   INFO("Total duration: " << get_total_duration(input));
-  INFO("Input: " << sentence_string);
-
   INFO("Original cost: " << concat_cost(input, crf, crf.lambda, input));
 
   std::vector<int> path;
@@ -87,9 +86,7 @@ int resynthesize(Options& opts) {
   auto sws = SpeechWaveSynthesis(output, input, crf.alphabet());
   Wave outputSignal = sws.get_resynthesis(opts);
 
-  std::string outputFile = opts.get_opt<std::string>("output", "resynth.wav");
-  std::ofstream wav_output(outputFile);
-  outputSignal.write(wav_output);
+  outputSignal.write(opts.get_opt<std::string>("output", "resynth.wav"));
 
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
   auto concatenation = sws2.get_concatenation(opts);
@@ -109,15 +106,12 @@ int resynthesize(Options& opts) {
 }
 
 int baseline(const Options& opts) {
-  unsigned index = opts.get_opt<int>("input", 0);
-  bool eval = opts.has_opt("eval");
-  Corpus& corpus = (eval ? corpus_eval : corpus_test);
+  auto index = opts.get_opt<unsigned>("input", 0);
+  auto corpus = get_corpus(opts);
   std::vector<PhonemeInstance> input = corpus.input(index);
 
-  std::string sentence_string = gridsearch::to_text_string(input);
-  std::cerr << "Input file: " << alphabet_test.file_data_of(input[0]).file << std::endl;
-  std::cerr << "Total duration: " << get_total_duration(input) << std::endl;
-  std::cerr << "Input: " << sentence_string << '\n';
+  INFO("Input file: " << alphabet_test.file_data_of(input[0]).file);
+  INFO("Total duration: " << get_total_duration(input));
 
   std::vector<int> path;
   baseline_crf.lambda[0] = 1;
@@ -128,9 +122,8 @@ int baseline(const Options& opts) {
 
   Wave outputSignal = SpeechWaveSynthesis(output, input, baseline_crf.alphabet())
     .get_resynthesis_td();
-  std::string outputFile = opts.get_opt<std::string>("output", "baseline.wav");
-  std::ofstream wav_output(outputFile);
-  outputSignal.write(wav_output);
+  outputSignal.write(opts.get_opt<std::string>("output", "baseline.wav"));
+
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
   auto concatenation = sws2.get_concatenation(opts);
   concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
@@ -199,8 +192,7 @@ int psola(const Options& opts) {
   if(input.size() > 1)
     phonemeInput = alphabet_test.to_phonemes(input);
   else {
-    bool eval = opts.has_opt("eval");
-    Corpus& corpus = (eval ? corpus_eval : corpus_test);
+    Corpus& corpus = get_corpus(opts);
     phonemeInput = corpus.input(input[0]);
     INFO("Input file: " << alphabet_test.file_data_of(phonemeInput[0]).file);
   }
@@ -210,10 +202,7 @@ int psola(const Options& opts) {
   auto original = sws.get_concatenation(opts);
   original.write("original.wav");
 
-  auto outputFile = opts.get_opt<std::string>("output", "psola.wav");
-  std::ofstream wav_output(outputFile);
-  outputSignal.write(wav_output);
-
+  outputSignal.write(opts.get_opt<std::string>("output", "psola.wav"));
   return 0;
 }
 
@@ -234,9 +223,7 @@ int couple(const Options& opts) {
 
   auto outputSignal = SpeechWaveSynthesis(phonemeInput, phonemeInput, crf.alphabet())
     .get_coupling(opts);
-  auto outputFile = opts.get_opt<std::string>("output", "coupled.wav");
-  std::ofstream wav_output(outputFile);
-  outputSignal.write(wav_output);
+  outputSignal.write(opts.get_opt<std::string>("output", "coupled.wav"));
 
   return 0;
 }

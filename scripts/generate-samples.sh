@@ -7,6 +7,7 @@ function generate-samples {
     OUTPUT=$DIR/$MODE-$i.wav
     ORIGINAL=$DIR/original-$i.wav
     ./main-opt --mode $MODE --input $i \
+      $EVAL \
       --output $OUTPUT \
       --original $ORIGINAL < $CONF_FILE
   done

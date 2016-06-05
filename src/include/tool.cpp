@@ -64,11 +64,6 @@ namespace tool {
     baseline_crf.label_alphabet = &alphabet_synth;
     build_data(*opts);
 
-    auto testSize = opts->get_opt<unsigned>("test-corpus-size", 10);
-    for(auto i = testSize; i < corpus_test.size(); i++)
-      corpus_eval.add(corpus_test.input(i), corpus_test.label(i));
-    corpus_test.set_max_size(testSize);
-
     pre_process(alphabet_synth, corpus_synth);
     pre_process(alphabet_test, corpus_test);
   
@@ -77,6 +72,11 @@ namespace tool {
 
     alphabet_test.optimize();
     remap(alphabet_test, corpus_test);
+
+    auto testSize = opts->get_opt<unsigned>("test-corpus-size", 10);
+    for(auto i = testSize; i < corpus_test.size(); i++)
+      corpus_eval.add(corpus_test.input(i), corpus_test.label(i));
+    corpus_test.set_max_size(testSize);
 
     INFO("Synth sequences = " << corpus_synth.size());
     INFO("Test sequences = " << corpus_test.size());
