@@ -37,19 +37,18 @@ function concatenate-comparisons {
 set -e
 set -x
 
-MODE=resynth
-if [ -n "$1" ]; then
-  MODE=$1
+if [ $# -lt 2 ]; then
+  echo "Usage: <cmd> <mode> <conf_file>"
+  echo "Set SUFFIX=<smt> for an output dir suffix"
+  exit 1
 fi
 
-DIR=samples-$MODE
+MODE=$1
+
+DIR=samples-$MODE$SUFFIX
+CONF_FILE=$2
 rm -rf $DIR
 mkdir $DIR
-
-CONF_FILE=../configs/home.conf
-if [ -n "$2" ]; then
-  CONF_FILE=$2
-fi
 
 generate-samples
 generate-comparisons

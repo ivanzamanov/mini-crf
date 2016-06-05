@@ -4,11 +4,10 @@ import scipy.stats as stats
 import math, matplotlib.pyplot as plt
 from tabulate import tabulate as table
 
-colors = np.array([ x for x in 'rgbcmyk'])
 def someColor():
-    global colors
-    colors = np.roll(colors, 1)
-    return colors[0]
+    someColor.colors = np.roll(someColor.colors, 1)
+    return someColor.colors[0]
+someColor.colors = np.array([ x for x in 'rgbcmyk'])
 
 fftSize = 512.0
 sampleRate = 24000.0
@@ -31,24 +30,41 @@ def main(inputFile):
             rowVals.append(row[1:])
 
         valsDict = {}
+        totalValsDict = {}
         for i, h in enumerate(headers):
-            valsDict[h] = [ x[i] for x in rowVals]
-            print(h, len(valsDict[h]))
+            vals = [ x[i] for x in rowVals]
+            totalValsDict[h] = vals[0]
+            valsDict[h] = vals[1:]
+            print(h, len(valsDict[h]), '=', totalValsDict[h])
 
-        for h, v in valsDict.items():
-            plt.plot(range(0, len(v)), v, color=someColor())
-            #print(h, v)
-            vals = np.array(v)
-            print(h, 'mean=', np.mean(vals), 'std=', stats.tstd(vals))
+        duration = totalValsDict['FrameStart']
+        del totalValsDict['FrameStart']
 
         items = sorted(valsDict.items())
-        rows = ([[h] + [
-            stats.pearsonr(v, v2)[0] for a, v2 in items
-        ] for h, v in items])
-
-        print(table(rows,
-                    headers=[ key for key, val in items],
-                    tablefmt="psql"))
+        printStats(items)
+        printCorrelation(items)
 
         #plt.show()
+
+def printStats(items):
+    for h, v in items:
+        plt.plot(range(0, len(v)), v, color=someColor())
+
+    rows = ([
+        [ h, np.mean(vals), np.median(vals), stats.tstd(vals) ] for h, vals in items
+    ])
+    print(table(rows,
+                headers = [ 'mean', 'median', 'std dev' ],
+                tablefmt = "psql"))
+
+def printCorrelation(items):
+    rows = ([[h] + [
+        stats.pearsonr(v, v2)[0] for a, v2 in items
+    ] for h, v in items])
+
+    print(table(rows,
+                headers = [ key for key, val in items],
+                tablefmt = "psql"))
+
+
 main.command()

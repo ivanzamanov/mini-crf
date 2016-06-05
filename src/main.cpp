@@ -163,18 +163,26 @@ int compare(const Options& opts) {
   assert(cmp.LogSpectrumValues.size() == cmp.MFCCValues.size());
   assert(cmp.LogSpectrumValues.size() == cmp.WSSValues.size());
 
-  auto output = CSVOutput<5>(opts.get_opt<std::string>("output", "comparisons.csv"));
+  auto output = CSVOutput<6>(opts.get_opt<std::string>("output", "comparisons.csv"));
   output.all_headers("LogSpectrum",
                      "LogSpectrumCritical",
                      "SegSNR",
                      "MFCC",
-                     "WSS");
+                     "WSS",
+                     "FrameStart");
+  output.print(cmp.LogSpectrum,
+               cmp.LogSpectrumCritical,
+               cmp.SegSNR,
+               cmp.MFCC,
+               cmp.WSS,
+               w2.duration());
   for(auto i = 0u; i < cmp.LogSpectrumValues.size(); i++) {
     output.print(cmp.LogSpectrumValues[i],
                  cmp.LogSpectrumCriticalValues[i],
                  cmp.SegSNRValues[i],
                  cmp.MFCCValues[i],
-                 cmp.WSSValues[i]);
+                 cmp.WSSValues[i],
+                 cmp.times[i]);
   }
   INFO("Frames: " << cmp.LogSpectrumValues.size());
   return 0;

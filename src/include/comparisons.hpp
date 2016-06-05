@@ -23,7 +23,7 @@ struct CmpValues {
   double& operator[](unsigned i) { return v[i]; }
 };
 
-std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave);
+std::vector<FrameFrequencies> toFFTdFrames(const Wave&, CmpValues* = 0);
 
 double compare_LogSpectrum(const Wave&, const std::vector<FrameFrequencies>&, CmpValues* = 0);
 double compare_LogSpectrumCritical(const Wave&, const std::vector<FrameFrequencies>&, CmpValues* = 0);
@@ -121,8 +121,10 @@ struct ComparisonDetails : public Comparisons {
     MFCCValues,
     WSSValues;
 
+  CmpValues times;
+
   void fill(Wave& dist, Wave& original) {
-    auto frames = toFFTdFrames(original);
+    auto frames = toFFTdFrames(original, &times);
     LogSpectrum = compare_LogSpectrum(dist, frames, &LogSpectrumValues);
     LogSpectrumCritical = compare_LogSpectrumCritical(dist, frames, &LogSpectrumCriticalValues);
     SegSNR = compare_SegSNR(dist, original, &SegSNRValues);

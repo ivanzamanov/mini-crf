@@ -177,7 +177,7 @@ double compare_WSS(const Wave& result, const std::vector<FrameFrequencies>& fram
   return compare(frames1, frames2, cmp) / frames1.size();
 }
 
-std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave) {
+std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave, CmpValues* timeVals) {
   double constexpr NORM = std::numeric_limits<short>::max();
   std::vector<FrameFrequencies> result;
   std::valarray<cdouble> buffer(FFT_SIZE);
@@ -199,6 +199,7 @@ std::vector<FrameFrequencies> toFFTdFrames(const Wave& wave) {
     std::copy(std::begin(buffer), std::end(buffer), values.begin());
 
     result.push_back(values);
+    if(timeVals) timeVals->add(wave.toDuration(frameOffset));
   }
   assert(result.size() > 0);
   return result;
