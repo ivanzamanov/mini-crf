@@ -36,8 +36,9 @@ Corpus& get_corpus(const Options& opts) {
 }
 
 void outputStats(CRF::Values& lambda,
-                 CRF::Stats& stats) {
-  CSVOutput<CRF::features::size> csv("path-stats.csv");
+                 CRF::Stats& stats,
+                 const Options& opts) {
+  CSVOutput<CRF::features::size> csv(opts.get_opt<std::string>("path-stats", "path-stats.csv"));
   CRF::Values coefs;
   for(unsigned i = 0; i < PhoneticFeatures::size; i++) {
     csv.header(i, PhoneticFeatures::Names[i]);
@@ -91,7 +92,7 @@ int resynthesize(Options& opts) {
   INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
   INFO("Second best cost: " << costs[1]);
 
-  outputStats(crf.lambda, stats);
+  outputStats(crf.lambda, stats, opts);
   outputPath(opts, output);
 
   auto sws = SpeechWaveSynthesis(output, input, crf.alphabet());

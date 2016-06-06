@@ -177,6 +177,31 @@ void testCrfPathLength1() {
   assertEquals("Element", x[0], best_path[0]);
 }
 
+extern void printGridPoint(std::string file, const Params& params, const TrainingOutputs& result);
+extern std::pair<Params, TrainingOutputs> parseGridPoints(std::string file);
+
+void testGridPrint() {
+  Params params;
+  TrainingOutputs result;
+
+  std::string file = "test-path.txt";
+  printGridPoint(file, params, result);
+  auto pair = parseGridPoints(file);
+
+  Params checkParams = pair.first;
+  TrainingOutputs checkResult = pair.second;
+  for(auto i = 0u; i < params.size(); i++)
+    assert(params[i] == checkParams[i]);
+
+  assert(result.size() == checkResult.size());
+  for(auto i = 0u; i < result.size(); i++) {
+    assert(result[i].path.size() == checkResult[i].path.size());
+    for(auto j = 0u; j < result[i].path.size(); j++) {
+      assert(result[i].path[j] == checkResult[i].path[j]);
+    }
+  }
+}
+
 bool Progress::enabled = true;
 int main() {
   try {

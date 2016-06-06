@@ -182,7 +182,14 @@ bool correlate(const Options&) {
   return true;
 }
 
+int compare_dbs(const Options& opts) {
+  
+}
+
 bool handle(const Options& opts) {
+  if(opts.has_opt("compare-dbs"))
+    return compare_dbs(opts);
+  
   string db_type = opts.get_string("db");
   auto* db = &alphabet_synth;
   if(db_type == string("test"))

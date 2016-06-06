@@ -66,10 +66,11 @@ struct FeatureStats : public std::array<cost, size> {
   }
 };
 
-template<unsigned size>
-struct PathFeatureStats : public std::vector<FeatureStats<size>> {
-  FeatureStats<size>& get(unsigned pos) {
-    std::vector<FeatureStats<size>>::resize(std::max(pos + 1, size));
+template<unsigned Size>
+struct PathFeatureStats : public std::vector<FeatureStats<Size>> {
+  FeatureStats<Size>& get(unsigned pos) {
+    auto newSize = std::max((int) pos + 1, (int) this->size());
+    std::vector<FeatureStats<Size>>::resize(newSize);
     return (*this)[pos];
   }
 };

@@ -402,29 +402,35 @@ namespace gridsearch {
     return bestResult;
   }
 
+  template<class Params>
   struct TrainingFunction {
     TrainingFunction(std::vector< std::vector<FrameFrequencies> >& precomputed,
                      ThreadPool& tp,
                      Ranges& ranges,
-                     const CRF::Values& norms)
+                     const CRF::Values& norms,
+                     const Options& opts)
       : precomputed(precomputed),
         tp(tp),
         ranges(ranges),
         norms(norms)
-    { }
+    {
+      printOnly = opts.has_opt("grid-only");
+      printOutput = opts.get_opt<std::string>("grid-output", "grid-output.csv");
+    }
 
     std::vector< std::vector<FrameFrequencies> > & precomputed;
     ThreadPool& tp;
     Ranges& ranges;
     CRF::Values norms;
+    bool printOnly;
+    std::string printOutput;
 
-    template<class Params>
     void set_params(const Params& params) const {
       for(auto i = 0u; i < ranges.size(); i++)
         crf.set(ranges[i].feature, params[i] / norms[i]);
     }
 
-    template<class TaskParams, class Params>
+    template<class TaskParams>
     TrainingOutputs get_outputs(TaskParams& taskParams, const Params& params) const {
       TrainingOutputs outputs;
       std::for_each(taskParams.begin(), taskParams.end(), [&](ResynthParams& p) {
@@ -446,7 +452,7 @@ namespace gridsearch {
       return outputs;
     }
 
-    template<class Params, class Func>
+    template<class Func>
     TrainingOutputs findMinOrMax(const Params& params, Func f, bool compare=true) const {
       set_params(params);
       auto count = corpus_test.size();
@@ -461,18 +467,56 @@ namespace gridsearch {
       return get_outputs(taskParams, params);
     }
 
-    template<class Params>
     cost costOf(const std::vector<int>& path, const Params& params, int index) {
       auto phons = crf.alphabet().to_phonemes(path);
       set_params(params);
       return concat_cost<CRF>(phons, crf, crf.lambda, corpus_test.input(index));
     }
 
-    template<class Params>
     TrainingOutputs operator()(const Params& params, bool compare=true) const {
-      return findMinOrMax(params, findPaths<MinPathFindFunctions>, compare);
+      auto result = findMinOrMax(params, findPaths<MinPathFindFunctions>, compare);
+      if(compare && printOnly) {
+        printGridPoint(printOutput, params, result);
+      }
+      return result;
     }
   };
+
+  void printGridPoint(std::string file, const Params& params, const TrainingOutputs& result) {
+    std::ofstream s(file, std::ofstream::app);
+    s << "point= ";
+    for(auto p : params)
+      s << " " << p;
+    s << " " << result.size();
+    for(auto& to : result) {
+      s << to.path.size();
+      for(auto i : to.path)
+        s << " " << i;
+    }
+  }
+
+  std::pair<Params, TrainingOutputs> parseGridPoints(std::string file) {
+    std::ifstream s(file);
+    Params params = make_params();
+    TrainingOutputs outputs;
+    while(s) {
+      std::string buf;
+      s >> buf;
+      assert(buf == "point=");
+      for(auto& p : params)
+        s >> p;
+      unsigned count;
+      s >> count;
+      outputs.resize(count);
+      for(auto& p : outputs) {
+        unsigned size; s >> size;
+        p.path.resize(size);
+        for(auto i : p.path)
+          s >> i;
+      }
+    }
+    return std::make_pair(params, outputs);
+  }
 
   int train(const Options& opts) {
     Progress::enabled = false;
@@ -519,7 +563,7 @@ namespace gridsearch {
     precomputeFrames(precompFrames, tp);
     INFO("Done");
 
-    auto Function = TrainingFunction(precompFrames, tp, ranges, norms);
+    auto Function = TrainingFunction<Params>(precompFrames, tp, ranges, norms, opts);
 
     auto searchAlgo = BruteSearch(opts.get_opt<unsigned>("training-passes", 3));
     //auto searchAlgo = DescentSearch();
