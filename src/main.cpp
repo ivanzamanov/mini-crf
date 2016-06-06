@@ -49,6 +49,16 @@ void outputStats(CRF::Values& lambda,
     csv << s;
 }
 
+void outputPath(const Options& opts,
+                const std::vector<PhonemeInstance>& output) {
+  auto file = opts.get_opt<std::string>("path", "");
+  if(file == "") return;
+  CSVOutput<1> os(file);
+  os.all_headers("id");
+  for(auto& p : output)
+    os.print(p.old_id);
+}
+
 int resynthesize(Options& opts) {
   crf.set("state-pitch", opts.get_opt<double>("state-pitch", 0));
   crf.set("state-duration", opts.get_opt<double>("state-duration", 0));
@@ -82,6 +92,7 @@ int resynthesize(Options& opts) {
   INFO("Second best cost: " << costs[1]);
 
   outputStats(crf.lambda, stats);
+  outputPath(opts, output);
 
   auto sws = SpeechWaveSynthesis(output, input, crf.alphabet());
   Wave outputSignal = sws.get_resynthesis(opts);

@@ -15,7 +15,9 @@ timeStep = 0.01
 frameTimeStep = sampleRate / fftSize
 
 @command()
-def main(inputFile):
+def main(inputFile,
+         mean = ('m', False, ''),
+         corr = ('c', False, '')):
     with open(inputFile) as f:
         reader = csv.reader(f, delimiter = '\t')
         headers = reader.__next__()[1:]
@@ -42,8 +44,8 @@ def main(inputFile):
         del valsDict['FrameStart']
 
         items = sorted(valsDict.items())
-        printStats(items)
-        printCorrelation(items)
+        if mean: printStats(items)
+        if corr: printCorrelation(items)
 
         #plt.show()
 
