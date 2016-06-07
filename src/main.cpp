@@ -104,7 +104,6 @@ int resynthesize(Options& opts) {
   auto concatenation = sws2.get_concatenation(opts);
   concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
 
-  FileData fileData = alphabet_test.file_data_of(input[0]);
   if(opts.has_opt("verbose")) {
     Comparisons cmp;
     cmp.fill(concatenation, outputSignal);

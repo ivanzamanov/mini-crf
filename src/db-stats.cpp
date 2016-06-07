@@ -186,7 +186,19 @@ int compare_dbs(const Options& opts) {
   
 }
 
+int print_db_files(const Options&) {
+  INFO("TestDB:");
+  for(auto& fd : alphabet_test.files)
+    INFO(fd.file);
+  INFO("SynthDB:");
+  for(auto& fd : alphabet_synth.files)
+    INFO(fd.file);
+  return 0;
+}
+
 bool handle(const Options& opts) {
+  if(opts.has_opt("print-db-files"))
+    return print_db_files(opts);
   if(opts.has_opt("compare-dbs"))
     return compare_dbs(opts);
   

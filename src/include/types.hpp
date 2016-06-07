@@ -90,6 +90,10 @@ struct FileData {
   }
 
   std::vector<double> pitch_marks;
+
+  std::string get_file() const {
+    return file;
+  }
   std::string file;
 
   bool operator==(const FileData& o) const {

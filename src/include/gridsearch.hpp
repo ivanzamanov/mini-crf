@@ -7,6 +7,7 @@
 #include"options.hpp"
 #include"speech_mod.hpp"
 #include"comparisons.hpp"
+#include"features.hpp"
 
 namespace gridsearch {
 
@@ -81,5 +82,15 @@ namespace gridsearch {
 
   std::string to_text_string(const std::vector<PhonemeInstance>& vec);
   int train(const Options& opts);
+
+  typedef std::valarray<coefficient> Params;
+  static constexpr auto FC = PhoneticFeatures::size;
+  struct ParamsFactory {
+    static Params make() {
+      return Params(FC);
+    }
+  };
+  typedef std::vector< std::pair<Params, TrainingOutputs> > GridPoints;
 }
+
 #endif

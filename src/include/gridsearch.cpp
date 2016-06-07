@@ -10,15 +10,10 @@
 #include"crf.hpp"
 #include"tool.hpp"
 
+using namespace gridsearch;
+
 static std::string METRIC = "MFCC";
 static int MAX_PER_DELTA = 100;
-
-static constexpr auto FC = PhoneticFeatures::size;
-typedef std::valarray<coefficient> Params;
-
-Params make_params() {
-  return Params(FC);
-}
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -42,6 +37,47 @@ struct Range {
   }
 };
 typedef std::array<Range, FC> Ranges;
+
+void printGridPoint(std::string file, const Params& params, const TrainingOutputs& result) {
+  std::ofstream s(file, std::ofstream::app);
+  s << "point=";
+  for(auto p : params)
+    s << " " << p;
+  s << " " << (unsigned) result.size() << " ";
+  for(auto& to : result) {
+    s << to.path.size();
+    for(auto i : to.path)
+      s << " " << i;
+    s << "\n";
+  }
+}
+
+GridPoints parseGridPoints(std::string file) {
+  std::ifstream s(file);
+  GridPoints result;
+  while(s) {
+    Params params = ParamsFactory::make();
+    TrainingOutputs outputs;
+    std::string buf;
+    s >> buf;
+    if(!s)
+      continue;
+    assert(buf == "point=");
+    for(auto& p : params)
+      s >> p;
+    unsigned count;
+    s >> count;
+    outputs.resize(count);
+    for(auto& p : outputs) {
+      unsigned size; s >> size;
+      p.path.resize(size);
+      for(auto& i : p.path)
+        s >> i;
+    }
+    result.emplace_back(std::make_pair(params, outputs));
+  }
+  return result;
+}
 
 namespace gridsearch {
 
@@ -139,9 +175,9 @@ namespace gridsearch {
 
     auto params = new FFTPrecomputeParams[count];
     for(auto i = 0u; i < count; i++) {
-      FileData fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
+      auto fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
 
-      params[i].init(i, &flags[i], fileData.file, &precompFrames);
+      params[i].init(i, &flags[i], fileData.get_file(), &precompFrames);
 
       tp.add_task(new ParamTask<FFTPrecomputeParams>(&precomputeSingleFrames, &params[i]));
     }
@@ -370,10 +406,10 @@ namespace gridsearch {
                      Function& f,
                      Ranges& ranges,
                      int maxIterations) {
-    Params current = make_params(),
-      bestParams = make_params(),
-      delta = make_params(),
-      p_delta = make_params();
+    Params current = ParamsFactory::make(),
+      bestParams = ParamsFactory::make(),
+      delta = ParamsFactory::make(),
+      p_delta = ParamsFactory::make();
 
     auto iteration = 1;
     LOG(" --- Iteration " << iteration++);
@@ -481,42 +517,6 @@ namespace gridsearch {
       return result;
     }
   };
-
-  void printGridPoint(std::string file, const Params& params, const TrainingOutputs& result) {
-    std::ofstream s(file, std::ofstream::app);
-    s << "point= ";
-    for(auto p : params)
-      s << " " << p;
-    s << " " << result.size();
-    for(auto& to : result) {
-      s << to.path.size();
-      for(auto i : to.path)
-        s << " " << i;
-    }
-  }
-
-  std::pair<Params, TrainingOutputs> parseGridPoints(std::string file) {
-    std::ifstream s(file);
-    Params params = make_params();
-    TrainingOutputs outputs;
-    while(s) {
-      std::string buf;
-      s >> buf;
-      assert(buf == "point=");
-      for(auto& p : params)
-        s >> p;
-      unsigned count;
-      s >> count;
-      outputs.resize(count);
-      for(auto& p : outputs) {
-        unsigned size; s >> size;
-        p.path.resize(size);
-        for(auto i : p.path)
-          s >> i;
-      }
-    }
-    return std::make_pair(params, outputs);
-  }
 
   int train(const Options& opts) {
     Progress::enabled = false;

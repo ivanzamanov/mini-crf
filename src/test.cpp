@@ -7,6 +7,8 @@
 #include"speech_synthesis.hpp"
 #include"crf.hpp"
 
+using namespace gridsearch;
+
 struct TestObject {
   TestObject() { };
   explicit TestObject(int l): label(l), id(l) { }
@@ -178,26 +180,40 @@ void testCrfPathLength1() {
 }
 
 extern void printGridPoint(std::string file, const Params& params, const TrainingOutputs& result);
-extern std::pair<Params, TrainingOutputs> parseGridPoints(std::string file);
+extern GridPoints parseGridPoints(std::string file);
 
 void testGridPrint() {
-  Params params;
+  Params params = ParamsFactory::make();
+  for(auto i = 0u; i < params.size(); i++)
+    params[i] = i;
   TrainingOutputs result;
+  TrainingOutput to1, to2;
+  to1.path = {{ 10, 20, 30}};
+  to2.path = {{ 40, 50, 60}};
+
+  result.resize(2);
+  result[0] = to1;
+  result[1] = to2;
 
   std::string file = "test-path.txt";
+  std::ofstream(file).close();
   printGridPoint(file, params, result);
-  auto pair = parseGridPoints(file);
+  printGridPoint(file, params, result);
+  auto points = parseGridPoints(file);
+  assertEquals(2ul, points.size());
 
-  Params checkParams = pair.first;
-  TrainingOutputs checkResult = pair.second;
-  for(auto i = 0u; i < params.size(); i++)
-    assert(params[i] == checkParams[i]);
+  for(auto& pair : points) {
+    Params checkParams = pair.first;
+    TrainingOutputs checkResult = pair.second;
+    for(auto i = 0u; i < params.size(); i++)
+      assertEquals(params[i], checkParams[i]);
 
-  assert(result.size() == checkResult.size());
-  for(auto i = 0u; i < result.size(); i++) {
-    assert(result[i].path.size() == checkResult[i].path.size());
-    for(auto j = 0u; j < result[i].path.size(); j++) {
-      assert(result[i].path[j] == checkResult[i].path[j]);
+    assertEquals(result.size(), checkResult.size());
+    for(auto i = 0u; i < result.size(); i++) {
+      assertEquals(result[i].path.size(), checkResult[i].path.size());
+      for(auto j = 0u; j < result[i].path.size(); j++) {
+        assertEquals(result[i].path[j], checkResult[i].path[j]);
+      }
     }
   }
 }
@@ -205,6 +221,7 @@ void testGridPrint() {
 bool Progress::enabled = true;
 int main() {
   try {
+    testGridPrint();
     testUtils();
     testCrfPathLength1();
     testCrfSecondBestPath();

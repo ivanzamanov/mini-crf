@@ -79,7 +79,7 @@ void compare_labels(StringLabelProvider& p1, StringLabelProvider& p2) {
 void validate_data(std::ifstream& input) {
   std::cout << "Alphabet size: " << alphabet.size() << std::endl;
   std::cout << "Corpus size: " << corpus.size() << std::endl;
-  
+
   Corpus n_corpus;
   PhonemeAlphabet n_alphabet;
   StringLabelProvider n_provider;
@@ -90,7 +90,7 @@ void validate_data(std::ifstream& input) {
   compare_corpus(corpus, n_corpus);
   compare_alphabet(alphabet, n_alphabet);
   compare_labels(provider, n_provider);
-  
+
   std::cout << "Bin alphabet size: " << n_alphabet.size() << std::endl;
   std::cout << "Bin corpus size: " << n_corpus.size() << std::endl;
 }

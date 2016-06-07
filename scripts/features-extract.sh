@@ -49,6 +49,8 @@ do
         GRIDS=`expr $GRIDS + 1`
     fi
 done | sort | xargs -P 8 -n $N_PARAMS -t $EXTRACTOR_SCRIPT
+cat $FILES_LIST | sort > sorted
+mv sorted $FILES_LIST
 
 echo "WAVS: $WAVS"
 echo "Grids: $GRIDS"

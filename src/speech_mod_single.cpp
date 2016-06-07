@@ -22,7 +22,7 @@ void resynth(int argc, const char** argv) {
   for(auto phonId : inputIds) {
     auto pi = alphabet_synth.fromInt(phonId);
     input.push_back(pi);
-    FileData fileData = alphabet_synth.file_data_of(pi);
+    auto fileData = alphabet_synth.file_data_of(pi);
     std::cerr << "Input: " << fileData.file << std::endl;
     std::cerr << "Label: " << labels_synth.convert(pi.label) << std::endl;
     std::cerr << "Start: " << pi.start << std::endl;
