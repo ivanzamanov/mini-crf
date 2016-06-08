@@ -53,6 +53,7 @@ void printGridPoint(std::string file, const Params& params, const TrainingOutput
 }
 
 GridPoints parseGridPoints(std::string file) {
+  assert(file != "");
   std::ifstream s(file);
   GridPoints result;
   while(s) {
@@ -103,6 +104,16 @@ namespace gridsearch {
     auto& frames = *(params->precompFrames);
 
     return Comparisons::compare(resultSignal, frames[index], METRIC);
+  }
+
+  void compareOnly(ResynthParams* params) {
+    auto index = params->index;
+    const auto& input = corpus_test.input(index);
+
+    std::vector<int> output = params->result.path;
+    assert(output.size());
+    params->result.cmp = doCompare(params, input, output);
+    *(params->flag) = true;
   }
 
   template<class Functions>
@@ -488,6 +499,20 @@ namespace gridsearch {
       return outputs;
     }
 
+    TrainingOutputs compareOnlyTask(const TrainingOutputs& outputs, const Params& params) {
+      auto count = outputs.size();
+      bool flags[count];
+      std::fill(flags, flags + count, 0);
+      auto taskParams = std::vector<ResynthParams>(count);
+      for(auto i = 0u; i < count; i++) {
+        taskParams[i].init(i, &flags[i], &precomputed, true);
+        taskParams[i].result.path = outputs[i].path;
+        tp.add_task(new ParamTask<ResynthParams>(compareOnly, &taskParams[i]));
+      }
+      wait_done(flags, count);
+      return get_outputs(taskParams, params);
+    }
+
     template<class Func>
     TrainingOutputs findMinOrMax(const Params& params, Func f, bool compare=true) const {
       set_params(params);
@@ -567,13 +592,38 @@ namespace gridsearch {
 
     auto searchAlgo = BruteSearch(opts.get_opt<unsigned>("training-passes", 3));
     //auto searchAlgo = DescentSearch();
-    auto result = descentSearch(searchAlgo, Function, ranges,
-                                opts.get_opt<int>("max-iterations", 9999999));
+    if(!opts.has_opt("grid-input")) {
+      auto result = descentSearch(searchAlgo, Function, ranges,
+                                  opts.get_opt<int>("max-iterations", 9999999));
+      INFO("Value: " << result);
+    } else {
+      auto points = parseGridPoints(opts.get_opt<std::string>("grid-input", ""));
+      Params bestParams = ParamsFactory::make();
+      auto bestResult = 100000000000000.0;
+
+      auto iteration = 1;
+      for(auto& pair : points) {
+        LOG(" --- Iteration " << iteration++);
+        Params current = pair.first;
+        TrainingOutputs outputs = pair.second;
+        for(auto i = 0u; i < ranges.size(); i++)
+          LOG(ranges[i].feature << "=" << current[i]);
+
+        auto result = Function.compareOnlyTask(outputs, current).value();
+        if(result < bestResult) {
+          bestResult = result;
+          bestParams = current;
+          LOG(" --- Value " << result);
+          for(auto i = 0u; i < ranges.size(); i++)
+            ranges[i].current = bestParams[i];
+        }
+        INFO("Value: " << bestResult);
+      }
+    }
 
     INFO("Best at: ");
     for(auto& r : ranges)
       LOG(r.feature << "=" << r.current);
-    INFO("Value: " << result);
 
     return 0;
   }
