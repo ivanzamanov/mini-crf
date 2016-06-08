@@ -457,6 +457,13 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
   /*INFO("duration: " << source.duration() << " -> " << dest.duration());
     INFO("first mark: " << dest.toDuration(firstMark));*/
 
+  auto getPitchPeriod = [&](const PitchRange& pitch, int dMark, int sourcePeriod) {
+    auto p = pitch.at(dMark);
+    if(p == -1)
+      return sourcePeriod;
+    return dest.toSamples(1 / pitch.at(dMark));
+  };
+
   //static int X = 0;
   while (sMarkIndex < sourceMarks.size() - 1) {
     auto sMark = sourceMarks[sMarkIndex];
@@ -471,7 +478,7 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
 
       auto destPeriod = voiceless
         ? limits.voicelessSamplesCopy
-        : dest.toSamples(1 / pitch.at(dMark));
+        : getPitchPeriod(pitch, dMark, sourcePeriod);
 
       overlapAddAroundMark(source, sMark, dest, dMark,
                            sourcePeriod, sourcePeriod);

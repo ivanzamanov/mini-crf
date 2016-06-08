@@ -58,6 +58,13 @@ struct PitchRange {
   }
 
   frequency at(int index) const {
+    if(left == 0 && right == 0)
+      return -1;
+    if(left == 0)
+      return right;
+    if(right == 0)
+      return left;
+
     double c = (index - offset); // centered
     if(c < 0)
       return at(0);

@@ -12,7 +12,8 @@ struct Pitch {
   static const bool is_state = false;
   cost operator()(const PhonemeInstance& prev,
                   const PhonemeInstance& next) const {
-    return std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
+    auto v = std::abs(prev.pitch_contour[1] - next.pitch_contour[0]);
+    return v;
   }
 };
 
@@ -66,7 +67,8 @@ struct PitchState {
   static const bool is_state = true;
   cost operator()(const PhonemeInstance& x,
                   const PhonemeInstance& y) const {
-    return x.pitch_contour.diff(y.pitch_contour);
+    auto v = x.pitch_contour.diff(y.pitch_contour);
+    return v;
   }
 };
 

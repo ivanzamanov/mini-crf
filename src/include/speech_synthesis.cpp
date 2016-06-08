@@ -85,6 +85,7 @@ void tool::build_data_bin(std::istream& input, PhonemeAlphabet& alphabet, Corpus
 }
 
 static void smear_pitch(PhonemeInstance& phi, frequency& last_pitch) {
+  return;
   frequency& f1 = phi.frames[0].pitch;
   frequency& f2 = phi.frames[1].pitch;
   if(f1 == 0 && f2 == 0)

@@ -13,8 +13,8 @@ template<bool _log>
 PitchContour to_pitch_contour(const PhonemeInstance& p) {
   PitchContour result;
   if(_log) {
-    result[0] = std::log(p.first().pitch);
-    result[1] = std::log(p.last().pitch);
+    result[0] = std::log(std::max(p.first().pitch, 1.0));
+    result[1] = std::log(std::max(p.last().pitch, 1.0));
   } else {
     result[0] = p.first().pitch;
     result[1] = p.last().pitch;
