@@ -26,6 +26,8 @@ EXE="$(which praat) --run"
 EXE_EXTR=$(dirname $0)/praat/py-extract.py
 
 #CMD="$EXE $PRAAT_SCRIPT $WAV_FILE $TEXT_GRID $OUTPUT_FILE $LARYNGOGRAPH"
+cp $PRAAT_SCRIPT .
+PRAAT_SCRIPT=`basename $PRAAT_SCRIPT`
 CMD="$EXE $PRAAT_SCRIPT $WAV_FILE $TEXT_GRID $LARYNGOGRAPH"
 echo "Exec: $CMD"
 #echo "Script: $PRAAT_SCRIPT, WAVE: $WAV_FILE, TextGrid: $TEXT_GRID, Output: $OUTPUT_FILE"
