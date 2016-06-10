@@ -35,10 +35,11 @@ Corpus& get_corpus(const Options& opts) {
   return opts.has_opt("eval") ? corpus_eval : corpus_test;
 }
 
-void outputStats(CRF::Values& lambda,
+void outputStats(const std::string prefix,
+                 CRF::Values& lambda,
                  CRF::Stats& stats,
                  const Options& opts) {
-  CSVOutput<CRF::features::size> csv(opts.get_opt<std::string>("path-stats", "path-stats.csv"));
+  CSVOutput<CRF::features::size> csv(prefix + opts.get_opt<std::string>("path-stats", "path-stats.csv"));
   CRF::Values coefs;
   for(unsigned i = 0; i < PhoneticFeatures::size; i++) {
     csv.header(i, PhoneticFeatures::Names[i]);
@@ -50,17 +51,28 @@ void outputStats(CRF::Values& lambda,
     csv << s;
 }
 
-void outputPath(const Options& opts,
-                const std::vector<PhonemeInstance>& output) {
-  auto file = opts.get_opt<std::string>("path", "");
+void outputPath(const std::string prefix,
+                const Options& opts,
+                const std::vector<PhonemeInstance>& output,
+                const std::vector<PhonemeInstance>& input) {
+  auto file = prefix + opts.get_opt<std::string>("path", "path.csv");
   if(file == "") return;
-  CSVOutput<1> os(file);
-  os.all_headers("id");
-  for(auto& p : output)
-    os.print(p.old_id);
+  CSVOutput<7> os(file);
+  os.all_headers("id", "duration", "i_duration",
+                 "pitch_l", "pitch_r",
+                 "i_pitch_l", "i_pitch_r");
+  for(auto k = 0u; k < input.size(); k++) {
+    auto& o = output[k];
+    auto& i = input[k];
+    os.print(o.old_id,
+             o.duration, i.duration,
+             o.pitch_contour_original[0], o.pitch_contour_original[1],
+             i.pitch_contour_original[0], i.pitch_contour_original[1]
+             );
+  }
 }
 
-int resynthesize(Options& opts) {
+void readCoefOptions(const Options& opts) {
   crf.set("state-pitch", opts.get_opt<double>("state-pitch", 0));
   crf.set("state-duration", opts.get_opt<double>("state-duration", 0));
   crf.set("state-energy", opts.get_opt<double>("state-energy", 0));
@@ -68,6 +80,10 @@ int resynthesize(Options& opts) {
   crf.set("trans-pitch", opts.get_opt<double>("trans-pitch", 0));
   crf.set("trans-mfcc", opts.get_opt<double>("trans-mfcc", 0));
   crf.set("trans-ctx", opts.get_opt<double>("trans-ctx", 0));
+}
+
+int resynthesize(Options& opts) {
+  readCoefOptions(opts);
 
   auto index = util::parse<unsigned>(opts.input);
   auto corpus = get_corpus(opts);
@@ -92,8 +108,8 @@ int resynthesize(Options& opts) {
   INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
   INFO("Second best cost: " << costs[1]);
 
-  outputStats(crf.lambda, stats, opts);
-  outputPath(opts, output);
+  outputStats("resynth-", crf.lambda, stats, opts);
+  outputPath("resynth-", opts, output, input);
 
   auto sws = SpeechWaveSynthesis(output, input, crf.alphabet());
   Wave outputSignal = sws.get_resynthesis(opts);
@@ -117,6 +133,8 @@ int resynthesize(Options& opts) {
 }
 
 int baseline(const Options& opts) {
+  readCoefOptions(opts);
+
   auto index = opts.get_opt<unsigned>("input", 0);
   auto corpus = get_corpus(opts);
   std::vector<PhonemeInstance> input = corpus.input(index);
@@ -138,6 +156,12 @@ int baseline(const Options& opts) {
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
   auto concatenation = sws2.get_concatenation(opts);
   concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
+
+  CRF::Stats stats;
+  INFO("Baseline cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
+  outputStats("baseline-", crf.lambda, stats, opts);
+  outputPath("baseline-", opts, output, input);
+
   if(opts.has_opt("verbose")) {
     auto sws = SpeechWaveSynthesis(input, input, alphabet_test);
     auto concatenation = sws.get_concatenation(opts);

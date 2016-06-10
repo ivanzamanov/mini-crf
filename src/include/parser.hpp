@@ -9,12 +9,19 @@
 #include"matrix.hpp"
 #include"util.hpp"
 
+template<class F>
+F takeLog(F val) {
+  if(val == 0)
+    return 0;
+  return std::log(val);
+}
+
 template<bool _log>
 PitchContour to_pitch_contour(const PhonemeInstance& p) {
   PitchContour result;
   if(_log) {
-    result[0] = std::log(std::max(p.first().pitch, 1.0));
-    result[1] = std::log(std::max(p.last().pitch, 1.0));
+    result[0] = takeLog(p.first().pitch);
+    result[1] = takeLog(p.last().pitch);
   } else {
     result[0] = p.first().pitch;
     result[1] = p.last().pitch;

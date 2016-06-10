@@ -80,6 +80,17 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const 
       };
 }
 
+static vector<stime_t> findPitchMarks(const vector<stime_t>& marks,
+                                      stime_t start, stime_t end) {
+  vector<stime_t> result;
+  for(auto mark : marks) {
+    // Omit boundaries on purpose
+    if(mark > start && mark < end)
+      result.push_back(mark - start);
+  }
+  return result;
+}
+
 static int readSourceData(SpeechWaveSynthesis& w, std::vector<SpeechWaveData>& destParts) {
   int result = 0, i = 0;
   // TODO: possibly avoid reading a file multiple times...
@@ -95,11 +106,9 @@ static int readSourceData(SpeechWaveSynthesis& w, std::vector<SpeechWaveData>& d
     part.init(wav, p.start, p.end);
 
     // copy pitch marks, translating to part-local sample
-    for(auto mark : fileData.pitch_marks) {
-      // Omit boundaries on purpose
-      if(mark > p.start && mark < p.end)
-        part.marks.push_back(wav.toSamples(mark - p.start));
-    }
+    auto marks = findPitchMarks(fileData.pitch_marks, p.start, p.end);
+    for(auto mark : marks)
+      part.marks.push_back(wav.toSamples(mark));
 
     destParts[i] = part;
     i++;
@@ -369,7 +378,9 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
 
     scaledPieces[i] = SpeechWaveData::allocate(target[i].duration, dest.sampleRate);
     PRINT_SCALE(i << ": duration = " << p.duration() / scaledPieces[i].duration());
+
     lastMark = scaleToPitchAndDuration(scaledPieces[i], p, pitch, lastMark, i);
+
     //INFO("last mark: " << scaledPieces[i].toDuration(lastMark));
     lastMark -= scaledPieces[i].length;
     assert(lastMark >= 0);
@@ -461,7 +472,7 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
     auto p = pitch.at(dMark);
     if(p == -1)
       return sourcePeriod;
-    return dest.toSamples(1 / pitch.at(dMark));
+    return dest.toSamples(1 / p);
   };
 
   //static int X = 0;
@@ -469,14 +480,14 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
     auto sMark = sourceMarks[sMarkIndex];
     auto scaledSMark = sourceMarks[sMarkIndex + 1] * scale;
 
-    bool voiceless = isVoicelessFlags[sMarkIndex];
+    bool voicelessSource = isVoicelessFlags[sMarkIndex];
 
     while(dMark < scaledSMark) {
-      int sourcePeriod = voiceless
+      int sourcePeriod = voicelessSource
         ? limits.voicelessSamplesCopy
         : getPeriodOfMark(sMarkIndex, sourceMarks);
 
-      auto destPeriod = voiceless
+      auto destPeriod = voicelessSource
         ? limits.voicelessSamplesCopy
         : getPitchPeriod(pitch, dMark, sourcePeriod);
 
