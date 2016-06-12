@@ -14,6 +14,8 @@ using namespace gridsearch;
 
 static std::string METRIC = "MFCC";
 static int MAX_PER_DELTA = 100;
+static int MAX_SEARCH_ITS = 10;
+static double SEARCH_RATIO = 0.1;
 
 struct Range {
   Range(): Range("", 0, 0, 1) { }
@@ -221,13 +223,12 @@ namespace gridsearch {
       INFO("Searching k in " << bottom << " " << top << ":");
 
       auto searchIn = [](double bottom, double top) {
-        return (bottom + top) / 2;
+        return bottom + (top - bottom) * SEARCH_RATIO;
       };
       auto currentK = searchIn(bottom, top);
       TrainingOutputs outputAtCurrentK;
-      auto constexpr MAX_ITS = 20;
-      auto i = 0u;
-      while (i++ < MAX_ITS && std::abs(top - bottom) >= Epsilon) {
+      auto i = 0;
+      while (i++ < MAX_SEARCH_ITS && std::abs(top - bottom) >= Epsilon) {
         currentK = searchIn(bottom, top);
         outputAtCurrentK = f(current + currentK * delta, false);
 
@@ -552,6 +553,9 @@ namespace gridsearch {
 
     METRIC = opts.get_opt<std::string>("metric", "MFCC");
     MAX_PER_DELTA = opts.get_opt<unsigned>("max-per-delta", 100);
+    MAX_SEARCH_ITS = opts.get_opt<unsigned>("max-search-its", 10);
+    SEARCH_RATIO = opts.get_opt<double>("search-ratio", 0.1);
+
     //#pragma omp parallel for
     ThreadPool tp(opts.get_opt<int>("thread-count", 8));
     if (tp.initialize_threadpool() < 0) {
