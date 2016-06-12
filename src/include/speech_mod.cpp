@@ -124,7 +124,7 @@ Wave SpeechWaveSynthesis::get_resynthesis_td() {
   return result;
 }
 
-Wave SpeechWaveSynthesis::get_concatenation(const Options&) {
+Wave SpeechWaveSynthesis::get_concatenation() {
   // First off, collect the WAV data for each source unit
   vector<SpeechWaveData> waveData(source.size());
   auto sampleRate = readSourceData(*this, waveData);

@@ -101,9 +101,13 @@ namespace gridsearch {
     std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(outputPath);
     auto SWS = SpeechWaveSynthesis(output, input, crf.alphabet());
     Wave resultSignal = SWS.get_resynthesis_td();
+
+    auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
+    auto originalSignal = sws2.get_concatenation();
+
     auto& frames = *(params->precompFrames);
 
-    return Comparisons::compare(resultSignal, frames[index], METRIC);
+    return Comparisons::compare(resultSignal, originalSignal, frames[index], METRIC);
   }
 
   void compareOnly(ResynthParams* params) {

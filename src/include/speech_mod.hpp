@@ -15,18 +15,18 @@ extern bool SCALE_ENERGY;
 extern int EXTRA_TIME;
 
 struct SpeechWaveSynthesis {
-  SpeechWaveSynthesis(std::vector<PhonemeInstance>& source,
+  SpeechWaveSynthesis(const std::vector<PhonemeInstance>& source,
                       const std::vector<PhonemeInstance>& target,
                       PhonemeAlphabet& origin)
     : source(source), target(target), origin(origin)
   { };
 
-  std::vector<PhonemeInstance>& source;
+  const std::vector<PhonemeInstance>& source;
   const std::vector<PhonemeInstance>& target;
   PhonemeAlphabet& origin;
 
   Wave get_resynthesis(const Options&);
-  Wave get_concatenation(const Options&);
+  Wave get_concatenation();
   Wave get_resynthesis_td();
 
   Wave get_coupling(const Options&);

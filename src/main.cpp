@@ -117,7 +117,7 @@ int resynthesize(Options& opts) {
   outputSignal.write(opts.get_opt<std::string>("output", "resynth.wav"));
 
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
-  auto concatenation = sws2.get_concatenation(opts);
+  auto concatenation = sws2.get_concatenation();
   concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
 
   if(opts.has_opt("verbose")) {
@@ -154,7 +154,7 @@ int baseline(const Options& opts) {
   outputSignal.write(opts.get_opt<std::string>("output", "baseline.wav"));
 
   auto sws2 = SpeechWaveSynthesis(input, input, alphabet_test);
-  auto concatenation = sws2.get_concatenation(opts);
+  auto concatenation = sws2.get_concatenation();
   concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
 
   CRF::Stats stats;
@@ -164,7 +164,7 @@ int baseline(const Options& opts) {
 
   if(opts.has_opt("verbose")) {
     auto sws = SpeechWaveSynthesis(input, input, alphabet_test);
-    auto concatenation = sws.get_concatenation(opts);
+    auto concatenation = sws.get_concatenation();
     Comparisons cmp;
     cmp.fill(concatenation, outputSignal);
     INFO("LogSpectrum = " << cmp.LogSpectrum);
@@ -234,7 +234,7 @@ int psola(const Options& opts) {
 
   auto sws = SpeechWaveSynthesis(phonemeInput, phonemeInput, alphabet_test);
   auto outputSignal = sws.get_resynthesis(opts);
-  auto original = sws.get_concatenation(opts);
+  auto original = sws.get_concatenation();
   original.write("original.wav");
 
   outputSignal.write(opts.get_opt<std::string>("output", "psola.wav"));

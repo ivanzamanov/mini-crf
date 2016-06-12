@@ -79,6 +79,7 @@ struct Comparisons {
   }
 
   static double compare(const Wave& signal,
+                        const Wave& originalSignal,
                         const std::vector<FrameFrequencies>& original,
                         std::string metric) {
     if(metric == "MFCC")
@@ -89,7 +90,9 @@ struct Comparisons {
       return compare_LogSpectrumCritical(signal, original);
     if(metric == "WSS")
       return compare_WSS(signal, original);
-    assert(false);
+    if(metric == "SegSNR")
+      return compare_SegSNR(originalSignal, signal);
+    assert(false); // No such metric
   }
 
   static void aggregate(const std::vector<double>& params,
