@@ -13,7 +13,7 @@
 using namespace gridsearch;
 
 static std::string METRIC = "MFCC";
-static int MAX_PER_DELTA = 100;
+static int MAX_PER_DELTA = 20;
 static int MAX_SEARCH_ITS = 10;
 static double SEARCH_RATIO = 0.1;
 
@@ -577,7 +577,8 @@ namespace gridsearch {
           Range("trans-pitch", 0, 300, 1),
           Range("state-pitch", 0, 300, 1),
           Range("state-duration", 0, 300, 1),
-          Range("state-energy", 0, 300, 1)
+          Range("state-energy", 0, 300, 1),
+          Range("trans-baseline", 0, 100, 1)
         }};
     }
     for(auto& it : ranges)

@@ -35,11 +35,12 @@ Corpus& get_corpus(const Options& opts) {
   return opts.has_opt("eval") ? corpus_eval : corpus_test;
 }
 
-void outputStats(const std::string prefix,
-                 CRF::Values& lambda,
+void outputStats(CRF::Values& lambda,
                  CRF::Stats& stats,
                  const Options& opts) {
-  CSVOutput<CRF::features::size> csv(prefix + opts.get_opt<std::string>("path-stats", "path-stats.csv"));
+  auto file = opts.get_opt<std::string>("path-stats", "");
+  if(file == "") return;
+  CSVOutput<CRF::features::size> csv(file);
   CRF::Values coefs;
   for(unsigned i = 0; i < PhoneticFeatures::size; i++) {
     csv.header(i, PhoneticFeatures::Names[i]);
@@ -51,11 +52,10 @@ void outputStats(const std::string prefix,
     csv << s;
 }
 
-void outputPath(const std::string prefix,
-                const Options& opts,
+void outputPath(const Options& opts,
                 const std::vector<PhonemeInstance>& output,
                 const std::vector<PhonemeInstance>& input) {
-  auto file = prefix + opts.get_opt<std::string>("path", "path.csv");
+  auto file = opts.get_opt<std::string>("path", "");
   if(file == "") return;
   CSVOutput<7> os(file);
   os.all_headers("id", "duration", "i_duration",
@@ -72,6 +72,18 @@ void outputPath(const std::string prefix,
   }
 }
 
+void outputComparisons(const Options& opts,
+                       const Comparisons& cmp,
+                       cost baselineCost) {
+  auto file = opts.get_opt<std::string>("cmp-csv", "");
+  if(file == "") return;
+  CSVOutput<6> os(file);
+  os.all_headers("LogSpectrum", "LogSpectrumCritical", "SegSNR",
+                 "MFCC", "WSS", "Baseline");
+  os.print(cmp.LogSpectrum, cmp.LogSpectrumCritical, cmp.SegSNR,
+           cmp.MFCC, cmp.WSS, baselineCost);
+}
+
 void readCoefOptions(const Options& opts) {
   crf.set("state-pitch", opts.get_opt<double>("state-pitch", 0));
   crf.set("state-duration", opts.get_opt<double>("state-duration", 0));
@@ -80,6 +92,7 @@ void readCoefOptions(const Options& opts) {
   crf.set("trans-pitch", opts.get_opt<double>("trans-pitch", 0));
   crf.set("trans-mfcc", opts.get_opt<double>("trans-mfcc", 0));
   crf.set("trans-ctx", opts.get_opt<double>("trans-ctx", 0));
+  crf.set("trans-baseline", opts.get_opt<double>("trans-baseline", 0));
 }
 
 int resynthesize(Options& opts) {
@@ -108,8 +121,8 @@ int resynthesize(Options& opts) {
   INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
   INFO("Second best cost: " << costs[1]);
 
-  outputStats("resynth-", crf.lambda, stats, opts);
-  outputPath("resynth-", opts, output, input);
+  outputStats(crf.lambda, stats, opts);
+  outputPath(opts, output, input);
 
   auto sws = SpeechWaveSynthesis(output, input, crf.alphabet());
   Wave outputSignal = sws.get_resynthesis(opts);
@@ -128,6 +141,9 @@ int resynthesize(Options& opts) {
     INFO("SegSNR = " << cmp.SegSNR);
     INFO("MFCC = " << cmp.MFCC);
     INFO("WSS = " << cmp.WSS);
+    auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
+    INFO("Baseline = " << baselineCost);
+    outputComparisons(opts, cmp, baselineCost);
   }
   return 0;
 }
@@ -158,9 +174,9 @@ int baseline(const Options& opts) {
   concatenation.write(opts.get_opt<std::string>("original", "original.wav"));
 
   CRF::Stats stats;
-  INFO("Baseline cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
-  outputStats("baseline-", crf.lambda, stats, opts);
-  outputPath("baseline-", opts, output, input);
+  INFO("Baseline cost in original: " << concat_cost(output, crf, crf.lambda, input, &stats));
+  outputStats(crf.lambda, stats, opts);
+  outputPath(opts, output, input);
 
   if(opts.has_opt("verbose")) {
     auto sws = SpeechWaveSynthesis(input, input, alphabet_test);
@@ -172,6 +188,9 @@ int baseline(const Options& opts) {
     INFO("SegSNR = " << cmp.SegSNR);
     INFO("MFCC = " << cmp.MFCC);
     INFO("WSS = " << cmp.WSS);
+    auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
+    INFO("Baseline = " << baselineCost);
+    outputComparisons(opts, cmp, baselineCost);
   }
 
   return 0;

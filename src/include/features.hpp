@@ -102,7 +102,8 @@ struct PhoneticFeatures {
                                    MFCCDist{},
                                    PitchState{},
                                    EnergyState{},
-                                   Duration{})) FunctionsType;
+                                   Duration{},
+                                   Baseline{})) FunctionsType;
   static const FunctionsType Functions;
 
   static constexpr auto size = std::tuple_size<decltype(Functions)>::value;

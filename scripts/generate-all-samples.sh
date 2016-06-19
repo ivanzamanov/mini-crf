@@ -1,6 +1,11 @@
 #!/bin/bash
 
-for CONF in /home/ivo/SpeechSynthesis/training-logs/05-29/*.conf ; do
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <conf-files>..."
+  exit 1
+fi
+
+for CONF in $@ ; do
   SUFFIX=-$(basename $CONF .conf)
   echo $SUFFIX
   SUFFIX=$SUFFIX bash $(dirname $0)/generate-samples.sh resynth $CONF

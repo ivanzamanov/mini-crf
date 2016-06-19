@@ -10,7 +10,10 @@ function generate-samples {
       $EVAL \
       --path $DIR/path-$i.csv \
       --output $OUTPUT \
-      --original $ORIGINAL < $CONF_FILE
+      --original $ORIGINAL \
+      --verbose \
+      --cmp-csv $DIR/path-$i-cmp.csv \
+      < $CONF_FILE
   done
 }
 
@@ -34,13 +37,16 @@ function concatenate-comparisons {
     CMP=$DIR/comparisons-$i.csv
     tail -n $(expr `wc -l < $CMP` - 1) $CMP >> $CSV
   done
+
+  CMP_TOTALS=$DIR/comparisons-totals.csv
+  bash $(dirname $0)/extract-totals.sh $DIR $CMP_TOTALS
 }
 
 set -e
 set -x
 
 if [ $# -lt 2 ]; then
-  echo "Usage: <cmd> <mode> <conf_file>"
+  echo "Usage: <cmd> <mode> <conf_file> [eval_corpus]"
   echo "Set SUFFIX=<smt> for an output dir suffix"
   exit 1
 fi
@@ -49,6 +55,11 @@ MODE=$1
 
 DIR=samples-$MODE$SUFFIX
 CONF_FILE=$2
+if [ -n "$3" ]; then
+  EVAL="--eval"
+  DIR=$MODE-eval$SUFFIX
+fi
+
 rm -rf $DIR
 mkdir $DIR
 

@@ -47,5 +47,5 @@ def plotFilter(vals):
 filters = [points for points in plotFilters()]
 #plotFilter( filters[0])
 for vals in filters: plotFilter(vals)
-#plt.show()
-plt.savefig('auditory.png', bbox_inches='tight')
+plt.show()
+#plt.savefig('auditory.png', bbox_inches='tight')

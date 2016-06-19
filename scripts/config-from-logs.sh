@@ -9,4 +9,4 @@ TEMPLATE=$1
 LOG=$2
 
 cat $TEMPLATE
-tail -n 10 $LOG | head -n 6
+tail -n 9 $LOG | head -n 6

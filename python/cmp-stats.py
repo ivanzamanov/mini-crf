@@ -13,11 +13,15 @@ fftSize = 512.0
 sampleRate = 24000.0
 timeStep = 0.01
 frameTimeStep = sampleRate / fftSize
+tableFormat = 'psql'
 
 @command()
 def main(inputFile,
          mean = ('m', False, ''),
-         corr = ('c', False, '')):
+         corr = ('c', False, ''),
+         tableFmt = ('t', 'psql', '')):
+    global tableFormat
+    tableFormat = tableFmt
     with open(inputFile) as f:
         reader = csv.reader(f, delimiter = '\t')
         headers = reader.__next__()[1:]
@@ -49,25 +53,28 @@ def main(inputFile,
 
         #plt.show()
 
+def fmtFloat(fl):
+    return '%0.3f' % fl
+
 def printStats(items):
     for h, v in items:
         plt.plot(range(0, len(v)), v, color=someColor())
 
     rows = ([
-        [ h, np.mean(vals), np.median(vals), stats.tstd(vals) ] for h, vals in items
+        [ h, fmtFloat(np.mean(vals)), fmtFloat(np.median(vals)), fmtFloat(stats.tstd(vals)) ] for h, vals in items
     ])
     print(table(rows,
                 headers = [ 'mean', 'median', 'std dev' ],
-                tablefmt = "psql"))
+                tablefmt = tableFormat))
 
 def printCorrelation(items):
     rows = ([[h] + [
-        stats.pearsonr(v, v2)[0] for a, v2 in items
+        fmtFloat(stats.pearsonr(v, v2)[0]) for a, v2 in items
     ] for h, v in items])
 
     print(table(rows,
                 headers = [ key for key, val in items],
-                tablefmt = "psql"))
+                tablefmt = tableFormat))
 
 
 main.command()
