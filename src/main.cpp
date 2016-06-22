@@ -85,14 +85,9 @@ void outputComparisons(const Options& opts,
 }
 
 void readCoefOptions(const Options& opts) {
-  crf.set("state-pitch", opts.get_opt<double>("state-pitch", 0));
-  crf.set("state-duration", opts.get_opt<double>("state-duration", 0));
-  crf.set("state-energy", opts.get_opt<double>("state-energy", 0));
-
-  crf.set("trans-pitch", opts.get_opt<double>("trans-pitch", 0));
-  crf.set("trans-mfcc", opts.get_opt<double>("trans-mfcc", 0));
-  crf.set("trans-ctx", opts.get_opt<double>("trans-ctx", 0));
-  crf.set("trans-baseline", opts.get_opt<double>("trans-baseline", 0));
+  for(auto name : PhoneticFeatures::Names) {
+    crf.set(name, opts.get_opt<double>(name, 0) / opts.get_opt("norm-" + name, 1.0));
+  }
 }
 
 int resynthesize(Options& opts) {
@@ -108,7 +103,7 @@ int resynthesize(Options& opts) {
   INFO("Original cost: " << concat_cost(input, crf, crf.lambda, input));
 
   std::vector<int> path;
-  auto costs = traverse_automaton<MinPathFindFunctions, CRF, 2>(input, crf, crf.lambda, &path);
+  traverse_automaton<MinPathFindFunctions, CRF, 1>(input, crf, crf.lambda, &path);
 
   std::vector<PhonemeInstance> output = crf.alphabet().to_phonemes(path);
 
@@ -119,7 +114,9 @@ int resynthesize(Options& opts) {
 
   CRF::Stats stats;
   INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
-  INFO("Second best cost: " << costs[1]);
+  //INFO("Second best cost: " << costs[1]);
+  auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
+  INFO("Baseline = " << baselineCost);
 
   outputStats(crf.lambda, stats, opts);
   outputPath(opts, output, input);
@@ -141,8 +138,6 @@ int resynthesize(Options& opts) {
     INFO("SegSNR = " << cmp.SegSNR);
     INFO("MFCC = " << cmp.MFCC);
     INFO("WSS = " << cmp.WSS);
-    auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
-    INFO("Baseline = " << baselineCost);
     outputComparisons(opts, cmp, baselineCost);
   }
   return 0;
@@ -159,7 +154,6 @@ int baseline(const Options& opts) {
   INFO("Total duration: " << get_total_duration(input));
 
   std::vector<int> path;
-  baseline_crf.lambda[0] = 1;
   traverse_automaton<MinPathFindFunctions>(input, baseline_crf,
                                            baseline_crf.lambda, &path);
 
@@ -175,6 +169,9 @@ int baseline(const Options& opts) {
 
   CRF::Stats stats;
   INFO("Baseline cost in original: " << concat_cost(output, crf, crf.lambda, input, &stats));
+  auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
+  INFO("Baseline = " << baselineCost);
+
   outputStats(crf.lambda, stats, opts);
   outputPath(opts, output, input);
 
@@ -188,8 +185,6 @@ int baseline(const Options& opts) {
     INFO("SegSNR = " << cmp.SegSNR);
     INFO("MFCC = " << cmp.MFCC);
     INFO("WSS = " << cmp.WSS);
-    auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
-    INFO("Baseline = " << baselineCost);
     outputComparisons(opts, cmp, baselineCost);
   }
 
@@ -300,6 +295,7 @@ int main(int argc, const char** argv) {
   crf.lambda[3] = 1;
   crf.lambda[4] = 1;
   crf.lambda[5] = 1;
+  baseline_crf.lambda[0] = 1;
 
   switch(opts.get_mode()) {
   case Options::Mode::RESYNTH:

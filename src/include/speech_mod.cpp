@@ -370,7 +370,8 @@ void smooth(WaveData dest, int destOffset, PitchRange pitch) {
   for(auto i = 0; i < samples; i++) {
     auto& a = dest[destOffset - samples + i];
     auto& b = dest[destOffset + i];
-    auto c = (a + b) / 2;
+    auto t = 0.5;
+    auto c = a*t + b*(1-2);
 
     a = b = c;
   }
@@ -426,7 +427,8 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
       dest.plus<double>(destOffset + i, p.extra[p.extra.length - extraLength + i]);
 
     auto pitch = pt.ranges[j];
-    smooth(dest, leftEdge, pitch);
+    if(SMOOTH)
+      smooth(dest, leftEdge, pitch);
     j++;
   }
   std::for_each(scaledPieces.begin(), scaledPieces.end(), WaveData::deallocate);
