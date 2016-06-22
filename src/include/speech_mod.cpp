@@ -70,7 +70,7 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const 
     //left = std::exp(target[i].pitch_contour[0]);
     // Smooth out pitch at the concatenation points
     //tier[i-1].right = left;
-    auto right = std::exp(target[i].pitch_contour[1]);
+    auto right = std::floor(std::exp(target[i].pitch_contour[1]));
 
     tier[i].set(left, right, 0, dest.toSamples(target[i].duration));
   }
@@ -361,6 +361,21 @@ void coupleScaledPieces(vector<SpeechWaveData>& scaledPieces,
   do_coupling(scaledPieces);
 }
 
+void smooth(WaveData dest, int destOffset, PitchRange pitch) {
+  auto pv = pitch.at(destOffset);
+  auto samples = dest.toSamples(1 / pv);
+  if(destOffset < samples || pv < 50)
+    return;
+
+  for(auto i = 0; i < samples; i++) {
+    auto& a = dest[destOffset - samples + i];
+    auto& b = dest[destOffset + i];
+    auto c = (a + b) / 2;
+
+    a = b = c;
+  }
+}
+
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
                                          const vector<SpeechWaveData>& pieces,
                                          const Options&) {
@@ -402,17 +417,16 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
         dest.plus<double>(destOffset, p.extra[i]);
     }
 
+    auto leftEdge = destOffset;
     for(auto i = 0; i < p.length && destOffset < dest.length; i++, destOffset++)
       dest.plus<double>(destOffset, p[i]);
 
-    //SpeechWaveData::toFile(dest, "/tmp/dest-p-" + std::to_string(j) + ".wav");
     auto extraLength = (p.extra.length - p.length) / 2;
     for(auto i = 0; i < extraLength && destOffset + i < dest.length; i++)
       dest.plus<double>(destOffset + i, p.extra[p.extra.length - extraLength + i]);
 
-    /*SpeechWaveData::toFile(pieces[j], "/tmp/original-" + std::to_string(j) + ".wav");
-    SpeechWaveData::toFile(dest, "/tmp/dest-" + std::to_string(j) + ".wav");
-    SpeechWaveData::toFile(p, "/tmp/" + std::to_string(j) + ".wav");*/
+    auto pitch = pt.ranges[j];
+    smooth(dest, leftEdge, pitch);
     j++;
   }
   std::for_each(scaledPieces.begin(), scaledPieces.end(), WaveData::deallocate);

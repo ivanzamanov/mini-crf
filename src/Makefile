@@ -22,7 +22,7 @@ test: OPTS=
 test: $(MAIN_DEPS) test.cpp
 	$(CMD) test.cpp include/*.o -o test $(LIBS)
 
-db-stats: OPTS=
+#db-stats: OPTS=
 db-stats: $(MAIN_DEPS) db-stats.cpp
 	$(CMD) db-stats.cpp include/*.o -o db-stats $(LIBS)
 
