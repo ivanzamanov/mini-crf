@@ -55,3 +55,5 @@ logs*
 *.conf
 *.json
 
+*.pyc
+__pycache__

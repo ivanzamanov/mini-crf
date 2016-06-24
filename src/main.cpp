@@ -116,7 +116,7 @@ int resynthesize(Options& opts) {
   INFO("Resynth. cost: " << concat_cost(output, crf, crf.lambda, input, &stats));
   //INFO("Second best cost: " << costs[1]);
   auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
-  INFO("Baseline = " << baselineCost);
+  INFO("Baseline cost: " << baselineCost);
 
   outputStats(crf.lambda, stats, opts);
   outputPath(opts, output, input);
@@ -170,7 +170,7 @@ int baseline(const Options& opts) {
   CRF::Stats stats;
   INFO("Baseline cost in original: " << concat_cost(output, crf, crf.lambda, input, &stats));
   auto baselineCost = concat_cost(output, baseline_crf, baseline_crf.lambda, input);
-  INFO("Baseline = " << baselineCost);
+  INFO("Baseline cost:" << baselineCost);
 
   outputStats(crf.lambda, stats, opts);
   outputPath(opts, output, input);

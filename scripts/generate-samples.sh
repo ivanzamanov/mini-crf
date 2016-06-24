@@ -11,7 +11,6 @@ function generate-samples {
       --path $DIR/path-$i.csv \
       --output $OUTPUT \
       --original $ORIGINAL \
-      --verbose \
       --cmp-csv $DIR/path-$i-cmp.csv \
       < $CONF_FILE
   done
@@ -52,16 +51,17 @@ if [ $# -lt 2 ]; then
 fi
 
 MODE=$1
-
-DIR=samples-$MODE$SUFFIX
-CONF_FILE=$2
-if [ -n "$3" ]; then
+shift
+if [ "$1" == "eval" ]; then
   EVAL="--eval"
-  DIR=$MODE-eval$SUFFIX
+  shift
 fi
 
+DIR=$1
+CONF_FILE=$2
+
 rm -rf $DIR
-mkdir $DIR
+mkdir -p $DIR
 
 generate-samples
 generate-comparisons

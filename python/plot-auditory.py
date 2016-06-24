@@ -17,12 +17,6 @@ BARK_CENTERS = [50, 150, 250, 350, 450, 570, 700, 840, 1000, 1170, 1370, 1600, 1
 plt.xticks(BARK_BAND_EDGES)
 plt.setp(ax.get_xticklabels(), rotation=35, horizontalalignment='right')
 
-def invert(period):
-    return 1 / period
-def welch(n, N):
-    N1 = (N - 1) / 2
-    return 1 - ( (n - N1) / N1 ) ** 2
-
 def plotAroundFilter(bot, top):
     botF = bot
     topF = top
