@@ -1,28 +1,34 @@
-from opster import command
+import argparse
 import matplotlib.pyplot as plt
 
 import utils
 
-def someColor():
-    someColor.colors = np.roll(someColor.colors, 1)
-    return someColor.colors[0]
-someColor.colors = np.array([ x for x in 'rgbcmyk'])
-
-@command()
-def main(inputFile,
+def main(inputFiles,
          mean = ('m', False, ''),
          corr = ('c', False, ''),
-         tableFmt = ('t', 'psql', ''),
-         plot=('p', True, ''),
-         output=('o', '', '')):
+         tableFmt = ('t', 'psql', '')):
     if tableFmt:
         utils.setDefaultTableFormat(tableFmt)
 
-    valsDict = utils.collectTotalsValues(inputFile)
-    items = sorted(valsDict.items())
-    if mean: utils.printStats(items)
-    if corr: utils.printCorrelation(items)
-    
+    for inputFile in inputFiles:
+        metric, e = utils.guessMetric(inputFile), utils.guessExperiment(inputFile)
+        print(metric, e)
+        valsDict = utils.collectTotalsValues(inputFile)
+        items = sorted(valsDict.items())
+        if mean: utils.printStats(items)
+        if corr: utils.printCorrelation(items)
+
+ap = argparse.ArgumentParser(
+    description='''Outputs in a table statistics about the metrics' output''')
+ap.add_argument('files', metavar='files', nargs='+', help='Files to process')
+ap.add_argument('--mean', '-m', help='Calculate mean', action='store_true')
+ap.add_argument('--correlation', '-c', help='Calculate correlations', action='store_true')
+ap.add_argument('--tableFmt', '-t', nargs=1, help='Table format')
+
+args = ap.parse_args()
 
 if __name__ == '__main__':
-    main.command()
+    main(args.files,
+         args.mean,
+         args.correlation,
+         args.tableFmt)

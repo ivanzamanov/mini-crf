@@ -44,25 +44,29 @@ function concatenate-comparisons {
 set -e
 set -x
 
-if [ $# -lt 2 ]; then
-  echo "Usage: <cmd> <mode> <conf_file> [eval_corpus]"
-  echo "Set SUFFIX=<smt> for an output dir suffix"
+if [ $# -lt 3 ]; then
+  echo "Usage: <cmd> <mode> <output_dir> <conf_file>"
   exit 1
 fi
 
 MODE=$1
-shift
-if [ "$1" == "eval" ]; then
-  EVAL="--eval"
-  shift
-fi
-
-DIR=$1
-CONF_FILE=$2
+DIR=$2/test
+CONF_FILE=$3
 
 rm -rf $DIR
 mkdir -p $DIR
 
+echo "Generating TEST samples"
 generate-samples
 generate-comparisons
 concatenate-comparisons
+
+EVAL="--eval"
+DIR=$2/eval
+
+mkdir -p $DIR
+echo "Generating EVAL samples"
+generate-samples
+generate-comparisons
+concatenate-comparisons
+

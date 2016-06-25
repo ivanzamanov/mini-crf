@@ -14,6 +14,7 @@ featureMap = {
     'state-energy': 'g_3',
     'trans-baseline': 'f_0'
 }
+
 def featureToSymbol(name):
     if name in featureMap:
         return featureMap[name]

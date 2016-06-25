@@ -56,6 +56,8 @@ def getSubplot(fig, target):
     return p
 
 def main(args):
+    if not args:
+        print('''Creates graphics per experiment from outputs''')
     allValues = {
         'e2': {},
         'e3': {},
