@@ -1,4 +1,4 @@
-import csv, numpy as np
+import csv, numpy as np, itertools
 import sys, math
 import scipy.stats as stats
 from tabulate import tabulate as table
@@ -15,12 +15,15 @@ featureMap = {
     'trans-baseline': 'f_0'
 }
 
+TARGETS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR', 'baseline' ])
+METRICS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR' ])
+EXPERIMENTS = sorted([ '-'.join(x) for x in itertools.product([ 'e2', 'e3', 'baseline' ], ['test', 'eval'])])
+
 def featureToSymbol(name):
     if name in featureMap:
         return featureMap[name]
     return name
 
-metrics = [ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR', 'baseline' ]
 def shortenMetric(metric):
     return {
         'LogSpectrumCritical': 'LSC',
@@ -31,18 +34,22 @@ def shortenMetric(metric):
         'baseline': 'bl'
     }[metric]
 
-def guessMetric(fileName):
-    for m in metrics:
+def guessTarget(fileName):
+    # Important to be the last, since LSC is after LS...
+    r = ''
+    for m in TARGETS:
         if m in fileName:
-            return m
-    return ''
+            r = m
+    return r
 
 def guessExperiment(fileName):
     if 'baseline' in fileName:
-        return 'baseline'
-    if '-pb-' in fileName:
-        return 'e3'
-    return 'e2'
+        e = 'baseline'
+    else:
+        e = 'e3' if '-pb-' in fileName else 'e2'
+
+    run = 'test' if 'test' in fileName else 'eval'
+    return e + '-' + run
 
 def collectConfigWeights(inputFile):
     hv = []
@@ -63,6 +70,38 @@ def collectConfigWeights(inputFile):
     hv = [ (h, '%0.4f' % v) for h, v in hv ]
     return hv
 
+class ExpValue():
+    def __init__(self,
+                 experiment,
+                 target,
+                 metric,
+                 value):
+        self.experiment = experiment
+        self.target = target
+        self.metric = metric
+        self.value = value
+
+    def __repr__(self):
+        return str(('e=' + str(self.experiment),
+                    't=' + str(self.target),
+                    'm=' + str(self.metric),
+                    'v=' + str(self.value)))
+
+def collectAllTotalsValues(files):
+    result = []
+    for f in files:
+        values = collectTotalsValues(f)
+        target = guessTarget(f)
+        e = guessExperiment(f)
+
+        for metric, value in values.items():
+            ev = ExpValue(experiment = e,
+                          target = target,
+                          metric = metric,
+                          value = np.mean(value))
+            result.append(ev)
+
+    return result
 
 def collectTotalsValues(inputFile):
     ''' Collect values from a csv in a dict, skipping the row column '''
