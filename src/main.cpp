@@ -238,20 +238,35 @@ int psola(const Options& opts) {
   std::transform(inputPhonemes.begin(), inputPhonemes.end(), input.begin(), util::parse<int>);
 
   std::vector<PhonemeInstance> phonemeInput;
-  if(input.size() > 1)
-    phonemeInput = alphabet_test.to_phonemes(input);
-  else {
+  std::vector<PhonemeInstance> phonemeOutput;
+  auto pitchScale = opts.get_opt<double>("pitch-scale", 1.0);
+  auto durationScale = opts.get_opt<double>("duration-scale", 1.0);
+
+  auto& alphabet = opts.has_opt("synth") ? alphabet_synth : alphabet_test;
+
+  if(input.size() > 1) {
+    phonemeInput = alphabet.to_phonemes(input);
+  } else {
     Corpus& corpus = get_corpus(opts);
     phonemeInput = corpus.input(input[0]);
-    INFO("Input file: " << alphabet_test.file_data_of(phonemeInput[0]).file);
+    INFO("Input file: " << alphabet.file_data_of(phonemeInput[0]).file);
   }
 
-  auto sws = SpeechWaveSynthesis(phonemeInput, phonemeInput, alphabet_test);
+  for(auto p : phonemeInput) {
+    p.end += p.duration * std::abs(1 - durationScale);
+    p.duration += p.duration * std::abs(1 - durationScale);
+    p.pitch_contour[0] += std::log(pitchScale);
+    p.pitch_contour[1] += std::log(pitchScale);
+
+    phonemeOutput.push_back(p);
+  }
+
+  auto sws = SpeechWaveSynthesis(phonemeInput, phonemeOutput, alphabet);
   auto outputSignal = sws.get_resynthesis(opts);
   auto original = sws.get_concatenation();
-  original.write("original.wav");
+  original.write(opts.get_opt<std::string>("original", ""));
 
-  outputSignal.write(opts.get_opt<std::string>("output", "psola.wav"));
+  outputSignal.write(opts.get_opt<std::string>("output", ""));
   return 0;
 }
 

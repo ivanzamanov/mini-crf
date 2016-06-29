@@ -187,6 +187,8 @@ struct Wave {
   }
 
   void read(const std::string& file) {
+    if(file == "")
+      return;
     std::ifstream str(file);
     read(str);
   }
@@ -199,6 +201,8 @@ struct Wave {
   }
 
   void write(const std::string& file) {
+    if(file == "")
+      return;
     std::ofstream str(file);
     write(str);
   }
