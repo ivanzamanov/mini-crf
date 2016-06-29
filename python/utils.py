@@ -51,6 +51,13 @@ def guessExperiment(fileName):
     run = 'test' if 'test' in fileName else 'eval'
     return e + '-' + run
 
+def guessConfigExperiment(fileName):
+    if 'baseline' in fileName:
+        e = 'baseline'
+    else:
+        e = 'e3' if '-pb-' in fileName else 'e2'
+    return e
+
 def collectConfigWeights(inputFile):
     hv = []
     with open(inputFile) as f:

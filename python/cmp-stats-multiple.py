@@ -1,23 +1,35 @@
 import sys
 import matplotlib.pyplot as plt
 import itertools
+from tabulate import tabulate as table
 
 import utils
 
-def normalize(allValues):
+def normalizeExperiment(allValues, e):
+    maxVals = {}
     for metric in utils.METRICS:
         # find the maximum
         maxValue = max(
             map(
                 lambda x: x.value,
-                filter(lambda x: x.metric == metric,
+                filter(lambda x: x.metric == metric and x.experiment == e,
                        allValues)
             )
         )
 
+        maxVals[metric] = maxValue
+                
         for x in allValues:
-            if x.metric == metric:
+            if x.metric == metric and x.experiment == e:
                 x.value = x.value / maxValue
+
+    return maxVals
+
+def normalize(allValues):
+    maxVals = {}
+    for e in utils.EXPERIMENTS:
+        maxVals[e] = normalizeExperiment(allValues, e)
+    return maxVals
 
 def getColor(metric):
     return {
@@ -59,11 +71,12 @@ def main(args):
         print('''Creates graphics per experiment from outputs''')
 
     allValues = utils.collectAllTotalsValues(args)
-
+    printTable(allValues)
     normalize(allValues)
 
     F = 1
 
+    baselineValues = []
     for e, m in itertools.product(utils.EXPERIMENTS, utils.METRICS):
         metricValues = [ val.value for val
                          in filter(lambda x: x.metric == m and x.experiment == e,
@@ -80,9 +93,27 @@ def main(args):
             subplot.bar(offset, value, 0.5,
                         color=getColor(m))
 
-        fig.savefig(e + '-metric-' + m + '.jpg', bbox_inches='tight')
+        fig.savefig(e + '-' + m + '.jpg', bbox_inches='tight')
         plt.close()
 
+def printTable(allValues):
+    tableHeaders = [ 'E?', 'Metric' ] + utils.TARGETS
+    rows = []
+    for e, m in itertools.product(utils.EXPERIMENTS, utils.METRICS):
+        metricValues = [ val.value for val
+                         in filter(lambda x: x.metric == m and x.experiment == e,
+                                   allValues)
+        ]
+        if not metricValues:
+            continue
+        row = [ e, m ]
+        for value in metricValues:
+            row.append('%0.5f' % value)
+        while len(row) < len(utils.METRICS) + 2:
+            row.append('0')
+        rows.append(row)
+
+    print(table(rows, headers=tableHeaders, tablefmt='latex'))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
