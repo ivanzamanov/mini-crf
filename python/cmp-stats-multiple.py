@@ -56,7 +56,7 @@ def getSubplot(fig, target):
     p = fig.add_subplot(1, 1, 1)
 
     p.grid()
-    p.axes.set_ylim([0, 1])
+    p.axes.set_ylim([0, 0.1])
     p.axes.set_xlabel(r'')
     p.axes.set_ylabel(r'')
 
@@ -90,7 +90,7 @@ def main(args):
         subplot = getSubplot(fig, m)
 
         for offset, value in zip(range(0, len(metricValues)), metricValues):
-            subplot.bar(offset, value, 0.5,
+            subplot.bar(offset, (1 - value), 0.5,
                         color=getColor(m))
 
         fig.savefig(e + '-' + m + '.jpg', bbox_inches='tight')

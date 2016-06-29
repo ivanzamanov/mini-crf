@@ -59,10 +59,15 @@ int scaleToPitchAndDuration(SpeechWaveData dest,
                             int lastMark,
                             int debugIndex);
 
-PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const WaveData& dest) {
+PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const WaveData& dest, const Options& opts) {
   unsigned i = 0;
   auto left = std::exp(target[i].pitch_contour[0]);
   auto right = std::exp(target[i].pitch_contour[1]);
+  auto verbose = opts.has_opt("verbose");
+  if(verbose) {
+    INFO(i << " " << "lp=" << left << " rp=" << right << " dt=" << target[i].duration);
+  }
+
   tier[i].set(left, right, 0, dest.toSamples(target[i].duration));
 
   for(i++; i < target.size(); i++) {
@@ -72,8 +77,12 @@ PitchTier initPitchTier(PitchRange* tier, vector<PhonemeInstance> target, const 
     //tier[i-1].right = left;
     auto right = std::floor(std::exp(target[i].pitch_contour[1]));
 
+    if(verbose) {
+      INFO(i << " " << "lp=" << left << " rp=" << right << " dt=" << target[i].duration);
+    }
     tier[i].set(left, right, 0, dest.toSamples(target[i].duration));
   }
+
   return {
     .ranges = tier,
       .length = (int) target.size()
@@ -379,10 +388,10 @@ void smooth(WaveData dest, int destOffset, PitchRange pitch) {
 
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
                                          const vector<SpeechWaveData>& pieces,
-                                         const Options&) {
+                                         const Options& opts) {
   PitchRange pitchTier[target.size()];
 
-  PitchTier pt = initPitchTier(pitchTier, target, dest);
+  PitchTier pt = initPitchTier(pitchTier, target, dest, opts);
 
   Progress prog(target.size(), "PSOLA: ");
   vector<SpeechWaveData> scaledPieces(target.size());

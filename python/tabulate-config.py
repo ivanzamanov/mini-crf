@@ -5,6 +5,7 @@ import itertools
 from utils import *
 
 def findMatching(files):
+    files = sorted(files)
     result = []
     for f1, f2 in itertools.product(files, files):
         if guessTarget(f1) == guessTarget(f2):

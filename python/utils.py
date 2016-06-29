@@ -15,6 +15,16 @@ featureMap = {
     'trans-baseline': 'f_0'
 }
 
+featureSortMap = {
+    'trans-ctx': 1,
+    'trans-mfcc': 2,
+    'trans-pitch': 3,
+    'state-pitch': 4,
+    'state-duration': 5,
+    'state-energy': 6,
+    'trans-baseline': 7
+}
+
 TARGETS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR', 'baseline' ])
 METRICS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR' ])
 EXPERIMENTS = sorted([ '-'.join(x) for x in itertools.product([ 'e2', 'e3', 'baseline' ], ['test', 'eval'])])
@@ -73,7 +83,7 @@ def collectConfigWeights(inputFile):
     if not [ x for x in filter(lambda x: x[0] == 'trans-baseline', hv) ]:
         hv.append(('trans-baseline', 0))
 
-    hv.sort()
+    hv = sorted(hv, key=lambda x: featureSortMap[x[0]])
     hv = [ (h, '%0.4f' % v) for h, v in hv ]
     return hv
 
