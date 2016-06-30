@@ -5,14 +5,22 @@ from tabulate import tabulate as table
 
 defaultTableFormat = 'psql'
 
-def guessExperiment(fileName):
-    if 'baseline' in fileName:
-        e = 'baseline'
-    else:
-        e = 'e3' if '-pb-' in fileName else 'e2'
+def guessCorpusSubset(name):
+    if 'eval' in name:
+        return 'eval'
+    return 'test'
 
-    run = 'test' if 'test' in fileName else 'eval'
-    return e + '-' + run
+def guessFeatureSet(name):
+    if 'baseline' in name:
+        return 'baseline'
+    if 'e4' in name:
+        return 'e4'
+    if '-pb-' in name or 'e3' in name:
+        return 'e3'
+    return 'e2'
+
+def guessExperiment(name):
+    return guessFeatureSet(name) + '-' + guessCorpusSubset(name)
 
 featureMap = {
     'trans-ctx': 'f_2',
@@ -45,9 +53,20 @@ experimentSortMap = {
     'e4-eval': 8,
 }
 
-TARGETS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR', 'baseline' ])
+targetsSortMap = {
+    'baseline': 1,
+    'LogSpectrum': 2,
+    'LogSpectrumCritical': 3,
+    'MFCC': 4,
+    'WSS': 5,
+    'SegSNR': 6
+}
+
+TARGETS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR', 'baseline' ],
+                 key = lambda x: targetsSortMap[x])
 METRICS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR' ])
 EXPERIMENTS = sorted([ '-'.join(x) for x in itertools.product([ 'e2', 'e3', 'e4', 'baseline' ], ['test', 'eval'])], key = lambda x: experimentSortMap[guessExperiment(x)] )
+print(EXPERIMENTS)
 
 def featureToSymbol(name):
     if name in featureMap:

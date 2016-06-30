@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 import itertools
 from tabulate import tabulate as table
 
-import utils
+from utils import *
 
 def normalizeExperiment(allValues, e):
     maxVals = {}
-    for metric in utils.METRICS:
+    for metric in METRICS:
         # find the maximum
         try:
             maxValue = max(
@@ -21,7 +21,7 @@ def normalizeExperiment(allValues, e):
             maxValue = 1
 
         maxVals[metric] = maxValue
-                
+
         for x in allValues:
             if x.metric == metric and x.experiment == e:
                 x.value = x.value / maxValue
@@ -30,7 +30,7 @@ def normalizeExperiment(allValues, e):
 
 def normalize(allValues):
     maxVals = {}
-    for e in utils.EXPERIMENTS:
+    for e in EXPERIMENTS:
         maxVals[e] = normalizeExperiment(allValues, e)
     return maxVals
 
@@ -70,66 +70,73 @@ def getHatch(metric):
 def getSubplot(fig, target):
     p = fig.add_subplot(1, 1, 1)
 
-    p.grid()
-    p.axes.set_ylim([0, 0.1])
+    #p.grid()
+    p.axes.set_ylim([-0.01, 0.1])
     p.axes.set_xlabel(r'')
     p.axes.set_ylabel(r'')
 
-    p.set_xticks(list(map(lambda x: 2 * x, range(0, len(utils.METRICS)))))
-    p.set_xticklabels([ x for x in map(utils.shortenMetric, utils.METRICS)], rotation=-75)
+    tickLabels = list(map(shortenMetric, TARGETS))
+    p.set_xticks(calculateXticks())
+    p.set_xticklabels(tickLabels, rotation=-75)
+    print(calculateXticks())
+    print(tickLabels)
 
     p.set_title(target)
     return p
 
-barWidth = 0.1
-expCount = len(utils.EXPERIMENTS)
 def plotMetricBars(m,
                    allValues,
-                   subplot,
-                   fig):
-    def plotBarsForTarget(t):
-        for barIndex, e in enumerate(utils.EXPERIMENTS):
+                   subplot):
+    for target in METRICS:
+        for e in filter(lambda x: not 'baseline' in x, EXPERIMENTS):
             metricValues = list(filter(lambda x: x.metric == m and
                                        x.experiment == e and
-                                       x.target == t,
+                                       x.target == target,
                                        allValues))
             if not metricValues:
-                print('No values for ', e, m)
-                return
-            value = metricValues[0]
-            print('Calculating', e, m)
+                print('No value for', e, m, 'in', target)
+                value = 0
+            else:
+                value = metricValues[0].value
+            plotSingleBar(e, target, value, plot=subplot)
 
-            for offset, value in zip(range(0, len(metricValues)), metricValues):
-                offset = offset * expCount
-                barOffset = offset + barIndex * (2 / 3 * barWidth)
-                color = getExperimentColor(e)
-                print(e, barOffset, barWidth, color, value.target)
-                subplot.bar(barOffset, # offset from origin
-                            (1 - value.value), # value
-                            barWidth, # width
-                            color=color)
+spacer = 2
+def calculateXticks():
+    return list(map(lambda i: i * (len(TARGETS) + spacer), range(1, len(TARGETS) + 1)))
 
-    for target in utils.TARGETS:
-        plotBarsForTarget(target)
+barWidth = 1
+def plotSingleBar(e, t, v, plot):
+    targetIndex = TARGETS.index(t)
+    barIndex = EXPERIMENTS.index(e)
+    color = getExperimentColor(e)
 
+    offset = (targetIndex * (len(TARGETS) + spacer))
+    subOffset = barIndex * barWidth
+
+    barOffset = offset + subOffset
+    #print(barOffset)
+    barValue = 1 - v if v != 0 else 0.0001
+    plot.bar(barOffset, # offset from origin
+             barValue, # value
+             barWidth, # width
+             color=color)
 
 def main(args):
     if not args:
-        print('''Creates graphics per experiment from outputs''')
+        print('''Creates graphics per metric from outputs''')
 
-    allValues = utils.collectAllTotalsValues(args)
-    printTable(allValues)
+    allValues = collectAllTotalsValues(args)
+    #printTable(allValues)
     normalize(allValues)
 
     F = 1
 
     baselineValues = []
-    for m in utils.METRICS:
-        fig = plt.figure(figsize=(4 * F, 4 * F))
+    for m in METRICS:
+        fig = plt.figure(figsize=(8 * F, 4 * F))
         subplot = getSubplot(fig, m)
 
         plotMetricBars(m, allValues,
-                       fig = fig,
                        subplot = subplot)
 
         graphicName = 'exp' + '-' + m + '.jpg'
@@ -138,9 +145,9 @@ def main(args):
         plt.close()
 
 def printTable(allValues):
-    tableHeaders = [ 'E?', 'Metric' ] + utils.TARGETS
+    tableHeaders = [ 'E?', 'Metric' ] + TARGETS
     rows = []
-    for e, m in itertools.product(utils.EXPERIMENTS, utils.METRICS):
+    for e, m in itertools.product(EXPERIMENTS, METRICS):
         metricValues = [ val.value for val
                          in filter(lambda x: x.metric == m and x.experiment == e,
                                    allValues)
@@ -150,7 +157,7 @@ def printTable(allValues):
         row = [ e, m ]
         for value in metricValues:
             row.append('%0.5f' % value)
-        while len(row) < len(utils.METRICS) + 2:
+        while len(row) < len(METRICS) + 2:
             row.append('0')
         rows.append(row)
 
