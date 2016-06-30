@@ -5,6 +5,15 @@ from tabulate import tabulate as table
 
 defaultTableFormat = 'psql'
 
+def guessExperiment(fileName):
+    if 'baseline' in fileName:
+        e = 'baseline'
+    else:
+        e = 'e3' if '-pb-' in fileName else 'e2'
+
+    run = 'test' if 'test' in fileName else 'eval'
+    return e + '-' + run
+
 featureMap = {
     'trans-ctx': 'f_2',
     'trans-mfcc': 'f_3',
@@ -25,9 +34,20 @@ featureSortMap = {
     'trans-baseline': 7
 }
 
+experimentSortMap = {
+    'baseline-test': 1,
+    'baseline-eval': 2,
+    'e2-test': 3,
+    'e2-eval': 4,
+    'e3-test': 5,
+    'e3-eval': 6,
+    'e4-test': 7,
+    'e4-eval': 8,
+}
+
 TARGETS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR', 'baseline' ])
 METRICS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR' ])
-EXPERIMENTS = sorted([ '-'.join(x) for x in itertools.product([ 'e2', 'e3', 'baseline' ], ['test', 'eval'])])
+EXPERIMENTS = sorted([ '-'.join(x) for x in itertools.product([ 'e2', 'e3', 'e4', 'baseline' ], ['test', 'eval'])], key = lambda x: experimentSortMap[guessExperiment(x)] )
 
 def featureToSymbol(name):
     if name in featureMap:
@@ -51,15 +71,6 @@ def guessTarget(fileName):
         if m in fileName:
             r = m
     return r
-
-def guessExperiment(fileName):
-    if 'baseline' in fileName:
-        e = 'baseline'
-    else:
-        e = 'e3' if '-pb-' in fileName else 'e2'
-
-    run = 'test' if 'test' in fileName else 'eval'
-    return e + '-' + run
 
 def guessConfigExperiment(fileName):
     if 'baseline' in fileName:

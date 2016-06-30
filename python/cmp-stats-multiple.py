@@ -1,4 +1,4 @@
-import sys
+import sys, numpy as np
 import matplotlib.pyplot as plt
 import itertools
 from tabulate import tabulate as table
@@ -9,13 +9,16 @@ def normalizeExperiment(allValues, e):
     maxVals = {}
     for metric in utils.METRICS:
         # find the maximum
-        maxValue = max(
-            map(
-                lambda x: x.value,
-                filter(lambda x: x.metric == metric and x.experiment == e,
-                       allValues)
+        try:
+            maxValue = max(
+                map(
+                    lambda x: x.value,
+                    filter(lambda x: x.metric == metric and x.experiment == e,
+                           allValues)
+                )
             )
-        )
+        except:
+            maxValue = 1
 
         maxVals[metric] = maxValue
                 
@@ -31,7 +34,7 @@ def normalize(allValues):
         maxVals[e] = normalizeExperiment(allValues, e)
     return maxVals
 
-def getColor(metric):
+def getMetricColor(metric):
     return {
         'LogSpectrumCritical': 'blue',
         'LogSpectrum': 'black',
@@ -40,6 +43,18 @@ def getColor(metric):
         'SegSNR': 'green',
         'baseline': 'cyan'
     }[metric]
+
+def getExperimentColor(e):
+    return {
+        'baseline-test': 'black',
+        'baseline-eval': 'blue',
+        'e2-test': 'yellow',
+        'e2-eval': 'green',
+        'e3-test': 'magenta',
+        'e3-eval': 'cyan',
+        'e4-test': 'grey',
+        'e4-eval': 'brown',
+    }[e]
 
 def getHatch(metric):
     return ''
@@ -60,11 +75,43 @@ def getSubplot(fig, target):
     p.axes.set_xlabel(r'')
     p.axes.set_ylabel(r'')
 
-    p.set_xticks(range(0, len(utils.METRICS)))
+    p.set_xticks(list(map(lambda x: 2 * x, range(0, len(utils.METRICS)))))
     p.set_xticklabels([ x for x in map(utils.shortenMetric, utils.METRICS)], rotation=-75)
 
     p.set_title(target)
     return p
+
+barWidth = 0.1
+expCount = len(utils.EXPERIMENTS)
+def plotMetricBars(m,
+                   allValues,
+                   subplot,
+                   fig):
+    def plotBarsForTarget(t):
+        for barIndex, e in enumerate(utils.EXPERIMENTS):
+            metricValues = list(filter(lambda x: x.metric == m and
+                                       x.experiment == e and
+                                       x.target == t,
+                                       allValues))
+            if not metricValues:
+                print('No values for ', e, m)
+                return
+            value = metricValues[0]
+            print('Calculating', e, m)
+
+            for offset, value in zip(range(0, len(metricValues)), metricValues):
+                offset = offset * expCount
+                barOffset = offset + barIndex * (2 / 3 * barWidth)
+                color = getExperimentColor(e)
+                print(e, barOffset, barWidth, color, value.target)
+                subplot.bar(barOffset, # offset from origin
+                            (1 - value.value), # value
+                            barWidth, # width
+                            color=color)
+
+    for target in utils.TARGETS:
+        plotBarsForTarget(target)
+
 
 def main(args):
     if not args:
@@ -77,23 +124,17 @@ def main(args):
     F = 1
 
     baselineValues = []
-    for e, m in itertools.product(utils.EXPERIMENTS, utils.METRICS):
-        metricValues = [ val.value for val
-                         in filter(lambda x: x.metric == m and x.experiment == e,
-                                   allValues)
-        ]
-        if not metricValues:
-            continue
-
-        #print(e, m, metricValues)
-        fig = plt.figure(figsize=(2 * F, 4 * F))
+    for m in utils.METRICS:
+        fig = plt.figure(figsize=(4 * F, 4 * F))
         subplot = getSubplot(fig, m)
 
-        for offset, value in zip(range(0, len(metricValues)), metricValues):
-            subplot.bar(offset, (1 - value), 0.5,
-                        color=getColor(m))
+        plotMetricBars(m, allValues,
+                       fig = fig,
+                       subplot = subplot)
 
-        fig.savefig(e + '-' + m + '.jpg', bbox_inches='tight')
+        graphicName = 'exp' + '-' + m + '.jpg'
+        print('Saving', graphicName)
+        fig.savefig(graphicName, bbox_inches='tight')
         plt.close()
 
 def printTable(allValues):
