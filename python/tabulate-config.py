@@ -19,11 +19,12 @@ def findAllMatching(files):
 
 def plotWeights(plot, files):
     styles = ['solid', 'dashed', 'dotted', 'dashdot' ]
-    for f, style in zip(files, styles):
+    colors = ['red', 'green', 'blue', 'red']
+    for f, style, c in zip(files, styles, colors):
         weights = collectConfigWeights(f[2])
         plt.xticks(range(1, len(weights) + 1), [ h for h, v in weights ], rotation=35)
 
-        plt.plot([ v for h, v in weights ], color = 'k',
+        plt.plot([ v for h, v in weights ], color = c,
                  linestyle = style)
 
 
@@ -36,7 +37,7 @@ def main(files):
 
         fig = plt.figure(figsize=(6, 2))
         ax = plt.subplot(1, 1, 1)
-        plt.grid()
+        #plt.grid()
         plt.rc('text', usetex=True)
         plt.ylim([0, 2])
         plt.xlabel(r'Feature')

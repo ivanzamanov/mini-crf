@@ -34,44 +34,23 @@ def normalize(allValues):
         maxVals[e] = normalizeExperiment(allValues, e)
     return maxVals
 
-def getMetricColor(metric):
-    return {
-        'LogSpectrumCritical': 'blue',
-        'LogSpectrum': 'black',
-        'MFCC': 'red',
-        'WSS': 'yellow',
-        'SegSNR': 'green',
-        'baseline': 'cyan'
-    }[metric]
-
 def getExperimentColor(e):
     return {
         'baseline-test': 'black',
-        'baseline-eval': 'blue',
-        'e2-test': 'yellow',
-        'e2-eval': 'green',
-        'e3-test': 'magenta',
-        'e3-eval': 'cyan',
-        'e4-test': 'grey',
-        'e4-eval': 'brown',
+        'baseline-eval': 'black',
+        'e2-test': 'red',
+        'e2-eval': 'red',
+        'e3-test': 'green',
+        'e3-eval': 'green',
+        'e4-test': 'blue',
+        'e4-eval': 'blue',
     }[e]
-
-def getHatch(metric):
-    return ''
-    return {
-        'LogSpectrumCritical': '/',
-        'LogSpectrum': '\\',
-        'MFCC': '|',
-        'WSS': '-',
-        'SegSNR': 'o',
-        'baseline': '0'
-    }[metric]
 
 def getSubplot(fig, target):
     p = fig.add_subplot(1, 1, 1)
 
     #p.grid()
-    p.axes.set_ylim([-0.01, 0.1])
+    p.axes.set_ylim([-0.01, 0.07])
     p.axes.set_xlabel(r'')
     p.axes.set_ylabel(r'')
 
