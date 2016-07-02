@@ -14,10 +14,25 @@ def findMatching(files):
 
     return result
 
+def findAllMatching(files):
+    return list(map(lambda f: (guessTarget(f), guessExperiment(f), f), sorted(files)))
+
+def plotWeights(plot, files):
+    styles = ['solid', 'dashed', 'dotted', 'dashdot' ]
+    for f, style in zip(files, styles):
+        weights = collectConfigWeights(f[2])
+        plt.xticks(range(1, len(weights) + 1), [ h for h, v in weights ], rotation=35)
+
+        plt.plot([ v for h, v in weights ], color = 'k',
+                 linestyle = style)
+
+
 def main(files):
-    for inputFile1, inputFile2 in findMatching(files):
-        hv1 = collectConfigWeights(inputFile1)
-        hv2 = collectConfigWeights(inputFile2)
+    details = findAllMatching(files)
+    print(details)
+
+    for m in METRICS:
+        files = list(filter(lambda f: f[0] == m, details))
 
         fig = plt.figure(figsize=(6, 2))
         ax = plt.subplot(1, 1, 1)
@@ -26,21 +41,14 @@ def main(files):
         plt.ylim([0, 2])
         plt.xlabel(r'Feature')
         plt.ylabel(r'Weight')
-
-        title = guessTarget(inputFile1)
-        plt.title(title)
-
-        plt.xticks(range(1, len(hv1) + 1), [ h for h, v in hv1 ], rotation=35)
-
-        plt.plot([ v for h, v in hv1 ], 'k-')
-        plt.plot([ v for h, v in hv2 ], 'k--')
-
         plt.setp(ax.get_xticklabels(), rotation=-35, horizontalalignment='right')
 
-        metric = guessTarget(inputFile1)
-        output = '-'.join(['config-optimized', metric]) + '.jpg'
+        plt.title(m)
 
-        print(inputFile1, inputFile2, '->', output)
+        plotWeights(plt, files)
+
+        output = '-'.join(['config-optimized', m]) + '.jpg'
+        print(files, '->', output)
         plt.savefig(output, bbox_inches='tight')
 
         plt.close()
