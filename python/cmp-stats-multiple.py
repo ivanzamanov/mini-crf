@@ -1,19 +1,19 @@
-import sys, numpy as np
+import sys, numpy as np, itertools
 import matplotlib.pyplot as plt
-import itertools
 from tabulate import tabulate as table
 
 from utils import *
 
 def normalizeExperiment(allValues, e):
     maxVals = {}
+    cs = guessCorpusSubset(e)
     for metric in METRICS:
         # find the maximum
         try:
             maxValue = max(
                 map(
                     lambda x: x.value,
-                    filter(lambda x: x.metric == metric and x.experiment == e,
+                    filter(lambda x: x.metric == metric and guessCorpusSubset(x.experiment) == cs,
                            allValues)
                 )
             )
@@ -22,16 +22,16 @@ def normalizeExperiment(allValues, e):
 
         maxVals[metric] = maxValue
 
-        for x in allValues:
-            if x.metric == metric and x.experiment == e:
-                x.value = x.value / maxValue
-
     return maxVals
 
 def normalize(allValues):
     maxVals = {}
     for e in EXPERIMENTS:
         maxVals[e] = normalizeExperiment(allValues, e)
+
+    for x in allValues:
+        x.value = x.value / maxVals[x.experiment][x.metric]
+    
     return maxVals
 
 def getExperimentColor(e):
@@ -50,15 +50,13 @@ def getSubplot(fig, target):
     p = fig.add_subplot(1, 1, 1)
 
     #p.grid()
-    p.axes.set_ylim([-0.01, 0.07])
+    p.axes.set_ylim([-0.01, 0.15])
     p.axes.set_xlabel(r'')
     p.axes.set_ylabel(r'')
 
     tickLabels = list(map(shortenMetric, TARGETS))
     p.set_xticks(calculateXticks())
     p.set_xticklabels(tickLabels, rotation=-75)
-    print(calculateXticks())
-    print(tickLabels)
 
     p.set_title(target)
     return p
@@ -81,7 +79,7 @@ def plotMetricBars(m,
 
 spacer = 2
 def calculateXticks():
-    return list(map(lambda i: i * (len(TARGETS) + spacer), range(1, len(TARGETS) + 1)))
+    return list(map(lambda i: (i * (len(TARGETS) + spacer)) - spacer, range(1, len(TARGETS) + 1)))
 
 barWidth = 1
 def plotSingleBar(e, t, v, plot):

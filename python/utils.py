@@ -66,7 +66,6 @@ TARGETS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR'
                  key = lambda x: targetsSortMap[x])
 METRICS = sorted([ 'LogSpectrumCritical', 'LogSpectrum', 'MFCC', 'WSS', 'SegSNR' ])
 EXPERIMENTS = sorted([ '-'.join(x) for x in itertools.product([ 'e2', 'e3', 'e4', 'baseline' ], ['test', 'eval'])], key = lambda x: experimentSortMap[guessExperiment(x)] )
-print(EXPERIMENTS)
 
 def featureToSymbol(name):
     if name in featureMap:
