@@ -19,7 +19,6 @@ namespace tool {
   struct PhonemeAlphabet : LabelAlphabet<PhonemeInstance> {
     vector<FileData> files;
     vector<int> file_indices;
-    vector<int> old_file_indices;
     vector<unsigned> old_ids;
     vector<unsigned> new_ids;
 
@@ -44,16 +43,13 @@ namespace tool {
     void filter(const LabelAlphabet<PhonemeInstance>::LabelClass& source,
                 LabelAlphabet<PhonemeInstance>::LabelClass& target,
                 const PhonemeInstance& phon) const {
-      //auto max = 100000u;
       for(auto& p : source) {
         auto& pi = fromInt(p);
-        bool matchDuration = between(fromInt(p).duration / phon.duration, 0.5, 2);
-        bool matchPitch = between(pi.pitch_contour[0] - phon.pitch_contour[0], -0.69, 0.69)
+        auto matchDuration = between(fromInt(p).duration / phon.duration, 0.5, 2);
+        auto matchPitch = between(pi.pitch_contour[0] - phon.pitch_contour[0], -0.69, 0.69)
           && between(pi.pitch_contour[1] - phon.pitch_contour[1], -0.69, 0.69);
         if(target.empty() || (matchDuration && matchPitch))
           target.push_back(p);
-        //if(target.size() >= max)
-        //  break;
       }
     }
 
@@ -62,9 +58,8 @@ namespace tool {
     }
 
     std::vector<PhonemeInstance> to_phonemes(const std::vector<int>& ids) {
-      std::vector<PhonemeInstance> result;
-      for(auto it = ids.begin(); it != ids.end(); it++)
-        result.push_back(fromInt(*it));
+      std::vector<PhonemeInstance> result(ids.size());
+      std::transform(ids.begin(), ids.end(), result.begin(), [=](int i) { return fromInt(i); });
       return result;
     }
 
@@ -110,7 +105,6 @@ namespace tool {
 
       labels = new_labels;
 
-      old_file_indices = file_indices;
       file_indices = new_file_indices;
       build_classes();
     }

@@ -10,7 +10,6 @@
 using namespace util;
 using std::vector;
 
-bool SMOOTH = false;
 bool SCALE_ENERGY = false;
 
 // Mod commons
@@ -147,8 +146,6 @@ Wave SpeechWaveSynthesis::get_concatenation() {
   for(auto wd : waveData)
     wb.append(wd);
 
-  std::for_each(waveData.begin(), waveData.end(), WaveData::deallocate);
-
   return wb.build();
 }
 
@@ -169,12 +166,10 @@ Wave SpeechWaveSynthesis::get_resynthesis(const Options& opts) {
     each(target, [&](const PhonemeInstance& p) { completeDuration += p.duration; });
     // preallocate the complete wave result,
     // but only temporarily
-    WaveDataTemp result(WaveData::allocate(completeDuration, sampleRate));
+    WaveData result(WaveData::allocate(completeDuration, sampleRate));
     do_resynthesis(result, waveData, opts);
     wb.append(result);
   }
-
-  std::for_each(waveData.begin(), waveData.end(), WaveData::deallocate);
 
   return wb.build();
 }
@@ -274,7 +269,6 @@ Wave SpeechWaveSynthesis::get_coupling(const Options&) {
   WaveBuilder wb(h);
   for(auto& p : waveData)
     wb.append(p);
-  std::for_each(waveData.begin(), waveData.end(), WaveData::deallocate);
   return wb.build();
 }
 
@@ -330,62 +324,6 @@ int overlapAddAroundMark(SpeechWaveData& src,
   return std::min(destTop - destBot, sourceTop - sourceBot);
 }
 
-void coupleScaledPieces(vector<SpeechWaveData>& scaledPieces,
-                        const vector<SpeechWaveData>& originalPieces) {
-  for(auto i = 0u; i < scaledPieces.size(); i++) {
-    auto& scaled = scaledPieces[i];
-    auto& original = originalPieces[i];
-
-    SpeechWaveData newScaled;
-    newScaled = WaveData::allocate(scaled.duration() +
-                                   (original.extra.duration() - original.duration()),
-                                   scaled.sampleRate);
-    newScaled.extra = newScaled;
-
-    auto extraFrontBegin = original.extra.data + original.extra.offset;
-    auto extraFrontEnd = original.extra.data + original.offset - original.extra.offset;
-
-    newScaled.offset = extraFrontEnd - extraFrontBegin;
-    newScaled.length = scaled.length;
-    // idea - copy extra before, after, put scaled in the middle
-    // Front...
-    std::copy(extraFrontBegin,
-              extraFrontEnd,
-              newScaled.data);
-    // middle, i.e. the scaled data
-    std::copy(scaled.data + scaled.offset,
-              scaled.data + scaled.offset + scaled.length,
-              newScaled.data + newScaled.offset);
-    // extra back...
-    auto extraBackBegin = original.data + original.offset + original.length;
-    auto extraBackEnd = original.extra.data + original.extra.offset + original.extra.length;
-    std::copy(extraBackBegin,
-              extraBackEnd,
-              newScaled.data + newScaled.offset + newScaled.length);
-
-    WaveData::deallocate(scaled);
-    scaled = newScaled;
-  }
-
-  do_coupling(scaledPieces);
-}
-
-void smooth(WaveData dest, int destOffset, PitchRange pitch) {
-  auto pv = pitch.at(destOffset);
-  auto samples = dest.toSamples(1 / pv);
-  if(destOffset < samples || pv < 50)
-    return;
-
-  for(auto i = 0; i < samples; i++) {
-    auto& a = dest[destOffset - samples + i];
-    auto& b = dest[destOffset + i];
-    auto t = 0.5;
-    auto c = a*t + b*(1-2);
-
-    a = b = c;
-  }
-}
-
 void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
                                          const vector<SpeechWaveData>& pieces,
                                          const Options& opts) {
@@ -414,8 +352,6 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
   }
   prog.finish();
 
-  //coupleScaledPieces(scaledPieces, pieces);
-
   // Now simply transfer and cleanup...
   auto destOffset = 0;
   int j = 0;
@@ -427,7 +363,6 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
         dest.plus<double>(destOffset, p.extra[i]);
     }
 
-    auto leftEdge = destOffset;
     for(auto i = 0; i < p.length && destOffset < dest.length; i++, destOffset++)
       dest.plus<double>(destOffset, p[i]);
 
@@ -435,12 +370,8 @@ void SpeechWaveSynthesis::do_resynthesis(WaveData dest,
     for(auto i = 0; i < extraLength && destOffset + i < dest.length; i++)
       dest.plus<double>(destOffset + i, p.extra[p.extra.length - extraLength + i]);
 
-    auto pitch = pt.ranges[j];
-    if(SMOOTH)
-      smooth(dest, leftEdge, pitch);
     j++;
   }
-  std::for_each(scaledPieces.begin(), scaledPieces.end(), WaveData::deallocate);
 }
 
 vector<bool> fillMissingMarks(vector<int>& marks, PsolaConstants limits) {

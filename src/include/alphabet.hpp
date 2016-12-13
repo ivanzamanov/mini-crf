@@ -33,11 +33,11 @@ struct LabelAlphabet {
 
   template<class Filter>
   void iterate_sequences(const std::vector<Label>& input, Filter& filter) const {
-    std::vector<LabelClass::const_iterator> iters(input.size());
-    std::vector<int> class_indices(input.size());
+    auto iters = std::vector<LabelClass::const_iterator>(input.size());
+    auto class_indices = std::vector<int>(input.size());
 
     for(unsigned i = 0; i < input.size(); i++) {
-      int index = labels[input[i].label].label;
+      auto index = labels[input[i].label].label;
       iters[i] = classes[index].begin();
       class_indices[i] = index;
     }

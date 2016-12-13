@@ -4,7 +4,8 @@ using namespace tool;
 
 bool FORCE_SCALE = false;
 
-void tool::build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, Corpus* corpus, StringLabelProvider& label_provider) {
+void tool::build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet,
+                          Corpus* corpus, StringLabelProvider& label_provider) {
   std::cerr << "Building label alphabet" << '\n';
   std::string buffer;
   std::vector<PhonemeInstance> phonemes;
@@ -13,7 +14,8 @@ void tool::build_data_txt(std::istream& list_input, PhonemeAlphabet* alphabet, C
 
   while(list_input >> buffer) {
     LOG("Parsing " << buffer);
-    FileData fileData = FileData::of(buffer);
+
+    FileData fileData(buffer);
     std::vector<PhonemeInstance> phonemes_from_file = parse_file(fileData, label_provider);
     list_input >> buffer;
     // This is the actual .wav ...

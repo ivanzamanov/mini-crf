@@ -19,9 +19,8 @@ struct Options {
 
     if(isatty(STDIN_FILENO))
       return;
-    
+
     std::string buffer;
-    //std::cout << (char) std::cin.get() << std::endl;
     while(std::cin >> buffer) {
       int index = buffer.find_first_of('=');
       if(index >= 0) {

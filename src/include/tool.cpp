@@ -53,7 +53,6 @@ namespace tool {
       return false;
     COLOR_ENABLED = !opts->has_opt("no-color");
     FORCE_SCALE = opts->has_opt("force-scale");
-    SMOOTH = opts->has_opt("smooth");
     SCALE_ENERGY = opts->has_opt("energy");
     PRINT_SCALE = opts->has_opt("print-scale");
     REPORT_PROGRESS = opts->has_opt("progress");

@@ -194,7 +194,7 @@ namespace gridsearch {
     for(auto i = 0u; i < count; i++) {
       auto fileData = alphabet_test.file_data_of(corpus_test.input(i)[0]);
 
-      params[i].init(i, &flags[i], fileData.get_file(), &precompFrames);
+      params[i].init(i, &flags[i], fileData.file, &precompFrames);
 
       tp.add_task(new ParamTask<FFTPrecomputeParams>(&precomputeSingleFrames, &params[i]));
     }

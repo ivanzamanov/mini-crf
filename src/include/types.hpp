@@ -83,18 +83,16 @@ struct PhonemeInstance {
 };
 
 struct FileData {
-  static FileData of(std::string& path) {
-    FileData result;
-    result.file = path;
-    return result;
-  }
+  FileData():
+    pitch_marks(0), file(""), data(0) {}
+  FileData(const FileData& data):
+    pitch_marks(data.pitch_marks), file(data.file), data(data.data) {}
+  FileData(std::string path):
+    pitch_marks(0), file(path), data(0) { }
 
   std::vector<double> pitch_marks;
-
-  std::string get_file() const {
-    return file;
-  }
   std::string file;
+  char* data;
 
   bool operator==(const FileData& o) const {
     return pitch_marks == o.pitch_marks && file == o.file;

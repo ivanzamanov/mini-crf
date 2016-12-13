@@ -48,6 +48,9 @@ single: speech_mod_single.cpp $(OBJ_FILES)
 is-wav:
 	$(CMD) is-wav.cpp -g -o is-wav
 
+detect-pitch:
+	$(CMD) detect-pitch.cpp -g -o detect-pitch
+
 all: clean main test main-opt text2bin text2bin-opt
 
 clean:

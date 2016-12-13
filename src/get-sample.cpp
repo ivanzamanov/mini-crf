@@ -9,7 +9,7 @@ void doPrint(int, char** argv) {
   std::ifstream str1(argv[1]);
   Wave wav1(str1);
 
-  int sample = util::parse_int(std::string(argv[2]));
+  auto sample = util::parse<int>(std::string(argv[2]));
 
   std::cout << wav1[sample] << std::endl;
 }

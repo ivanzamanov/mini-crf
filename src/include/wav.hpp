@@ -1,6 +1,7 @@
 #ifndef __WAV_HPP__
 #define __WAV_HPP__
 
+#include<memory>
 #include<cassert>
 #include<cstdlib>
 #include<cstring>
@@ -29,12 +30,12 @@ struct WaveData {
   WaveData()
     : data(0), offset(0), length(0), sampleRate(DEFAULT_SAMPLE_RATE)
   { }
-  WaveData(short* data, int offset, int length, unsigned sampleRate)
+  WaveData(std::shared_ptr<char> data, int offset, int length, unsigned sampleRate)
     : data(data), offset(offset), length(length), sampleRate(sampleRate)
   { }
   WaveData& operator=(const WaveData& o) = default;
 
-  short* data;
+  std::shared_ptr<char> data;
   int offset, length;
   unsigned sampleRate;
 
@@ -45,18 +46,18 @@ struct WaveData {
   }
 
   double duration() const { return toDuration(length); }
-  short* begin() const { return data; }
-  short* end() const { return data + length; }
+  short* begin() const { return (short*) data.get(); }
+  short* end() const { return (short*) data.get() + length; }
 
-  short& operator[](int i) const { return data[offset + i]; }
+  short& operator[](int i) const { return ((short*) data.get())[offset + i]; }
 
   template<class T>
   void plus(int i, T val) {
-    double newVal = this->data[i];
+    double newVal = this->data.get()[i];
     newVal += val;
     newVal = std::max(newVal, (double) SHRT_MIN);
     newVal = std::min(newVal, (double) SHRT_MAX);
-    this->data[i] = (short) newVal;
+    this->data.get()[i] = (short) newVal;
   }
   unsigned size() const { return length; }
 
@@ -64,7 +65,7 @@ struct WaveData {
     end = (end == -1) ? this->length : end;
     std::ofstream str("range");
     for(int i = offset + start; i < offset + end; i++)
-      str << data[i] << '\n';
+      str << data.get()[i] << '\n';
   }
 
   double toDuration(int sampleCount) const {
@@ -76,17 +77,17 @@ struct WaveData {
   }
 
   void extract(short* dest, int count, int sourceOffset=0) const {
-    std::memcpy(dest, data + offset + sourceOffset, sizeof(data[0]) * count);
+    std::memcpy(dest, data.get() + offset + sourceOffset, sizeof(data.get()[0]) * count);
   }
 
   template<class T>
   void extract(T* dest, int count, int sourceOffset=0) {
     for(int i = 0; i < count; i++)
-      dest[i] = data[offset + sourceOffset + i];
+      dest[i] = data.get()[offset + sourceOffset + i];
   }
 
   void copy(const WaveData& src, int offset) {
-    std::copy(data + offset, data + offset + src.length, src.data);
+    std::copy(data.get() + offset, data.get() + offset + src.length, src.data.get());
   }
 
   static double toDuration(int sampleCount, unsigned sampleRate) {
@@ -98,20 +99,16 @@ struct WaveData {
   }
 
   static WaveData copy(const WaveData& origin) {
-    auto bytes = origin.length * sizeof(data[0]);
-    auto newData = (short*) malloc(bytes);
-    memcpy(newData, origin.data + origin.offset, bytes);
+    auto bytes = origin.length * sizeof(data.get()[0]);
+    auto newData = std::shared_ptr<char>((char*) malloc(bytes));
+    memcpy(newData.get(), origin.data.get() + origin.offset, bytes);
     return WaveData(newData, 0, origin.length, origin.sampleRate);
   }
 
   static WaveData allocate(double duration, unsigned sampleRate) {
     int samples = duration * sampleRate;
-    auto newData = (short*) calloc(samples, sizeof(short));
+    auto newData = std::shared_ptr<char>((char*) calloc(samples, sizeof(short)));
     return WaveData(newData, 0, samples, sampleRate);
-  }
-
-  static void deallocate(WaveData& wd) {
-    if(wd.data) free(wd.data);
   }
 
   static std::valarray<double> asValarray(WaveData wd) {
@@ -119,16 +116,6 @@ struct WaveData {
     for(auto i = 0u; i < wd.size(); i++)
       result[i] = wd[i];
     return result;
-  }
-};
-
-struct WaveDataTemp : public WaveData {
-  WaveDataTemp(const WaveData& data)
-    : WaveData(data.data, data.offset, data.length, data.sampleRate)
-  { }
-
-  ~WaveDataTemp() {
-    free(data);
   }
 };
 
@@ -174,13 +161,13 @@ struct WaveHeader {
 
 // Owner of data, data treated as raw bytes
 struct Wave {
-  Wave(): data(0) { }
+  Wave() { }
   Wave(std::istream& istr):Wave() { read(istr); }
   Wave(const std::string& fileName):Wave() { read(fileName); }
-  ~Wave() { if(data) free(data); }
+  ~Wave() { }
 
   WaveHeader h;
-  char* data;
+  std::shared_ptr<char> data;
 
   void read(const FileData& data) {
     read(data.file);
@@ -195,9 +182,8 @@ struct Wave {
 
   void read(std::istream& istr) {
     istr.read((char*) &h, sizeof(h));
-    if(data) free(data);
-    data = (char*) malloc(h.samplesBytes * sizeof(char));
-    istr.read((char*) data, h.samplesBytes);
+    data = std::shared_ptr<char>((char*) malloc(h.samplesBytes * sizeof(char)));
+    istr.read(data.get(), h.samplesBytes);
   }
 
   void write(const std::string& file) {
@@ -209,7 +195,7 @@ struct Wave {
 
   void write(std::ofstream& ostr) {
     ostr.write((char*) &h, sizeof(h));
-    ostr.write((char*) data, h.samplesBytes);
+    ostr.write(data.get(), h.samplesBytes);
   }
 
   unsigned sampleRate() const {
@@ -230,14 +216,14 @@ struct Wave {
 
   // Unchecked access to sample
   short& operator[](int i) const {
-    return ((short*) data)[i];
+    return ((short*) data.get())[i];
   }
 
   WaveData extractBySample(unsigned startSample, unsigned endSample) const {
     assert(startSample < endSample);
     assert(endSample < length());
 
-    return WaveData((short*) data, startSample, endSample - startSample, sampleRate());
+    return WaveData(data, startSample, endSample - startSample, sampleRate());
   }
 
   WaveData extractByTime(double start, double end) const {
@@ -254,11 +240,11 @@ struct WaveBuilder {
   char* data;
 
   void append(const WaveData& w) {
-    append((char*) (w.data + w.offset), w.length * sizeof(w.data[0]));
+    append((char*) (w.data.get() + w.offset), w.length * sizeof(w.data.get()[0]));
   }
 
   void append(const Wave& w, int offset, int count) {
-    append(w.data + offset, count * w.h.bitsPerSample / 8);
+    append(w.data.get() + offset, count * w.h.bitsPerSample / 8);
   }
 
   void append(char* data, int count) {
@@ -271,7 +257,7 @@ struct WaveBuilder {
   Wave build() {
     Wave result;
     result.h = h;
-    result.data = this->data;
+    result.data = std::shared_ptr<char>(this->data);
     return result;
   }
 };

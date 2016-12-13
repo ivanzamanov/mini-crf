@@ -277,9 +277,8 @@ struct FunctionalAutomaton {
 
     int pos = x.size() - 1;
 
-    //Matrix<std::array<unsigned, kBestPaths>> paths(alphabet_length(), x.size());
     Matrix<unsigned> paths(alphabet_length(), x.size());
-    
+
     // transitions to final state
     // value of the last "column" of states
     // meaning, if length == 1, then
